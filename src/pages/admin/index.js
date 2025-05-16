@@ -1,145 +1,258 @@
 'use client';
-import '../../app/globals.css';
-import { useEffect, useState } from 'react';
-import { supabase } from '../../lib/supabaseClient';
+import "../../app/globals.css"
+import React, { useEffect, useState } from 'react';
+import {
+  PieChart,
+  Pie,
+  Cell,
+  Tooltip as ReTooltip,
+  ResponsiveContainer,
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+} from 'recharts';
+import { supabase } from '../../lib/supabaseClient'; 
 import AdminSidebar from '../../components/AdminSidebar';
+const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#A020F0', '#FF1493'];
 
-export default function AdminPage() {
-  const [view, setView] = useState('users');
-  const [users, setUsers] = useState([]);
+export default function Dashboard() {
+  const [darkMode, setDarkMode] = useState(false);
+  const [filterMonth, setFilterMonth] = useState('');
   const [products, setProducts] = useState([]);
-  const [editProduct, setEditProduct] = useState(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (view === 'users') fetchUsers();
-    if (view === 'products') fetchProducts();
-  }, [view]);
+    async function fetchProducts() {
+      setLoading(true);
+      const { data, error } = await supabase
+        .from('products')
+        .select('id, name, category, stock, created_at');
 
-  const fetchUsers = async () => {
-    const { data, error } = await supabase.from('users').select('*');
-    if (error) {
-      console.error('Error fetching users:', error.message);
-    } else {
-      setUsers(data);
+      if (error) {
+        console.error('Error fetching products:', error);
+        setProducts([]);
+      } else {
+        setProducts(data);
+      }
+      setLoading(false);
     }
-  };
+    fetchProducts();
+  }, []);
 
-  const fetchProducts = async () => {
-    const { data, error } = await supabase.from('products').select('*');
-    if (error) {
-      console.error('Error fetching products:', error.message);
-    } else {
-      setProducts(data);
-    }
-  };
+  useEffect(() => {
+    document.body.classList.toggle('dark', darkMode);
+  }, [darkMode]);
 
-  const handleDelete = async (id) => {
-    const { error } = await supabase.from('products').delete().eq('id', id);
-    if (!error) fetchProducts();
-  };
+  const filteredProducts = filterMonth
+    ? products.filter((p) => {
+        if (!p.created_at) return false;
+        const productMonth = new Date(p.created_at).toISOString().slice(0, 7);
+        return productMonth === filterMonth;
+      })
+    : products;
 
-  const handleUpdate = async () => {
-    const { id, name, price } = editProduct;
-    const { error } = await supabase
-      .from('products')
-      .update({ name, price })
-      .eq('id', id);
+  const categoryMap = {};
+  filteredProducts.forEach((p) => {
+    categoryMap[p.category] = (categoryMap[p.category] || 0) + 1;
+  });
+  const categoryData = Object.entries(categoryMap).map(([name, value]) => ({ name, value }));
 
-    if (!error) {
-      setEditProduct(null);
-      fetchProducts();
-    }
-  };
+  const topSellingData = [...filteredProducts]
+    .map((p) => ({ name: p.name, sold: p.sold || 0 }))
+    .sort((a, b) => b.sold - a.sold)
+    .slice(0, 5);
+
+  const totalStock = filteredProducts.reduce((acc, p) => acc + (p.stock || 0), 0);
+  const totalSold = filteredProducts.reduce((acc, p) => acc + (p.sold || 0), 0);
 
   return (
-    <div className="flex min-h-screen">
-      {/* Sidebar */}
-      <AdminSidebar setView={setView} />
+    <>
+      <style>{`
+        body {
+          transition: background-color 0.5s, color 0.5s;
+          background-color: #f5f5f5;
+          color: #333;
+          font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        body.dark {
+          background-color: #121212;
+          color: #eee;
+        }
+        .dashboard-container {
+          max-width: 1200px;
+          margin: 2rem auto;
+          padding: 1rem;
+        }
+        .header {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          margin-bottom: 2rem;
+        }
+        .toggle-button {
+          cursor: pointer;
+          background: none;
+          border: 2px solid currentColor;
+          padding: 0.5rem 1rem;
+          border-radius: 25px;
+          font-weight: 600;
+          transition: background-color 0.3s, color 0.3s;
+        }
+        .toggle-button:hover {
+          background-color: #0070f3;
+          color: white;
+          border-color: #0070f3;
+        }
+        select {
+          padding: 0.5rem 0.75rem;
+          border-radius: 5px;
+          border: 1px solid #ccc;
+          font-size: 1rem;
+          background-color: white;
+          color: #333;
+          transition: background-color 0.3s, color 0.3s;
+        }
+        body.dark select {
+          background-color: #333;
+          color: #eee;
+          border-color: #555;
+        }
+        .summary-cards {
+          display: flex;
+          gap: 1rem;
+          margin-bottom: 2rem;
+          justify-content: center;
+        }
+        .card {
+          background-color: white;
+          border-radius: 8px;
+          padding: 1.5rem 2rem;
+          box-shadow: 0 3px 10px rgb(0 0 0 / 0.1);
+          flex: 1;
+          text-align: center;
+          transition: background-color 0.3s, color 0.3s;
+        }
+        body.dark .card {
+          background-color: #1e1e1e;
+          color: #ddd;
+          box-shadow: 0 3px 10px rgb(255 255 255 / 0.05);
+        }
+        .card h3 {
+          font-size: 2rem;
+          margin-bottom: 0.5rem;
+        }
+        .charts {
+          display: flex;
+          gap: 3rem;
+          flex-wrap: wrap;
+          justify-content: center;
+        }
+        .chart-wrapper {
+          background-color: white;
+          padding: 1rem;
+          border-radius: 12px;
+          box-shadow: 0 3px 10px rgb(0 0 0 / 0.1);
+          flex: 1 1 400px;
+          max-width: 600px;
+          height: 350px;
+          transition: background-color 0.3s, color 0.3s;
+        }
+        body.dark .chart-wrapper {
+          background-color: #1e1e1e;
+          color: #ddd;
+          box-shadow: 0 3px 10px rgb(255 255 255 / 0.05);
+        }
+      `}</style>
+      <AdminSidebar/>
+      <div className="dashboard-container">
+        <div className="header">
+          <h1> Dashboard</h1>
+          <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+            <label htmlFor="monthFilter">Filter by Month:</label>
+            <select id="monthFilter" value={filterMonth} onChange={(e) => setFilterMonth(e.target.value)}>
+              <option value="">All</option>
+              <option value="2025-03">March 2025</option>
+              <option value="2025-04">April 2025</option>
+              <option value="2025-05">May 2025</option>
+            </select>
+            <button onClick={() => setDarkMode(!darkMode)} className="toggle-button" aria-label="Toggle Dark Mode">
+              {darkMode ? 'Light Mode' : 'Dark Mode'}
+            </button>
+          </div>
+        </div>
 
-      {/* Main Content */}
-      <main className="flex-1 p-8 ml-60">
-        {view === 'users' && (
-          <section>
-            <h2 className="text-xl font-bold mb-4">All Users ({users.length})</h2>
-            <ul className="space-y-2">
-              {users.map((user) => (
-                <li key={user.id} className="p-4 border rounded">
-                  <strong>{user.name || 'No Name'}</strong>
-                  <br />
-                  <span className="text-sm text-gray-600">{user.email}</span>
-                </li>
-              ))}
-            </ul>
-          </section>
-        )}
+        {loading ? (
+          <p>Loading products...</p>
+        ) : (
+          <>
+            <div className="summary-cards">
+              <div className="card">
+                <h3>{totalStock}</h3>
+                <p>Total Stock</p>
+              </div>
+              <div className="card">
+                <h3>{totalSold}</h3>
+                <p>Total Sold</p>
+              </div>
+              <div className="card">
+                <h3>{filteredProducts.length}</h3>
+                <p>Products</p>
+              </div>
+            </div>
 
-        {view === 'products' && (
-          <section>
-            <h2 className="text-xl font-bold mb-4">All Products</h2>
-            <ul className="space-y-4">
-              {products.map((product) => (
-                <li
-                  key={product.id}
-                  className="p-4 border rounded flex justify-between items-center"
-                >
-                  {editProduct?.id === product.id ? (
-                    <div className="flex gap-2 items-center">
-                      <input
-                        type="text"
-                        value={editProduct.name}
-                        onChange={(e) =>
-                          setEditProduct({ ...editProduct, name: e.target.value })
-                        }
-                        className="border px-2 py-1"
-                      />
-                      <input
-                        type="number"
-                        value={editProduct.price}
-                        onChange={(e) =>
-                          setEditProduct({ ...editProduct, price: Number(e.target.value) })
-                        }
-                        className="border px-2 py-1 w-24"
-                      />
-                      <button
-                        onClick={handleUpdate}
-                        className="bg-green-600 text-white px-2 py-1 rounded"
-                      >
-                        Save
-                      </button>
-                      <button
-                        onClick={() => setEditProduct(null)}
-                        className="bg-gray-400 px-2 py-1 rounded"
-                      >
-                        Cancel
-                      </button>
-                    </div>
-                  ) : (
-                    <>
-                      <div>
-                        <strong>{product.name}</strong> — ₹{product.price}
-                      </div>
-                      <div className="flex gap-2">
-                        <button
-                          onClick={() => setEditProduct(product)}
-                          className="bg-blue-600 text-white px-2 py-1 rounded"
-                        >
-                          Edit
-                        </button>
-                        <button
-                          onClick={() => handleDelete(product.id)}
-                          className="bg-red-600 text-white px-2 py-1 rounded"
-                        >
-                          Delete
-                        </button>
-                      </div>
-                    </>
-                  )}
-                </li>
-              ))}
-            </ul>
-          </section>
+            <div className="charts">
+              <div className="chart-wrapper">
+                <h3>Product Category Distribution</h3>
+                <ResponsiveContainer width="100%" height="90%">
+                  <BarChart data={categoryData} margin={{ top: 20, right: 30, left: 0, bottom: 50 }}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="name" angle={-45} textAnchor="end" interval={0} />
+                    <YAxis />
+                    <ReTooltip />
+                    <Bar dataKey="value">
+                      {categoryData.map((entry, index) => (
+                        <Cell key={`bar-cat-${index}`} fill={COLORS[index % COLORS.length]} />
+                      ))}
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+
+              <div className="chart-wrapper">
+                <h3>Top Selling Products</h3>
+                <ResponsiveContainer width="100%" height="90%">
+                  <BarChart data={topSellingData} margin={{ top: 20, right: 30, left: 0, bottom: 5 }}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="name" />
+                    <YAxis />
+                    <ReTooltip />
+                    <Bar dataKey="sold" fill="#82ca9d" />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+
+              <div className="chart-wrapper">
+                <h3>Product Stock Levels</h3>
+                <ResponsiveContainer width="100%" height="90%">
+                  <BarChart data={filteredProducts.map(p => ({ name: p.name, stock: p.stock }))} margin={{ top: 20, right: 30, left: 0, bottom: 50 }}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="name" angle={-45} textAnchor="end" interval={0} />
+                    <YAxis />
+                    <ReTooltip />
+                    <Bar dataKey="stock">
+                      {filteredProducts.map((entry, index) => (
+                        <Cell key={`bar-stock-${index}`} fill={entry.stock <= 10 ? '#FF4C4C' : '#8884d8'} />
+                      ))}
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+          </>
         )}
-      </main>
-    </div>
+      </div>
+    </>
   );
 }

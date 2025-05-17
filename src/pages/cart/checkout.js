@@ -3,7 +3,8 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { supabase } from '../../lib/supabaseClient';
-import "../../app/globals.css";
+import '../../app/globals.css';
+import UserLayout from '../../components/layouts/UserLayout';
 
 export default function CheckoutPage() {
   const router = useRouter();
@@ -88,42 +89,53 @@ export default function CheckoutPage() {
     }
   };
 
-  if (!product) return <div className="p-6">Loading product info...</div>;
+  if (!product)
+    return (
+      <UserLayout>
+        <div className='p-6'>Loading product info...</div>
+      </UserLayout>
+    );
 
   return (
-    <div className="max-w-xl mx-auto p-6">
-      <h1 className="text-2xl font-bold mb-4">Checkout</h1>
+    <UserLayout>
+      <div className='max-w-xl mx-auto'>
+        <h1 className='text-2xl font-bold mb-4'>Checkout</h1>
 
-      <div className="bg-white p-4 rounded shadow mb-6">
-        <h2 className="font-semibold text-lg">{product.name}</h2>
-        <p>Price: ₹{product.price}</p>
-        <p>Quantity: {quantity}</p>
-        <p>Total: ₹{product.price * quantity}</p>
+        <div className='bg-white p-4 rounded shadow mb-6'>
+          <h2 className='font-semibold text-lg'>{product.name}</h2>
+          <p>Price: ₹{product.price}</p>
+          <p>Quantity: {quantity}</p>
+          <p>Total: ₹{product.price * quantity}</p>
+        </div>
+
+        <form onSubmit={handleSubmit} className='space-y-4'>
+          {['name', 'address', 'city', 'state', 'postalCode', 'phone'].map(
+            (field) => (
+              <div key={field}>
+                <label className='block font-medium capitalize'>
+                  {field.replace(/([A-Z])/g, ' $1')}
+                </label>
+                <input
+                  name={field}
+                  value={shipping[field]}
+                  onChange={handleChange}
+                  required
+                  className='w-full border px-3 py-2 rounded'
+                  type={field === 'phone' ? 'tel' : 'text'}
+                />
+              </div>
+            )
+          )}
+
+          <button
+            type='submit'
+            disabled={loading}
+            className='bg-green-600 text-white px-6 py-3 rounded hover:bg-green-700'
+          >
+            {loading ? 'Placing Order...' : 'Place Order'}
+          </button>
+        </form>
       </div>
-
-      <form onSubmit={handleSubmit} className="space-y-4">
-        {['name', 'address', 'city', 'state', 'postalCode', 'phone'].map((field) => (
-          <div key={field}>
-            <label className="block font-medium capitalize">{field.replace(/([A-Z])/g, ' $1')}</label>
-            <input
-              name={field}
-              value={shipping[field]}
-              onChange={handleChange}
-              required
-              className="w-full border px-3 py-2 rounded"
-              type={field === 'phone' ? 'tel' : 'text'}
-            />
-          </div>
-        ))}
-
-        <button
-          type="submit"
-          disabled={loading}
-          className="bg-green-600 text-white px-6 py-3 rounded hover:bg-green-700"
-        >
-          {loading ? 'Placing Order...' : 'Place Order'}
-        </button>
-      </form>
-    </div>
+    </UserLayout>
   );
 }

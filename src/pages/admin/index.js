@@ -1,5 +1,5 @@
 'use client';
-import "../../app/globals.css"
+import '../../app/globals.css';
 import React, { useEffect, useState } from 'react';
 import {
   PieChart,
@@ -13,9 +13,16 @@ import {
   YAxis,
   CartesianGrid,
 } from 'recharts';
-import { supabase } from '../../lib/supabaseClient'; 
-import AdminSidebar from '../../components/AdminSidebar';
-const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#A020F0', '#FF1493'];
+import { supabase } from '../../lib/supabaseClient';
+import AdminLayout from '@/components/layouts/AdminLayout';
+const COLORS = [
+  '#0088FE',
+  '#00C49F',
+  '#FFBB28',
+  '#FF8042',
+  '#A020F0',
+  '#FF1493',
+];
 
 export default function Dashboard() {
   const [darkMode, setDarkMode] = useState(false);
@@ -57,14 +64,20 @@ export default function Dashboard() {
   filteredProducts.forEach((p) => {
     categoryMap[p.category] = (categoryMap[p.category] || 0) + 1;
   });
-  const categoryData = Object.entries(categoryMap).map(([name, value]) => ({ name, value }));
+  const categoryData = Object.entries(categoryMap).map(([name, value]) => ({
+    name,
+    value,
+  }));
 
   const topSellingData = [...filteredProducts]
     .map((p) => ({ name: p.name, sold: p.sold || 0 }))
     .sort((a, b) => b.sold - a.sold)
     .slice(0, 5);
 
-  const totalStock = filteredProducts.reduce((acc, p) => acc + (p.stock || 0), 0);
+  const totalStock = filteredProducts.reduce(
+    (acc, p) => acc + (p.stock || 0),
+    0
+  );
   const totalSold = filteredProducts.reduce((acc, p) => acc + (p.sold || 0), 0);
 
   return (
@@ -165,94 +178,131 @@ export default function Dashboard() {
           box-shadow: 0 3px 10px rgb(255 255 255 / 0.05);
         }
       `}</style>
-      <AdminSidebar/>
-      <div className="dashboard-container">
-        <div className="header">
-          <h1> Dashboard</h1>
-          <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
-            <label htmlFor="monthFilter">Filter by Month:</label>
-            <select id="monthFilter" value={filterMonth} onChange={(e) => setFilterMonth(e.target.value)}>
-              <option value="">All</option>
-              <option value="2025-03">March 2025</option>
-              <option value="2025-04">April 2025</option>
-              <option value="2025-05">May 2025</option>
-            </select>
-            <button onClick={() => setDarkMode(!darkMode)} className="toggle-button" aria-label="Toggle Dark Mode">
-              {darkMode ? 'Light Mode' : 'Dark Mode'}
-            </button>
+      <AdminLayout>
+        <div className='dashboard-container'>
+          <div className='header'>
+            <h1> Dashboard</h1>
+            <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+              <label htmlFor='monthFilter'>Filter by Month:</label>
+              <select
+                id='monthFilter'
+                value={filterMonth}
+                onChange={(e) => setFilterMonth(e.target.value)}
+              >
+                <option value=''>All</option>
+                <option value='2025-03'>March 2025</option>
+                <option value='2025-04'>April 2025</option>
+                <option value='2025-05'>May 2025</option>
+              </select>
+              <button
+                onClick={() => setDarkMode(!darkMode)}
+                className='toggle-button'
+                aria-label='Toggle Dark Mode'
+              >
+                {darkMode ? 'Light Mode' : 'Dark Mode'}
+              </button>
+            </div>
           </div>
+
+          {loading ? (
+            <p>Loading products...</p>
+          ) : (
+            <>
+              <div className='summary-cards'>
+                <div className='card'>
+                  <h3>{totalStock}</h3>
+                  <p>Total Stock</p>
+                </div>
+                <div className='card'>
+                  <h3>{totalSold}</h3>
+                  <p>Total Sold</p>
+                </div>
+                <div className='card'>
+                  <h3>{filteredProducts.length}</h3>
+                  <p>Products</p>
+                </div>
+              </div>
+
+              <div className='charts'>
+                <div className='chart-wrapper'>
+                  <h3>Product Category Distribution</h3>
+                  <ResponsiveContainer width='100%' height='90%'>
+                    <BarChart
+                      data={categoryData}
+                      margin={{ top: 20, right: 30, left: 0, bottom: 50 }}
+                    >
+                      <CartesianGrid strokeDasharray='3 3' />
+                      <XAxis
+                        dataKey='name'
+                        angle={-45}
+                        textAnchor='end'
+                        interval={0}
+                      />
+                      <YAxis />
+                      <ReTooltip />
+                      <Bar dataKey='value'>
+                        {categoryData.map((entry, index) => (
+                          <Cell
+                            key={`bar-cat-${index}`}
+                            fill={COLORS[index % COLORS.length]}
+                          />
+                        ))}
+                      </Bar>
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+
+                <div className='chart-wrapper'>
+                  <h3>Top Selling Products</h3>
+                  <ResponsiveContainer width='100%' height='90%'>
+                    <BarChart
+                      data={topSellingData}
+                      margin={{ top: 20, right: 30, left: 0, bottom: 5 }}
+                    >
+                      <CartesianGrid strokeDasharray='3 3' />
+                      <XAxis dataKey='name' />
+                      <YAxis />
+                      <ReTooltip />
+                      <Bar dataKey='sold' fill='#82ca9d' />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+
+                <div className='chart-wrapper'>
+                  <h3>Product Stock Levels</h3>
+                  <ResponsiveContainer width='100%' height='90%'>
+                    <BarChart
+                      data={filteredProducts.map((p) => ({
+                        name: p.name,
+                        stock: p.stock,
+                      }))}
+                      margin={{ top: 20, right: 30, left: 0, bottom: 50 }}
+                    >
+                      <CartesianGrid strokeDasharray='3 3' />
+                      <XAxis
+                        dataKey='name'
+                        angle={-45}
+                        textAnchor='end'
+                        interval={0}
+                      />
+                      <YAxis />
+                      <ReTooltip />
+                      <Bar dataKey='stock'>
+                        {filteredProducts.map((entry, index) => (
+                          <Cell
+                            key={`bar-stock-${index}`}
+                            fill={entry.stock <= 10 ? '#FF4C4C' : '#8884d8'}
+                          />
+                        ))}
+                      </Bar>
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              </div>
+            </>
+          )}
         </div>
-
-        {loading ? (
-          <p>Loading products...</p>
-        ) : (
-          <>
-            <div className="summary-cards">
-              <div className="card">
-                <h3>{totalStock}</h3>
-                <p>Total Stock</p>
-              </div>
-              <div className="card">
-                <h3>{totalSold}</h3>
-                <p>Total Sold</p>
-              </div>
-              <div className="card">
-                <h3>{filteredProducts.length}</h3>
-                <p>Products</p>
-              </div>
-            </div>
-
-            <div className="charts">
-              <div className="chart-wrapper">
-                <h3>Product Category Distribution</h3>
-                <ResponsiveContainer width="100%" height="90%">
-                  <BarChart data={categoryData} margin={{ top: 20, right: 30, left: 0, bottom: 50 }}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="name" angle={-45} textAnchor="end" interval={0} />
-                    <YAxis />
-                    <ReTooltip />
-                    <Bar dataKey="value">
-                      {categoryData.map((entry, index) => (
-                        <Cell key={`bar-cat-${index}`} fill={COLORS[index % COLORS.length]} />
-                      ))}
-                    </Bar>
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
-
-              <div className="chart-wrapper">
-                <h3>Top Selling Products</h3>
-                <ResponsiveContainer width="100%" height="90%">
-                  <BarChart data={topSellingData} margin={{ top: 20, right: 30, left: 0, bottom: 5 }}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="name" />
-                    <YAxis />
-                    <ReTooltip />
-                    <Bar dataKey="sold" fill="#82ca9d" />
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
-
-              <div className="chart-wrapper">
-                <h3>Product Stock Levels</h3>
-                <ResponsiveContainer width="100%" height="90%">
-                  <BarChart data={filteredProducts.map(p => ({ name: p.name, stock: p.stock }))} margin={{ top: 20, right: 30, left: 0, bottom: 50 }}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="name" angle={-45} textAnchor="end" interval={0} />
-                    <YAxis />
-                    <ReTooltip />
-                    <Bar dataKey="stock">
-                      {filteredProducts.map((entry, index) => (
-                        <Cell key={`bar-stock-${index}`} fill={entry.stock <= 10 ? '#FF4C4C' : '#8884d8'} />
-                      ))}
-                    </Bar>
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
-            </div>
-          </>
-        )}
-      </div>
+      </AdminLayout>
     </>
   );
 }

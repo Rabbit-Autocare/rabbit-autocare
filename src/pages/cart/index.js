@@ -1,14 +1,17 @@
 'use client';
 import React, { useEffect, useState } from 'react';
-import { supabase } from '../../../lib/supabaseClient';
-import UserSidebar from '../../../components/UserSidebar';
+import { supabase } from '../../lib/supabaseClient';
+import RootLayout from '../../components/layouts/RootLayout';
 import { useRouter } from 'next/navigation';
-import "../../../app/globals.css";
-export default function UserCartPage() {
+import Image from 'next/image';
+import '../../app/globals.css';
+
+export default function CartPage() {
   const [cartItems, setCartItems] = useState([]);
   const [userId, setUserId] = useState(null);
   const [loading, setLoading] = useState(true);
-const router = useRouter();
+  const router = useRouter();
+
   useEffect(() => {
     getUser();
   }, []);
@@ -44,11 +47,7 @@ const router = useRouter();
   };
 
   const removeItem = async (itemId) => {
-    await supabase
-      .from('cart_items')
-      .delete()
-      .eq('id', itemId);
-
+    await supabase.from('cart_items').delete().eq('id', itemId);
     fetchCart();
   };
 
@@ -62,11 +61,11 @@ const router = useRouter();
   const placeOrder = async () => {
     if (!userId || cartItems.length === 0) return;
 
-    const orderItems = cartItems.map(item => ({
+    const orderItems = cartItems.map((item) => ({
       product_id: item.product_id,
       name: item.products.name,
       price: item.products.price,
-      quantity: item.quantity
+      quantity: item.quantity,
     }));
 
     const { error } = await supabase.from('orders').insert([
@@ -74,67 +73,100 @@ const router = useRouter();
         user_id: userId,
         items: orderItems,
         total: calculateTotal(),
-      }
+      },
     ]);
 
     if (!error) {
       await supabase.from('cart_items').delete().eq('user_id', userId);
       fetchCart();
       alert('Order placed successfully!');
-      router.push(`/user/checkout`);
+      router.push(`/checkout`);
     } else {
       alert('Failed to place order.');
     }
   };
 
-  if (loading) return <div className="p-6">Loading cart...</div>;
+  if (loading && !userId)
+    return (
+      <RootLayout>
+        <div className='p-6 text-center'>
+          Please{' '}
+          <a href='/login' className='text-blue-600 hover:underline'>
+            log in
+          </a>{' '}
+          to view your cart
+        </div>
+      </RootLayout>
+    );
+
+  if (loading)
+    return (
+      <RootLayout>
+        <div className='p-6'>Loading cart...</div>
+      </RootLayout>
+    );
 
   return (
-    <div className="flex min-h-screen bg-gray-100">
-      <UserSidebar />
-
-      <main className="flex-1 ml-0 md:ml-60 p-6">
-        <h1 className="text-3xl font-bold mb-6">Your Cart</h1>
+    <RootLayout>
+      <div className='max-w-7xl mx-auto px-4 py-8'>
+        <h1 className='text-3xl font-bold mb-6'>Your Shopping Cart</h1>
 
         {cartItems.length === 0 ? (
-          <p>No items in cart.</p>
+          <div className='text-center py-12'>
+            <p className='mb-4'>Your cart is empty.</p>
+            <button
+              onClick={() => router.push('/products')}
+              className='bg-blue-600 text-white px-6 py-3 rounded hover:bg-blue-700'
+            >
+              Continue Shopping
+            </button>
+          </div>
         ) : (
-          <div className="space-y-4">
+          <div className='space-y-4'>
             {cartItems.map((item) => (
               <div
                 key={item.id}
-                className="bg-white shadow p-4 rounded flex items-center justify-between"
+                className='bg-white shadow p-4 rounded flex flex-col md:flex-row md:items-center justify-between'
               >
-                <div className="flex items-center gap-4">
+                <div className='flex items-center gap-4'>
                   {item.products.image && (
-                    <img
-                      src={item.products.image}
-                      alt={item.products.name}
-                      className="w-20 h-20 object-cover rounded"
-                    />
+                    <div className='relative w-20 h-20'>
+                      <Image
+                        src={item.products.image}
+                        alt={item.products.name}
+                        fill
+                        sizes='100px'
+                        style={{ objectFit: 'cover' }}
+                        className='rounded'
+                      />
+                    </div>
                   )}
                   <div>
-                    <h2 className="text-xl font-semibold">{item.products.name}</h2>
-                    <p className="text-green-600">₹{item.products.price} each</p>
-                    <p className="text-gray-600">
+                    <h2 className='text-xl font-semibold'>
+                      {item.products.name}
+                    </h2>
+                    <p className='text-green-600'>
+                      ₹{item.products.price} each
+                    </p>
+                    <p className='text-gray-600'>
                       Total: ₹{item.quantity * item.products.price}
                     </p>
                   </div>
                 </div>
 
-                <div className="flex items-center gap-3">
+                <div className='flex items-center gap-3 mt-4 md:mt-0'>
                   <input
-                    type="number"
-                    min="1"
+                    type='number'
+                    min='1'
                     value={item.quantity}
                     onChange={(e) =>
                       updateQuantity(item.id, parseInt(e.target.value))
                     }
-                    className="w-16 border px-2 py-1 rounded"
+                    className='w-16 border px-2 py-1 rounded'
                   />
                   <button
                     onClick={() => removeItem(item.id)}
-                    className="bg-red-500 text-white px-3 py-1 rounded hover:bg-red-600"
+                    className='bg-red-500 text-white px-3 py-1 rounded hover:bg-red-600'
                   >
                     Remove
                   </button>
@@ -142,21 +174,21 @@ const router = useRouter();
               </div>
             ))}
 
-            <div className="bg-white shadow p-4 rounded text-right text-xl font-bold">
+            <div className='bg-white shadow p-4 rounded text-right text-xl font-bold'>
               Grand Total: ₹{calculateTotal()}
             </div>
 
-            <div className="text-right">
+            <div className='text-right'>
               <button
                 onClick={placeOrder}
-                className="bg-blue-600 text-white px-6 py-3 mt-4 rounded hover:bg-blue-700"
+                className='bg-blue-600 text-white px-6 py-3 mt-4 rounded hover:bg-blue-700'
               >
                 Place Order
               </button>
             </div>
           </div>
         )}
-      </main>
-    </div>
+      </div>
+    </RootLayout>
   );
 }

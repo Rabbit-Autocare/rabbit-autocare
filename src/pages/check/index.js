@@ -68,10 +68,10 @@ export default function CheckPage() {
   }),
 });
 
-    router.push('/cart/confirm');
+    router.push('/confirm');
   } catch (err) {
     console.error('Failed to send email:', err);
-    router.push('/cart/confirm');
+    router.push('/confirm');
   }
 };
 

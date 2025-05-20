@@ -216,7 +216,7 @@ export default function ProductDetailPage() {
             </button>
             <button
               onClick={() =>
-                router.push(`/cart/checkout?id=${product.id}&qty=${quantity}`)
+                router.push(`/checkout/?id=${product.id}&qty=${quantity}`)
               }
               disabled={!product.stock || product.stock === 0 || !userId}
               className='bg-blue-600 text-white px-6 py-3 rounded hover:bg-blue-700 disabled:opacity-50'

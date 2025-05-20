@@ -12,6 +12,7 @@ export default function AdminSidebar() {
     { name: 'Add Product', path: '/admin/add-product' },
     { name: 'Profile', path: '/admin/profile' },
     { name: 'Inventory', path: '/admin/inventory' },
+    { name: 'Combo & Kits', path: '/admin/combo' },
   ];
 
   return (

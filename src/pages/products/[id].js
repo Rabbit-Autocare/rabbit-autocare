@@ -75,8 +75,7 @@ const handleAddToCart = async () => {
     name: product.name,
     price: selectedVariant.price,
     image: selectedVariant.image || product.image,
-    variant_size: selectedVariant.size,       // ✅ NEW
-    variant_stock: selectedVariant.stock      // ✅ NEW
+    variant_size: selectedVariant.size,     
   })
 
   setAdding(false)

@@ -1,3 +1,12 @@
-export default function App({ Component, pageProps }) {
-  return <Component {...pageProps} />;
+import '../app/globals.css';
+import { CartProvider } from '../contexts/CartContext';
+
+function MyApp({ Component, pageProps }) {
+  return (
+    <CartProvider>
+      <Component {...pageProps} />
+    </CartProvider>
+  );
 }
+
+export default MyApp;

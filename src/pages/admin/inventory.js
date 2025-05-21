@@ -3,11 +3,19 @@ import { useEffect, useState } from 'react';
 import { supabase } from '../../lib/supabaseClient';
 import '../../app/globals.css';
 import AdminLayout from '@/components/layouts/AdminLayout';
+
+/**
+ * Inventory Manager Component
+ * Allows admin to view and update stock levels for products
+ */
 export default function InventoryManagerPage() {
   const [products, setProducts] = useState([]);
   const [updatedStock, setUpdatedStock] = useState({});
   const [loading, setLoading] = useState(false);
 
+  /**
+   * Fetches all products with their stock information
+   */
   const fetchProducts = async () => {
     const { data, error } = await supabase
       .from('products')
@@ -20,10 +28,17 @@ export default function InventoryManagerPage() {
     }
   };
 
+  // Fetch products on component mount
   useEffect(() => {
     fetchProducts();
   }, []);
 
+  /**
+   * Handles stock input field changes
+   *
+   * @param {string} productId - ID of the product
+   * @param {string} value - New stock value
+   */
   const handleStockChange = (productId, value) => {
     setUpdatedStock({
       ...updatedStock,
@@ -31,6 +46,11 @@ export default function InventoryManagerPage() {
     });
   };
 
+  /**
+   * Updates the stock level for a specific product
+   *
+   * @param {string} productId - ID of the product to update
+   */
   const updateStock = async (productId) => {
     const newStock = parseInt(updatedStock[productId]);
     if (isNaN(newStock)) {
@@ -50,7 +70,7 @@ export default function InventoryManagerPage() {
       alert('Failed to update stock');
     } else {
       alert('Stock updated successfully');
-      fetchProducts(); // Refresh
+      fetchProducts(); // Refresh data
       setUpdatedStock({ ...updatedStock, [productId]: '' });
     }
 

@@ -1,54 +1,27 @@
 'use client';
 import Link from 'next/link';
-import { useRouter } from 'next/router';
+import { useRouter } from 'next/navigation';
 import { useState, useEffect } from 'react';
 import { Menu, X, ShoppingCart } from 'lucide-react';
 import { supabase } from '../lib/supabaseClient';
+import { useCart } from '@/hooks/useCart';
 import '../app/globals.css';
 
 export default function MainNavbar() {
   const router = useRouter();
   const [menuOpen, setMenuOpen] = useState(false);
   const [user, setUser] = useState(null);
-  const [cartCount, setCartCount] = useState(0);
+
+  // Get cart functionality from our new context
+  const { cartCount, openCart } = useCart();
 
   useEffect(() => {
     const getUser = async () => {
       const { data } = await supabase.auth.getUser();
       setUser(data?.user || null);
-
-      if (data?.user) {
-        // Fetch cart count
-        const { data: cartItems } = await supabase
-          .from('cart_items')
-          .select('*')
-          .eq('user_id', data.user.id);
-
-        setCartCount(cartItems?.length || 0);
-      }
     };
 
     getUser();
-
-    // Set up subscription for cart updates
-    const channel = supabase
-      .channel('cart_changes')
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'cart_items',
-        },
-        () => {
-          if (user) getUser();
-        }
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
   }, []);
 
   const handleLogout = async () => {
@@ -112,21 +85,15 @@ export default function MainNavbar() {
             <Link
               href='/products'
               className={`hover:text-blue-600 ${
-                router.pathname === '/products' ||
-                router.pathname.startsWith('/products/')
-                  ? 'text-blue-600'
-                  : ''
+                router.pathname === '/products' ? 'text-blue-600' : ''
               }`}
             >
               Shop
             </Link>
-             <Link
+            <Link
               href='/combo'
               className={`hover:text-blue-600 ${
-                router.pathname === '/combo' ||
-                router.pathname.startsWith('/combo/')
-                  ? 'text-blue-600'
-                  : ''
+                router.pathname === '/combo' ? 'text-blue-600' : ''
               }`}
             >
               Combo & Kits
@@ -155,26 +122,36 @@ export default function MainNavbar() {
             >
               Get In Touch
             </Link>
-            <Link href='/cart' className='relative hover:text-blue-600'>
+            {/* Changed from Link to button with onClick to open drawer */}
+            <button
+              onClick={openCart}
+              className='relative hover:text-blue-600'
+              aria-label='Open cart'
+            >
               <ShoppingCart size={24} />
               {cartCount > 0 && (
                 <span className='absolute -top-2 -right-2 bg-red-500 text-white text-xs w-5 h-5 rounded-full flex items-center justify-center'>
                   {cartCount}
                 </span>
               )}
-            </Link>
+            </button>
           </nav>
 
           {/* Mobile Menu Button */}
           <div className='flex items-center gap-4 md:hidden'>
-            <Link href='/cart' className='relative'>
+            {/* Changed from Link to button with onClick to open drawer */}
+            <button
+              onClick={openCart}
+              className='relative'
+              aria-label='Open cart'
+            >
               <ShoppingCart size={24} />
               {cartCount > 0 && (
                 <span className='absolute -top-2 -right-2 bg-red-500 text-white text-xs w-5 h-5 rounded-full flex items-center justify-center'>
                   {cartCount}
                 </span>
               )}
-            </Link>
+            </button>
             <button
               className='text-gray-700'
               onClick={() => setMenuOpen(!menuOpen)}
@@ -192,6 +169,9 @@ export default function MainNavbar() {
             </Link>
             <Link href='/products' className='block hover:text-blue-600'>
               Shop
+            </Link>
+            <Link href='/combo' className='block hover:text-blue-600'>
+              Combo & Kits
             </Link>
             <Link href='/about' className='block hover:text-blue-600'>
               About Us

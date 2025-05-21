@@ -4,14 +4,26 @@ import { useEffect, useState } from 'react';
 import { supabase } from '../../lib/supabaseClient';
 import AdminLayout from '@/components/layouts/AdminLayout';
 
+/**
+ * User Management Component
+ * Allows admins to view and manage users, including banning/unbanning accounts
+ */
 export default function UsersPage() {
   const [users, setUsers] = useState([]);
 
+  /**
+   * Fetches all user records from database
+   */
   const fetchUsers = async () => {
     const { data } = await supabase.from('users').select('*');
     setUsers(data || []);
   };
 
+  /**
+   * Toggles ban status for a user
+   *
+   * @param {Object} user - User object to update
+   */
   const toggleBanStatus = async (user) => {
     const newStatus = !user.is_banned;
     await supabase
@@ -22,6 +34,7 @@ export default function UsersPage() {
     fetchUsers(); // Refresh data
   };
 
+  // Fetch users on component mount
   useEffect(() => {
     fetchUsers();
   }, []);

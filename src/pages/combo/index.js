@@ -4,7 +4,8 @@ import { useEffect, useState } from 'react';
 import { supabase } from '../../lib/supabaseClient';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
-import "../../app/globals.css";
+import '../../app/globals.css';
+import RootLayout from '@/app/layout';
 
 export default function ComboListPage() {
   const [combos, setCombos] = useState([]);
@@ -14,11 +15,15 @@ export default function ComboListPage() {
 
   useEffect(() => {
     const fetchData = async () => {
-      const { data: comboData, error: comboError } = await supabase.from('combos').select('*');
+      const { data: comboData, error: comboError } = await supabase
+        .from('combos')
+        .select('*');
       if (comboError) console.error('Combo Error:', comboError);
       setCombos(comboData || []);
 
-      const { data: productData, error: productError } = await supabase.from('products').select('*');
+      const { data: productData, error: productError } = await supabase
+        .from('products')
+        .select('*');
       if (productError) console.error('Product Error:', productError);
       setProducts(productData || []);
 
@@ -56,7 +61,8 @@ export default function ComboListPage() {
       .eq('combo_id', comboId)
       .single();
 
-    if (fetchError && fetchError.code !== 'PGRST116') { // Ignore "No rows found" error
+    if (fetchError && fetchError.code !== 'PGRST116') {
+      // Ignore "No rows found" error
       console.error('Error fetching combo cart:', fetchError);
       alert('Failed to add combo to cart');
       return;
@@ -66,7 +72,7 @@ export default function ComboListPage() {
       // If it exists, increment quantity and update price
       const { error: updateError } = await supabase
         .from('combo_cart')
-        .update({ 
+        .update({
           quantity: existing.quantity + 1,
           price: comboPrice,
         })
@@ -100,59 +106,60 @@ export default function ComboListPage() {
   };
 
   return (
-    <div className="p-6 min-h-screen bg-white dark:bg-gray-900 text-gray-800 dark:text-gray-100">
-      <h2 className="text-3xl font-bold mb-6">🎁 Available Combos</h2>
+    <RootLayout>
+      <div className='p-6 min-h-screen bg-white dark:bg-gray-900 text-gray-800 dark:text-gray-100'>
+        <h2 className='text-3xl font-bold mb-6'>🎁 Available Combos</h2>
 
-      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-        {combos.map((combo) => (
-          <div
-            key={combo.id}
-            className="border dark:border-gray-700 rounded-xl p-4 shadow-md bg-gray-100 dark:bg-gray-800"
-          >
-            {combo.image_url && (
-              <Image
-                src={combo.image_url}
-                alt={combo.name}
-                width={400}
-                height={200}
-                className="w-full h-48 object-cover rounded-md mb-3"
-              />
-            )}
+        <div className='grid gap-6 md:grid-cols-2 lg:grid-cols-3'>
+          {combos.map((combo) => (
+            <div
+              key={combo.id}
+              className='border dark:border-gray-700 rounded-xl p-4 shadow-md bg-gray-100 dark:bg-gray-800'
+            >
+              {combo.image_url && (
+                <Image
+                  src={combo.image_url}
+                  alt={combo.name}
+                  width={400}
+                  height={200}
+                  className='w-full h-48 object-cover rounded-md mb-3'
+                />
+              )}
 
-            <h3 className="text-xl font-semibold">{combo.name}</h3>
-            <p className="text-sm text-gray-600 dark:text-gray-300 mb-2">
-              {combo.description}
-            </p>
-
-            <div className="text-sm mb-2">
-              <strong>Includes:</strong>
-              <ul className="list-disc list-inside">
-                {combo.products?.map((item, index) => (
-                  <li key={index}>
-                    {getProductNameById(item.product_id)} × {item.quantity}
-                  </li>
-                ))}
-              </ul>
-            </div>
-
-            <div className="bg-white dark:bg-gray-700 rounded p-3 mt-2 border dark:border-gray-600">
-              <p>🧾 Original: ₹{combo.original_price}</p>
-              <p>💸 Discount: {combo.discount_percent}%</p>
-              <p className="text-green-600 dark:text-green-300 font-bold">
-                ✅ Final Price: ₹{combo.price}
+              <h3 className='text-xl font-semibold'>{combo.name}</h3>
+              <p className='text-sm text-gray-600 dark:text-gray-300 mb-2'>
+                {combo.description}
               </p>
+
+              <div className='text-sm mb-2'>
+                <strong>Includes:</strong>
+                <ul className='list-disc list-inside'>
+                  {combo.products?.map((item, index) => (
+                    <li key={index}>
+                      {getProductNameById(item.product_id)} × {item.quantity}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+
+              <div className='bg-white dark:bg-gray-700 rounded p-3 mt-2 border dark:border-gray-600'>
+                <p>🧾 Original: ₹{combo.original_price}</p>
+                <p>💸 Discount: {combo.discount_percent}%</p>
+                <p className='text-green-600 dark:text-green-300 font-bold'>
+                  ✅ Final Price: ₹{combo.price}
+                </p>
+              </div>
+
+              <button
+                onClick={() => router.push(`/combo/${combo.id}`)}
+                className='flex-1 bg-gray-200 hover:bg-gray-300 text-gray-800 py-2 rounded-lg transition'
+              >
+                👁️ View Combo Offer
+              </button>
             </div>
-
-         <button
-    onClick={() => router.push(`/combo/${combo.id}`)}
-    className="flex-1 bg-gray-200 hover:bg-gray-300 text-gray-800 py-2 rounded-lg transition"
-  >
-    👁️ View Combo Offer
-  </button>
-
-          </div>
-        ))}
+          ))}
+        </div>
       </div>
-    </div>
+    </RootLayout>
   );
 }

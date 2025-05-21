@@ -15,6 +15,8 @@ import {
 } from 'recharts';
 import { supabase } from '../../lib/supabaseClient';
 import AdminLayout from '@/components/layouts/AdminLayout';
+
+// Colors for charts
 const COLORS = [
   '#0088FE',
   '#00C49F',
@@ -24,9 +26,16 @@ const COLORS = [
   '#FF1493',
 ];
 
+/**
+ * Admin Dashboard Component
+ * Displays analytics, charts and key business metrics
+ */
 export default function Dashboard() {
+  // UI states
   const [darkMode, setDarkMode] = useState(false);
   const [filterMonth, setFilterMonth] = useState('');
+
+  // Data states
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [couponStats, setCouponStats] = useState({
@@ -34,24 +43,19 @@ export default function Dashboard() {
     mostUsed: null,
   });
 
+  // Fetch products data on component mount
   useEffect(() => {
     async function fetchProducts() {
-      setLoading(true);
-      const { data, error } = await supabase
-        .from('products')
-        .select('id, name, category, stock, created_at');
-
-      if (error) {
-        console.error('Error fetching products:', error);
-        setProducts([]);
-      } else {
-        setProducts(data);
+      const { data, error } = await supabase.from('products').select('*');
+      if (!error) {
+        setProducts(data || []);
       }
       setLoading(false);
     }
     fetchProducts();
   }, []);
 
+  // Fetch coupon statistics
   useEffect(() => {
     async function fetchData() {
       // Fetch coupon stats
@@ -88,10 +92,12 @@ export default function Dashboard() {
     fetchData();
   }, []);
 
+  // Apply dark mode to body
   useEffect(() => {
     document.body.classList.toggle('dark', darkMode);
   }, [darkMode]);
 
+  // Filter products by selected month
   const filteredProducts = filterMonth
     ? products.filter((p) => {
         if (!p.created_at) return false;
@@ -100,6 +106,7 @@ export default function Dashboard() {
       })
     : products;
 
+  // Calculate category distribution for charts
   const categoryMap = {};
   filteredProducts.forEach((p) => {
     categoryMap[p.category] = (categoryMap[p.category] || 0) + 1;
@@ -109,11 +116,13 @@ export default function Dashboard() {
     value,
   }));
 
+  // Calculate top selling products for charts
   const topSellingData = [...filteredProducts]
     .map((p) => ({ name: p.name, sold: p.sold || 0 }))
     .sort((a, b) => b.sold - a.sold)
     .slice(0, 5);
 
+  // Calculate inventory statistics
   const totalStock = filteredProducts.reduce(
     (acc, p) => acc + (p.stock || 0),
     0

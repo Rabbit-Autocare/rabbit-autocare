@@ -33,6 +33,14 @@ export default function UserSidebar() {
           >
             Address Book
           </Link>
+          <Link
+            href='/user/coupons'
+            className={`hover:text-blue-600 ${
+              router.pathname === '/user/coupons' ? 'text-blue-600' : ''
+            }`}
+          >
+            My Coupons
+          </Link>
         </nav>
       </div>
 

@@ -29,6 +29,10 @@ export default function Dashboard() {
   const [filterMonth, setFilterMonth] = useState('');
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [couponStats, setCouponStats] = useState({
+    totalActive: 0,
+    mostUsed: null,
+  });
 
   useEffect(() => {
     async function fetchProducts() {
@@ -46,6 +50,42 @@ export default function Dashboard() {
       setLoading(false);
     }
     fetchProducts();
+  }, []);
+
+  useEffect(() => {
+    async function fetchData() {
+      // Fetch coupon stats
+      const { data: activeCoupons } = await supabase
+        .from('coupons')
+        .select('count')
+        .eq('is_active', true);
+
+      const { data: couponUsage } = await supabase.rpc('get_most_used_coupon');
+      let mostUsedCoupon = null;
+      if (couponUsage && couponUsage.length > 0) {
+        mostUsedCoupon = couponUsage[0];
+      }
+
+      if (mostUsedCoupon) {
+        const { data: couponDetails } = await supabase
+          .from('coupons')
+          .select('*')
+          .eq('id', mostUsedCoupon.coupon_id)
+          .single();
+
+        setCouponStats({
+          totalActive: activeCoupons?.length || 0,
+          mostUsed: couponDetails,
+        });
+      } else {
+        setCouponStats({
+          totalActive: activeCoupons?.length || 0,
+          mostUsed: null,
+        });
+      }
+    }
+
+    fetchData();
   }, []);
 
   useEffect(() => {
@@ -221,6 +261,16 @@ export default function Dashboard() {
                   <h3>{filteredProducts.length}</h3>
                   <p>Products</p>
                 </div>
+                <div className='card'>
+                  <h3>{couponStats.totalActive}</h3>
+                  <p>Active Coupons</p>
+                </div>
+                {couponStats.mostUsed && (
+                  <div className='card'>
+                    <h3>{couponStats.mostUsed.code}</h3>
+                    <p>Most Used Coupon</p>
+                  </div>
+                )}
               </div>
 
               <div className='charts'>

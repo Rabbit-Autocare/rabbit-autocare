@@ -166,6 +166,24 @@ export default function OrderHistoryPage() {
               </table>
             </div>
 
+            {/* Add the discount information section */}
+            {selectedOrder.discount_amount > 0 && (
+              <div className='mt-1'>
+                <p className='text-green-600'>
+                  <span className='font-medium'>Discount Applied:</span>{' '}
+                  {selectedOrder.discount_percent}% (₹
+                  {selectedOrder.discount_amount.toFixed(2)})
+                </p>
+                <p className='text-sm text-gray-500'>
+                  Original price: ₹
+                  {(
+                    parseFloat(selectedOrder.total) +
+                    parseFloat(selectedOrder.discount_amount)
+                  ).toFixed(2)}
+                </p>
+              </div>
+            )}
+
             <div className='mt-6 flex justify-end'>
               <button
                 className='bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700'

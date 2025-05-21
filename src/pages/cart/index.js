@@ -79,10 +79,11 @@ export default function CartPage() {
   };
 
   const calculateTotal = () => {
-    const productTotal = cartItems.reduce((sum, item) => {
-      const product = getProductById(item.product_id);
-      return product ? sum + item.quantity * product.price : sum;
-    }, 0);
+ const productTotal = cartItems.reduce((sum, item) => {
+  return sum + item.quantity * item.price;
+}, 0);
+
+
 
     const comboTotal = comboItems.reduce((sum, item) => {
       const combo = getComboById(item.combo_id);
@@ -96,15 +97,14 @@ export default function CartPage() {
     if (!userId || (cartItems.length === 0 && comboItems.length === 0)) return;
 
     const orderItems = [
-      ...cartItems.map((item) => {
-        const product = getProductById(item.product_id);
-        return {
-          product_id: item.product_id,
-          name: product?.name || '',
-          price: product?.price || 0,
-          quantity: item.quantity,
-        };
-      }),
+     ...cartItems.map((item) => {
+  return {
+    product_id: item.product_id,
+    name: item.name || '',
+    price: item.price || 0,
+    quantity: item.quantity,
+  };
+}),
       ...comboItems.map((item) => {
         const combo = getComboById(item.combo_id);
         return {
@@ -128,7 +128,7 @@ export default function CartPage() {
       // await supabase.from('cart_items').delete().eq('user_id', userId);
       // await supabase.from('combo_cart').delete().eq('user_id', userId);
       fetchAllData();
-      alert('Order placed successfully!');
+      alert('Done');
       router.push(`/checkout`);
     } else {
       alert('Failed to place order.');
@@ -185,8 +185,8 @@ export default function CartPage() {
                     )}
                     <div>
                       <h2 className='text-xl font-semibold text-gray-900'>{product.name}</h2>
-                      <p className='text-green-600'>₹{product.price} each</p>
-                      <p className='text-gray-600'>Total: ₹{item.quantity * product.price}</p>
+                      <p className='text-green-600'>₹{item.price} each</p>
+                      <p className='text-gray-600'>Total: ₹{item.quantity * item.price}</p>
                     </div>
                   </div>
 

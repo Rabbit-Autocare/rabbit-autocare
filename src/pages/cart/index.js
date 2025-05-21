@@ -152,6 +152,7 @@ export default function CartPage() {
           <div className='text-center py-12'>
             <p className='mb-4'>Your cart is empty.</p>
             <button
+              type="button"
               onClick={() => router.push('/products')}
               className='bg-blue-600 text-white px-6 py-3 rounded hover:bg-blue-700'
             >
@@ -192,6 +193,7 @@ export default function CartPage() {
                   <div className='flex items-center gap-3 mt-4 md:mt-0'>
                     <div className='flex items-center border rounded'>
                       <button
+                        type="button"
                         className='px-3 py-1 text-xl font-bold'
                         onClick={() => updateQuantity(item.id, item.quantity - 1)}
                       >
@@ -199,6 +201,7 @@ export default function CartPage() {
                       </button>
                       <span className='px-4'>{item.quantity}</span>
                       <button
+                        type="button"
                         className='px-3 py-1 text-xl font-bold'
                         onClick={() => updateQuantity(item.id, item.quantity + 1)}
                       >
@@ -206,6 +209,7 @@ export default function CartPage() {
                       </button>
                     </div>
                     <button
+                      type="button"
                       onClick={() => removeItem(item.id)}
                       className='bg-red-500 text-white px-3 py-1 rounded hover:bg-red-600'
                     >
@@ -252,6 +256,7 @@ export default function CartPage() {
                   <div className='flex items-center gap-3 mt-4 md:mt-0'>
                     <div className='flex items-center border rounded'>
                       <button
+                        type="button"
                         className='px-3 py-1 text-xl font-bold'
                         onClick={() => updateComboQuantity(item.id, item.quantity - 1)}
                       >
@@ -259,6 +264,7 @@ export default function CartPage() {
                       </button>
                       <span className='px-4'>{item.quantity}</span>
                       <button
+                        type="button"
                         className='px-3 py-1 text-xl font-bold'
                         onClick={() => updateComboQuantity(item.id, item.quantity + 1)}
                       >
@@ -266,6 +272,7 @@ export default function CartPage() {
                       </button>
                     </div>
                     <button
+                      type="button"
                       onClick={() => removeComboItem(item.id)}
                       className='bg-red-500 text-white px-3 py-1 rounded hover:bg-red-600'
                     >
@@ -282,6 +289,7 @@ export default function CartPage() {
 
             <div className='text-right'>
               <button
+                type="button"
                 onClick={placeOrder}
                 className='bg-blue-600 text-white px-6 py-3 mt-4 rounded hover:bg-blue-700'
               >

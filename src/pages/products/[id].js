@@ -1,261 +1,179 @@
-'use client';
-import React, { useEffect, useState } from 'react';
+'use client'
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
 import { supabase } from '../../lib/supabaseClient';
-import RootLayout from '../../components/layouts/RootLayout';
-import { FaHeart, FaRegHeart } from 'react-icons/fa';
-import Image from 'next/image';
+import "../../app/globals.css";
 
-export default function ProductDetailPage() {
+export default function ProductDetail() {
   const router = useRouter();
-  const { id } = router.query;
+  const { id: productId } = router.query;
+
   const [product, setProduct] = useState(null);
-  const [related, setRelated] = useState([]);
-  const [adding, setAdding] = useState(false);
+  const [selectedVariant, setSelectedVariant] = useState(null);
   const [quantity, setQuantity] = useState(1);
   const [userId, setUserId] = useState(null);
-  const [isWishlisted, setIsWishlisted] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [adding, setAdding] = useState(false);
 
   useEffect(() => {
-    if (!id) return;
+    async function fetchUser() {
+      const { data, error } = await supabase.auth.getUser();
+      if (data?.user) {
+        setUserId(data.user.id);
+      } else {
+        console.error('User fetch error:', error);
+      }
+    }
+    fetchUser();
+  }, []);
+
+  useEffect(() => {
+    async function fetchProduct() {
+      if (!productId) return;
+
+      setLoading(true);
+
+      const { data, error } = await supabase
+        .from('products')
+        .select('*')
+        .eq('id', productId)
+        .single();
+
+      if (error) {
+        console.error('Product fetch error:', error);
+      } else {
+        setProduct(data);
+        if (data.variants && data.variants.length > 0) {
+          setSelectedVariant(data.variants[0]);
+        }
+      }
+
+      setLoading(false);
+    }
+
     fetchProduct();
-    getUser();
-  }, [id]);
+  }, [productId]);
 
-  const getUser = async () => {
-    const { data } = await supabase.auth.getUser();
-    if (data?.user) setUserId(data.user.id);
-  };
+  // ✅ Add to Cart Handler
+const handleAddToCart = async () => {
+  if (!userId) {
+    alert('Please log in to add items to cart.')
+    return
+  }
 
-  const fetchProduct = async () => {
-    const { data, error } = await supabase
-      .from('products')
-      .select('*')
-      .eq('id', id)
-      .single();
+  if (!selectedVariant) {
+    alert('Please select a size.')
+    return
+  }
 
-    if (!error) {
-      setProduct(data);
-      fetchRelated(data.category, data.id);
-      checkWishlist(data.id);
-    }
-  };
+  setAdding(true)
 
-  const fetchRelated = async (category, currentId) => {
-    const { data } = await supabase
-      .from('products')
-      .select('*')
-      .eq('category', category)
-      .neq('id', currentId)
-      .limit(3);
+  const { error } = await supabase.from('cart_items').insert({
+    user_id: userId,
+    product_id: product.id,
+    quantity,
+    name: product.name,
+    price: selectedVariant.price,
+    image: selectedVariant.image || product.image,
+    variant_size: selectedVariant.size,       // ✅ NEW
+    variant_stock: selectedVariant.stock      // ✅ NEW
+  })
 
-    setRelated(data || []);
-  };
+  setAdding(false)
 
-  const checkWishlist = async (productId) => {
-    if (!userId) return;
-    const { data } = await supabase
-      .from('wishlist')
-      .select('*')
-      .eq('user_id', userId)
-      .eq('product_id', productId)
-      .single();
+  if (error) {
+    console.error('Error adding to cart:', error)
+    alert('Error adding item to cart.')
+  } else {
+    alert('Item added to cart!')
+  }
+}
 
-    setIsWishlisted(!!data);
-  };
 
-  const toggleWishlist = async () => {
-    if (!userId || !product) return;
+  const handleBuyNow = async () => {
+    await handleAddToCart()
+    window.location.href = '/checkout'
+  }
 
-    if (isWishlisted) {
-      await supabase
-        .from('wishlist')
-        .delete()
-        .eq('user_id', userId)
-        .eq('product_id', product.id);
-    } else {
-      await supabase
-        .from('wishlist')
-        .insert({ user_id: userId, product_id: product.id });
-    }
-    setIsWishlisted(!isWishlisted);
-  };
-
-  const addToCart = async () => {
-    if (!product || !userId) return;
-    setAdding(true);
-
-    // Check if product already exists in cart
-    const { data: existingItem } = await supabase
-      .from('cart_items')
-      .select('*')
-      .eq('user_id', userId)
-      .eq('product_id', product.id)
-      .single();
-
-    let error;
-
-    if (existingItem) {
-      // Update quantity if item already exists
-      const { error: updateError } = await supabase
-        .from('cart_items')
-        .update({ quantity: existingItem.quantity + quantity })
-        .eq('id', existingItem.id);
-
-      error = updateError;
-    } else {
-      const { error: insertError } = await supabase.from('cart_items').insert([
-        {
-          user_id: userId,
-          product_id: product.id,
-          quantity,
-          name: product.name,
-          price: product.price,
-          image: product.image,
-        },
-      ]);
-
-      error = insertError;
-    }
-
-    setAdding(false);
-
-    if (error) {
-      alert('Failed to add to cart');
-    } else {
-      alert('Added to cart!');
-    }
-  };
-
-  if (!product)
-    return (
-      <RootLayout>
-        <div className='p-6'>Loading product details...</div>
-      </RootLayout>
-    );
-
+ if (loading) return <p className="text-center mt-10">Loading...</p>;
+if (!product || !product.id || !selectedVariant) return <p>Product not found.</p>;
   return (
-    <RootLayout>
-      <div className='max-w-7xl mx-auto px-4'>
-        <button
-          className='mb-4 px-4 py-2 bg-gray-300 rounded hover:bg-gray-400'
-          onClick={() => router.back()}
-        >
-          ← Back
-        </button>
-
-        <div className='bg-white shadow-md rounded-lg p-6 max-w-4xl mx-auto'>
-          {product.image && (
-            <div className='relative w-full h-64'>
-              <Image
-                src={product.image}
-                alt={product.name}
-                fill
-                sizes='(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw'
-                style={{ objectFit: 'cover' }}
-                className='rounded'
-                priority={true}
-              />
-            </div>
-          )}
-
-          <div className='flex items-center justify-between mt-4'>
-            <h1 className='text-4xl font-bold'>{product.name}</h1>
-            {userId && (
-              <button onClick={toggleWishlist}>
-                {isWishlisted ? (
-                  <FaHeart className='text-red-500 text-2xl' />
-                ) : (
-                  <FaRegHeart className='text-gray-500 text-2xl' />
-                )}
-              </button>
-            )}
-          </div>
-
-          <span className='inline-block bg-blue-100 text-blue-800 text-xs font-medium px-3 py-1 rounded-full mt-2'>
-            {product.category}
-          </span>
-
-          <p className='text-green-700 text-2xl font-semibold mt-3'>
-            ₹{product.price}
-          </p>
-          <p className='text-sm mt-1'>
-            {product.stock && product.stock > 0 ? (
-              <span className='text-green-600'>In Stock</span>
-            ) : (
-              <span className='text-red-500'>Out of Stock</span>
-            )}
-          </p>
-
-          <p className='text-gray-700 mt-4'>{product.description}</p>
-
-          {/* Quantity + Price + Add to Cart */}
-          <div className='flex flex-col md:flex-row items-center mt-6 gap-6'>
-            <input
-              type='number'
-              min='1'
-              max={product.stock || 10}
-              value={quantity}
-              onChange={(e) => setQuantity(parseInt(e.target.value))}
-              className='w-20 border px-3 py-2 rounded'
-              disabled={!product.stock}
-            />
-
-            <div className='flex flex-col text-sm'>
-              <span className='font-semibold'>{product.name}</span>
-              <span>Price per unit: ₹{product.price}</span>
-              <span>Total: ₹{(product.price * quantity).toFixed(2)}</span>
-            </div>
-
-            <button
-              onClick={addToCart}
-              disabled={adding || !product.stock || !userId}
-              className='bg-green-600 text-white px-6 py-3 rounded hover:bg-green-700 transition disabled:opacity-50'
-            >
-              {adding ? 'Adding...' : 'Add to Cart'}
-            </button>
-            <button
-              onClick={() =>
-                router.push(`/checkout/?id=${product.id}&qty=${quantity}`)
-              }
-              disabled={!product.stock || product.stock === 0 || !userId}
-              className='bg-blue-600 text-white px-6 py-3 rounded hover:bg-blue-700 disabled:opacity-50'
-            >
-              Buy Now
-            </button>
-          </div>
+    <div className="max-w-5xl mx-auto px-4 py-6">
+      <div className="flex flex-col md:flex-row gap-6">
+        {/* Image */}
+        <div className="md:w-1/2">
+          <img
+            src={selectedVariant.image || product.image}
+            alt={product.name}
+            className="rounded-xl w-full h-auto border"
+          />
         </div>
 
-        {related.length > 0 && (
-          <div className='mt-10'>
-            <h2 className='text-2xl font-bold mb-4'>Related Products</h2>
-            <div className='grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6'>
-              {related.map((item) => (
-                <div
-                  key={item.id}
-                  onClick={() => router.push(`/products/${item.id}`)}
-                  className='bg-white p-4 shadow rounded hover:shadow-md cursor-pointer'
+        {/* Details */}
+        <div className="md:w-1/2 space-y-4">
+          <h1 className="text-3xl font-bold">{product.name}</h1>
+          <p className="text-gray-600">{product.description}</p>
+
+          <p className="text-2xl font-semibold text-blue-600">
+            ₹{selectedVariant.price}
+          </p>
+
+          {/* Size Selection */}
+          <div>
+            <h3 className="font-semibold mb-2">Select Size:</h3>
+            <div className="flex gap-2 flex-wrap">
+              {product.variants?.map((variant, idx) => (
+                <button
+                  key={idx}
+                  onClick={() => setSelectedVariant(variant)}
+                  className={`px-4 py-2 rounded-full border ${
+                    selectedVariant.size === variant.size
+                      ? 'bg-black text-white'
+                      : 'bg-gray-100 text-black'
+                  }`}
                 >
-                  {item.image && (
-                    <div className='relative h-40 w-full'>
-                      <Image
-                        src={item.image}
-                        alt={item.name}
-                        fill
-                        sizes='(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw'
-                        style={{ objectFit: 'cover' }}
-                        className='rounded'
-                      />
-                    </div>
-                  )}
-                  <h3 className='mt-2 font-semibold'>{item.name}</h3>
-                  <p className='text-green-600 font-medium'>₹{item.price}</p>
-                </div>
+                  {variant.size}
+                </button>
               ))}
             </div>
           </div>
-        )}
+
+          {/* Quantity */}
+          <div className="flex items-center gap-4 mt-4">
+            <button
+              onClick={() => setQuantity(Math.max(1, quantity - 1))}
+              className="px-3 py-1 rounded-full bg-gray-200"
+            >
+              -
+            </button>
+            <span className="text-lg">{quantity}</span>
+            <button
+              onClick={() => setQuantity(quantity + 1)}
+              className="px-3 py-1 rounded-full bg-gray-200"
+            >
+              +
+            </button>
+          </div>
+
+          {/* Actions */}
+          <div className="mt-6">
+            <button
+              onClick={handleAddToCart}
+              disabled={adding}
+              className="w-full border rounded-lg py-3"
+            >
+              {adding ? 'Adding...' : 'Add to Shine List'}
+            </button>
+            <button
+              onClick={handleBuyNow}
+              disabled={adding}
+              className="w-full bg-black text-white py-3 rounded-lg mt-3"
+            >
+              {adding ? 'Processing...' : 'Buy Now 🛒'}
+            </button>
+          </div>
+        </div>
       </div>
-    </RootLayout>
-  );
+    </div>
+  )
 }

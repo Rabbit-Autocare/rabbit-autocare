@@ -30,6 +30,27 @@ export default function CheckoutPage() {
   const [addresses, setAddresses] = useState([]);
   const [selectedAddressId, setSelectedAddressId] = useState(null);
   const [addressLoading, setAddressLoading] = useState(false);
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const id = searchParams.get('id');
+  const productId = searchParams.get('id');
+  const comboId = searchParams.get('combo_id');
+  const qtyParam = parseInt(searchParams.get('qty')) || 1;
+  //--------------------------------------------------------
+  const [order, setOrder] = useState(null);
+  const [userEmail, setUserEmail] = useState('');
+  const [shippingInfo, setShippingInfo] = useState(null);
+  //-------------------------------------------------------
+  const [userId, setUserId] = useState(null);
+  const [product, setProduct] = useState(null);
+  const [combo, setCombo] = useState(null);
+  const [products, setProducts] = useState([]);
+  const [combos, setCombos] = useState([]);
+  const [cartItems, setCartItems] = useState([]);
+  const [comboCartItems, setComboCartItems] = useState([]);
+  const [orderProducts, setOrderProducts] = useState([]);
+  const [orderCombos, setOrderCombos] = useState([]);
+  const [selectedAddressId, setSelectedAddressId] = useState(null);
   const [addressForm, setAddressForm] = useState({
     full_name: '',
     phone: '',
@@ -39,6 +60,8 @@ export default function CheckoutPage() {
     postal_code: '',
     address_type: 'home',
   });
+  const [addresses, setAddresses] = useState([]);
+
   const [isEditing, setIsEditing] = useState(false);
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   //-------------------------------------------------------

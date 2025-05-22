@@ -1,28 +1,48 @@
 'use client';
 import { useEffect, useState } from 'react';
 import { supabase } from '../../lib/supabaseClient';
+import AdminLayout from '../../components/layouts/AdminLayout';
+import '../../app/globals.css';
 import Image from 'next/image';
-import AdminLayout from '@/components/layouts/AdminLayout';
 
+/**
+ * Product Management Component
+ * Allows admins to view, create, edit and delete products
+ */
 export default function ProductsPage() {
   const [products, setProducts] = useState([]);
   const [modalProduct, setModalProduct] = useState(null);
 
+  /**
+   * Fetches all products from database
+   */
   const fetchProducts = async () => {
     const { data, error } = await supabase.from('products').select('*');
     if (!error) setProducts(data);
   };
 
+  /**
+   * Deletes a product from database
+   *
+   * @param {string} id - Product ID to delete
+   */
   const handleDelete = async (id) => {
     await supabase.from('products').delete().eq('id', id);
     fetchProducts();
   };
 
+  /**
+   * Updates product data in database
+   *
+   * @param {string} id - Product ID to update
+   * @param {Object} newData - Updated product data
+   */
   const handleEdit = async (id, newData) => {
     await supabase.from('products').update(newData).eq('id', id);
     fetchProducts();
   };
 
+  // Fetch products on component mount
   useEffect(() => {
     fetchProducts();
   }, []);

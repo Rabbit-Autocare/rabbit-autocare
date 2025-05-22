@@ -24,6 +24,7 @@ export default function InventoryTable() {
     setLoading(false);
   };
 
+  // Fetch products on component mount
   useEffect(() => {
     fetchProducts();
   }, []);

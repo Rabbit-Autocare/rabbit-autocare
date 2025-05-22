@@ -4,7 +4,8 @@ import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { supabase } from '../../lib/supabaseClient';
 import Image from 'next/image';
-import "../../app/globals.css";
+import '../../app/globals.css';
+import RootLayout from '@/app/layout';
 
 export default function ComboDetailPage() {
   const { id } = useParams();
@@ -94,56 +95,60 @@ export default function ComboDetailPage() {
     alert('✅ Combo added to cart!');
   };
 
-  if (!combo) return <p className="p-6">Loading combo details...</p>;
+  if (!combo) return <p className='p-6'>Loading combo details...</p>;
 
   return (
-    <div className="p-6 max-w-4xl mx-auto bg-white min-h-screen">
-      <h1 className="text-3xl font-bold mb-6">{combo.name}</h1>
+    <RootLayout>
+      <div className='p-6 max-w-4xl mx-auto bg-white min-h-screen'>
+        <h1 className='text-3xl font-bold mb-6'>{combo.name}</h1>
 
-      {combo.image_url && (
-        <Image
-          src={combo.image_url}
-          alt={combo.name}
-          width={800}
-          height={400}
-          className="w-full h-64 object-cover rounded-md mb-6"
-        />
-      )}
+        {combo.image_url && (
+          <Image
+            src={combo.image_url}
+            alt={combo.name}
+            width={800}
+            height={400}
+            className='w-full h-64 object-cover rounded-md mb-6'
+          />
+        )}
 
-      <p className="text-gray-700 text-lg mb-4">{combo.description}</p>
+        <p className='text-gray-700 text-lg mb-4'>{combo.description}</p>
 
-      <div className="bg-gray-50 border p-4 rounded-md mb-4">
-        <h2 className="text-xl font-semibold mb-2">🧾 Pricing</h2>
-        <p>Original Price: ₹{combo.original_price}</p>
-        <p>Discount: {combo.discount_percent}%</p>
-        <p className="text-green-600 font-bold">Final Price: ₹{combo.price}</p>
+        <div className='bg-gray-50 border p-4 rounded-md mb-4'>
+          <h2 className='text-xl font-semibold mb-2'>🧾 Pricing</h2>
+          <p>Original Price: ₹{combo.original_price}</p>
+          <p>Discount: {combo.discount_percent}%</p>
+          <p className='text-green-600 font-bold'>
+            Final Price: ₹{combo.price}
+          </p>
+        </div>
+
+        <div className='mb-6'>
+          <h2 className='text-xl font-semibold mb-2'>📦 Products Included</h2>
+          <ul className='list-disc list-inside text-gray-800'>
+            {combo.products?.map((item, index) => (
+              <li key={index}>
+                {getProductName(item.product_id)} × {item.quantity}
+              </li>
+            ))}
+          </ul>
+        </div>
+
+        <div className='flex flex-wrap gap-4'>
+          <button
+            onClick={addToCart}
+            className='bg-blue-600 hover:bg-blue-700 text-white py-2 px-6 rounded-lg text-lg'
+          >
+            🛒 Add Combo to Cart
+          </button>
+          <button
+            onClick={buynow}
+            className='bg-green-600 hover:bg-green-700 text-white py-2 px-6 rounded-lg text-lg'
+          >
+            ⚡ Buy Now
+          </button>
+        </div>
       </div>
-
-      <div className="mb-6">
-        <h2 className="text-xl font-semibold mb-2">📦 Products Included</h2>
-        <ul className="list-disc list-inside text-gray-800">
-          {combo.products?.map((item, index) => (
-            <li key={index}>
-              {getProductName(item.product_id)} × {item.quantity}
-            </li>
-          ))}
-        </ul>
-      </div>
-
-      <div className="flex flex-wrap gap-4">
-        <button
-          onClick={addToCart}
-          className="bg-blue-600 hover:bg-blue-700 text-white py-2 px-6 rounded-lg text-lg"
-        >
-          🛒 Add Combo to Cart
-        </button>
-        <button
-          onClick={buynow}
-          className="bg-green-600 hover:bg-green-700 text-white py-2 px-6 rounded-lg text-lg"
-        >
-          ⚡ Buy Now
-        </button>
-      </div>
-    </div>
+    </RootLayout>
   );
 }

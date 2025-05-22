@@ -7,14 +7,21 @@ import RootLayout from '../components/layouts/RootLayout';
 import { supabase } from '../lib/supabaseClient';
 import '../app/globals.css';
 
+/**
+ * Home page component - Landing page for the Rabbit Auto Care website
+ * Displays featured products, categories, testimonials and promotional sections
+ */
 export default function Home() {
   const [featuredProducts, setFeaturedProducts] = useState([]);
   const [loading, setLoading] = useState(true);
   const router = useRouter();
 
   useEffect(() => {
+    /**
+     * Fetches a limited number of recent products to display as featured
+     * Updates the component state with product data from Supabase
+     */
     const fetchFeaturedProducts = async () => {
-      // Get a few products to feature on the homepage
       const { data, error } = await supabase
         .from('products')
         .select('*')

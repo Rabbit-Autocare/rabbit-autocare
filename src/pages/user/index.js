@@ -2,12 +2,16 @@
 
 import { useEffect, useState } from 'react';
 import { supabase } from '../../lib/supabaseClient';
+import Image from 'next/image';
 import UserLayout from '../../components/layouts/UserLayout';
 import '../../app/globals.css';
-import Image from 'next/image';
-import Link from 'next/link';
 
+/**
+ * User Profile Component
+ * Allows users to view and edit their profile information and avatar
+ */
 export default function MyAccount() {
+  // User data states
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [updating, setUpdating] = useState(false);
@@ -17,13 +21,19 @@ export default function MyAccount() {
     email: '',
     avatar_url: null,
   });
+
+  // Avatar management states
   const [avatarFile, setAvatarFile] = useState(null);
   const [avatarPreview, setAvatarPreview] = useState(null);
 
+  // Fetch user profile on component mount
   useEffect(() => {
     fetchUserProfile();
   }, []);
 
+  /**
+   * Fetches user profile data from Supabase auth and users table
+   */
   const fetchUserProfile = async () => {
     setLoading(true);
 
@@ -45,14 +55,17 @@ export default function MyAccount() {
       if (data) {
         setProfileData({
           name: data.name || '',
-          email: user.email,
           phone: data.phone || '',
-          avatar_url: data.avatar_url,
+          email: user.email || '',
+          avatar_url: data.avatar_url || null,
         });
       } else {
+        // If no profile exists, set email from auth
         setProfileData({
-          ...profileData,
-          email: user.email,
+          name: '',
+          phone: '',
+          email: user.email || '',
+          avatar_url: null,
         });
       }
     }
@@ -60,68 +73,52 @@ export default function MyAccount() {
     setLoading(false);
   };
 
-  const handleChange = (e) => {
-    const { name, value } = e.target;
-    setProfileData({
-      ...profileData,
-      [name]: value,
-    });
-  };
-
+  /**
+   * Handles avatar file selection
+   *
+   * @param {Event} e - File input change event
+   */
   const handleAvatarChange = (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
+    if (e.target.files && e.target.files[0]) {
+      const file = e.target.files[0];
+      setAvatarFile(file);
 
-    if (!['image/jpeg', 'image/jpg', 'image/png'].includes(file.type)) {
-      alert('Please upload a JPG or PNG image.');
-      return;
+      // Create preview URL for the selected file
+      const preview = URL.createObjectURL(file);
+      setAvatarPreview(preview);
     }
-
-    setAvatarFile(file);
-    setAvatarPreview(URL.createObjectURL(file));
   };
 
-  const uploadAvatar = async (userId) => {
-    if (!avatarFile) return profileData.avatar_url;
-
-    const fileExt = avatarFile.name.split('.').pop();
-    const fileName = `${userId}_${Date.now()}.${fileExt}`;
-    const filePath = `avatars/${fileName}`;
-
-    const { error: uploadError } = await supabase.storage
-      .from('user-avatars')
-      .upload(filePath, avatarFile, {
-        upsert: true,
-        contentType: avatarFile.type,
-      });
-
-    if (uploadError) {
-      console.error('Error uploading avatar:', uploadError);
-      return null;
-    }
-
-    const {
-      data: { publicUrl },
-    } = supabase.storage.from('user-avatars').getPublicUrl(filePath);
-
-    return publicUrl;
-  };
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setUpdating(true);
-
+  /**
+   * Updates profile data in Supabase
+   * Handles both profile info update and avatar upload
+   */
+  const updateProfile = async () => {
     try {
-      // Upload avatar if changed
+      if (!user) return;
+
+      setUpdating(true);
+
+      // Upload avatar if new one is selected
       let avatarUrl = profileData.avatar_url;
       if (avatarFile) {
-        avatarUrl = await uploadAvatar(user.id);
+        const fileExt = avatarFile.name.split('.').pop();
+        const fileName = `${user.id}-${Date.now()}.${fileExt}`;
+        const filePath = `avatars/${fileName}`;
+
+        const { error: uploadError } = await supabase.storage
+          .from('profiles')
+          .upload(filePath, avatarFile);
+
+        if (uploadError) throw uploadError;
+
+        avatarUrl = `https://your-supabase-url.supabase.co/storage/v1/object/public/profiles/${filePath}`;
       }
 
-      // Check if user exists
+      // Check if user exists in the users table
       const { data: existingUser } = await supabase
         .from('users')
-        .select('id')
+        .select('*')
         .eq('id', user.id)
         .single();
 
@@ -226,7 +223,7 @@ export default function MyAccount() {
 
             {/* Profile Information Section */}
             <div className='w-full md:w-2/3'>
-              <form onSubmit={handleSubmit} className='space-y-6'>
+              <form onSubmit={updateProfile} className='space-y-6'>
                 <div>
                   <label className='block text-sm font-medium text-gray-700 mb-1'>
                     Full Name
@@ -235,7 +232,9 @@ export default function MyAccount() {
                     type='text'
                     name='name'
                     value={profileData.name}
-                    onChange={handleChange}
+                    onChange={(e) =>
+                      setProfileData({ ...profileData, name: e.target.value })
+                    }
                     className='block w-full border-gray-300 rounded-md shadow-sm p-3 border focus:ring-blue-500 focus:border-blue-500'
                     required
                     placeholder='Enter your full name'
@@ -250,7 +249,9 @@ export default function MyAccount() {
                     type='tel'
                     name='phone'
                     value={profileData.phone || ''}
-                    onChange={handleChange}
+                    onChange={(e) =>
+                      setProfileData({ ...profileData, phone: e.target.value })
+                    }
                     className='block w-full border-gray-300 rounded-md shadow-sm p-3 border focus:ring-blue-500 focus:border-blue-500'
                     placeholder='Enter your phone number'
                   />

@@ -13,6 +13,7 @@ export default function AdminSidebar() {
     { name: 'Profile', path: '/admin/profile' },
     { name: 'Inventory', path: '/admin/inventory' },
     { name: 'Combo & Kits', path: '/admin/combo' },
+    { name: 'Coupons', path: '/admin/coupons' },
   ];
 
   return (

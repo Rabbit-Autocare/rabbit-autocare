@@ -1,6 +1,7 @@
 import React from 'react';
 import MainNavbar from '../MainNavbar';
 import '../../app/globals.css';
+import CartDrawer from '../cart/CartDrawer';
 
 export default function RootLayout({ children }) {
   return (
@@ -14,6 +15,7 @@ export default function RootLayout({ children }) {
           </p>
         </div>
       </footer>
+      <CartDrawer />
     </div>
   );
 }

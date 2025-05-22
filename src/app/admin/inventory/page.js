@@ -1,8 +1,8 @@
 'use client';
 import { useEffect, useState } from 'react';
-import { supabase } from '../../lib/supabaseClient';
-import AdminSidebar from '../../components/admin/AdminSidebar';
-import "../../app/globals.css";
+import { supabase } from '../../../lib/supabaseClient';
+import AdminSidebar from '../../../components/admin/AdminSidebar';
+import "../../../app/globals.css";
 export default function InventoryTable() {
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(false);

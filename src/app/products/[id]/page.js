@@ -1,13 +1,10 @@
 'use client';
 import { useEffect, useState } from 'react';
-import { useRouter } from 'next/router';
-import { supabase } from '../../lib/supabaseClient';
-import '../../app/globals.css';
-import RootLayout from '../../components/layouts/RootLayout';
+import { supabase } from '../../../lib/supabaseClient';
+import RootLayout from '../../../components/layouts/RootLayout';
 
-export default function ProductDetail() {
-  const router = useRouter();
-  const { id: productId } = router.query;
+export default function ProductDetail({ params }) {
+  const productId = params.id;
 
   const [product, setProduct] = useState(null);
   const [selectedVariant, setSelectedVariant] = useState(null);
@@ -15,7 +12,7 @@ export default function ProductDetail() {
   const [userId, setUserId] = useState(null);
   const [loading, setLoading] = useState(true);
   const [adding, setAdding] = useState(false);
-
+  
   useEffect(() => {
     async function fetchUser() {
       const { data, error } = await supabase.auth.getUser();

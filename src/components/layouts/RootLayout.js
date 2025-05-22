@@ -6,7 +6,6 @@ import CartDrawer from '../cart/CartDrawer';
 export default function RootLayout({ children }) {
   return (
     <div className='min-h-screen flex flex-col'>
-      <MainNavbar />
       <main className='flex-1 py-6'>{children}</main>
       <footer className='bg-gray-800 text-white p-6'>
         <div className='max-w-7xl mx-auto'>

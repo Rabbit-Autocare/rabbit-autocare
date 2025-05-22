@@ -5,7 +5,7 @@ import { useSearchParams, useRouter } from 'next/navigation';
 import { supabase } from '../../lib/supabaseClient';
 
 import '../../app/globals.css';
-import RootLayout from '@/app/layout';
+import RootLayout from '../../components/layouts/RootLayout';
 
 /**
  * Checkout Page Component
@@ -453,14 +453,6 @@ export default function CheckoutPage() {
     router.push('/confirm');
   }
 };
-
-      router.push('/confirm');
-    } catch (err) {
-      console.error('Failed to send email:', err);
-      router.push('/confirm');
-    }
-  };
-
   // Calculate subtotal and discount for display in UI
   const subtotal = [...orderProducts, ...orderCombos].reduce(
     (acc, item) => acc + item.price * item.quantity,

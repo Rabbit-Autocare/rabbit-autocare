@@ -1,8 +1,8 @@
 'use client';
 import { useEffect, useState } from 'react';
-import { supabase } from '../../lib/supabaseClient';
-import AdminLayout from '../../components/layouts/AdminLayout';
-import '../../app/globals.css';
+import { supabase } from '../../../lib/supabaseClient';
+import AdminLayout from '../../../components/layouts/AdminLayout';
+import '../../../app/globals.css';
 import Image from 'next/image';
 
 /**

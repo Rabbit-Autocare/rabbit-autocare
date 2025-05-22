@@ -1,9 +1,9 @@
 'use client';
 import { useEffect, useState } from 'react';
-import { useRouter } from 'next/router';
-import Image from 'next/image';
-import Link from 'next/link';
-import RootLayout from '../components/layouts/RootLayout';
+import { useRouter } from 'next/navigation';
+// import Image from 'next/image';
+// import Link from 'next/link';
+// import RootLayout from '../components/layouts/RootLayout';
 import { supabase } from '../lib/supabaseClient';
 import '../app/globals.css';
 import HeroSection from '@/components/home/HeroSection';

@@ -5,7 +5,7 @@ import { supabase } from '../../lib/supabaseClient';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import '../../app/globals.css';
-import RootLayout from '@/app/layout';
+import RootLayout from '../../components/layouts/RootLayout';
 
 export default function ComboListPage() {
   const [combos, setCombos] = useState([]);

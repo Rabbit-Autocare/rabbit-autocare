@@ -2,9 +2,9 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { supabase } from '../../lib/supabaseClient';
+import { supabase } from '../../../lib/supabaseClient';
 import AdminLayout from '@/components/layouts/AdminLayout';
-import '../../app/globals.css';
+import '../../../app/globals.css';
 
 export default function CouponsPage() {
   const [coupons, setCoupons] = useState([]);

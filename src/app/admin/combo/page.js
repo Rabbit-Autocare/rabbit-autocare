@@ -1,10 +1,10 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { supabase } from '../../lib/supabaseClient';
+import { supabase } from '../../../lib/supabaseClient';
 import Image from 'next/image';
-import AdminSidebar from '../../components/admin/AdminSidebar';
-import "../../app/globals.css"
+import AdminSidebar from '../../../components/admin/AdminSidebar';
+import "../../../app/globals.css"
 export default function ComboMakerPage() {
   const [products, setProducts] = useState([]);
   const [selectedProducts, setSelectedProducts] = useState([]);

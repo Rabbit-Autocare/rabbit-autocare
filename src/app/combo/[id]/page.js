@@ -2,10 +2,10 @@
 
 import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { supabase } from '../../lib/supabaseClient';
+import { supabase } from '../../../lib/supabaseClient';
 import Image from 'next/image';
-import '../../app/globals.css';
-import RootLayout from '@/app/layout';
+import '../../../app/globals.css';
+import RootLayout from '../../../components/layouts/RootLayout';
 
 export default function ComboDetailPage() {
   const { id } = useParams();

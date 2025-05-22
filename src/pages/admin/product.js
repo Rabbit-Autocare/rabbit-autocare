@@ -1,12 +1,12 @@
 'use client';
 import { useEffect, useState } from 'react';
 import { supabase } from '../../lib/supabaseClient';
-import AdminLayout from '../../components/layouts/AdminLayout';
 import Image from 'next/image';
-import '../../app/globals.css';
+import AdminLayout from '@/components/layouts/AdminLayout';
 
 export default function ProductsPage() {
   const [products, setProducts] = useState([]);
+  const [modalProduct, setModalProduct] = useState(null);
 
   const fetchProducts = async () => {
     const { data, error } = await supabase.from('products').select('*');
@@ -29,118 +29,337 @@ export default function ProductsPage() {
 
   return (
     <AdminLayout>
-      <h1 className='text-3xl font-bold mb-6 text-gray-800'>
-        Product Management
-      </h1>
+      <div className="min-h-screen bg-gray-50 p-8">
+        <h1 className="text-4xl font-extrabold mb-8 text-gray-900 tracking-wide">
+          Product Management
+        </h1>
 
-      <h2 className='text-2xl font-semibold mt-10 mb-4 text-gray-700'>
-        All Products
-      </h2>
+        <div className="overflow-x-auto rounded-lg shadow-lg border border-gray-200 bg-white">
+          <table className="min-w-full divide-y divide-gray-200">
+            <thead className="bg-gradient-to-r from-indigo-600 to-purple-600 sticky top-0">
+              <tr>
+                <th
+                  scope="col"
+                  className="px-6 py-3 text-left text-xs font-semibold text-white uppercase tracking-wider"
+                >
+                  Image
+                </th>
+                <th
+                  scope="col"
+                  className="px-6 py-3 text-left text-xs font-semibold text-white uppercase tracking-wider"
+                >
+                  Name
+                </th>
+                <th
+                  scope="col"
+                  className="px-6 py-3 text-left text-xs font-semibold text-white uppercase tracking-wider"
+                >
+                  Category
+                </th>
+                <th
+                  scope="col"
+                  className="px-6 py-3 text-left text-xs font-semibold text-white uppercase tracking-wider"
+                >
+                  Description
+                </th>
+                <th
+                  scope="col"
+                  className="px-6 py-3 text-left text-xs font-semibold text-white uppercase tracking-wider"
+                >
+                  Variants (Price, Size, Stock)
+                </th>
+                <th
+                  scope="col"
+                  className="px-6 py-3 text-center text-xs font-semibold text-white uppercase tracking-wider"
+                >
+                  Actions
+                </th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-100">
+              {products.map((product, idx) => (
+                <ProductRow
+                  key={product.id}
+                  product={product}
+                  onDelete={() => handleDelete(product.id)}
+                  onSave={(newData) => handleEdit(product.id, newData)}
+                  onView={() => setModalProduct(product)}
+                  isOdd={idx % 2 !== 0}
+                />
+              ))}
+            </tbody>
+          </table>
+        </div>
 
-      <div className='grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mt-6'>
-        {products.map((product) => (
-          <ProductCard
-            key={product.id}
-            product={product}
-            onDelete={() => handleDelete(product.id)}
-            onSave={(newData) => handleEdit(product.id, newData)}
-          />
-        ))}
+        {modalProduct && (
+          <Modal onClose={() => setModalProduct(null)}>
+            <h2 className="text-2xl font-semibold mb-4 text-gray-800">
+              {modalProduct.name} - Full Details
+            </h2>
+            {modalProduct.image && (
+              <div className="relative w-full h-64 mb-4 rounded overflow-hidden border border-gray-300">
+                <Image
+                  src={modalProduct.image}
+                  alt={modalProduct.name}
+                  fill
+                  style={{ objectFit: 'contain' }}
+                />
+              </div>
+            )}
+            <p className="text-gray-700 mb-2">
+              <strong>Category:</strong> {modalProduct.category || 'N/A'}
+            </p>
+            <p className="text-gray-700 mb-4 whitespace-pre-wrap">
+              <strong>Description:</strong> {modalProduct.description || 'No description'}
+            </p>
+            <div className="text-gray-700">
+              <strong>Variants:</strong>
+              {modalProduct.variants && modalProduct.variants.length > 0 ? (
+                <ul className="list-disc list-inside space-y-1 mt-1">
+                  {modalProduct.variants.map((v, i) => (
+                    <li key={i}>
+                      Price: ₹{v.price}, Size: {v.size}, Stock: {v.stock}
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p>No variants available</p>
+              )}
+            </div>
+            <button
+              onClick={() => setModalProduct(null)}
+              className="mt-6 bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-2 rounded-lg font-semibold transition"
+            >
+              Close
+            </button>
+          </Modal>
+        )}
       </div>
     </AdminLayout>
   );
 }
 
-// Product Card Component with Image
-function ProductCard({ product, onDelete, onSave }) {
+function ProductRow({ product, onDelete, onSave, onView, isOdd }) {
   const [editMode, setEditMode] = useState(false);
-  const [tempData, setTempData] = useState(product);
+  const [tempData, setTempData] = useState({
+    name: product.name || '',
+    category: product.category || '',
+    description: product.description || '',
+    variants: Array.isArray(product.variants) ? product.variants : [],
+  });
 
   const handleChange = (e) => {
     setTempData({ ...tempData, [e.target.name]: e.target.value });
   };
 
+  const handleVariantChange = (index, field, value) => {
+    const updatedVariants = [...tempData.variants];
+    updatedVariants[index] = { ...updatedVariants[index], [field]: value };
+    setTempData({ ...tempData, variants: updatedVariants });
+  };
+
+  const addVariant = () => {
+    setTempData({
+      ...tempData,
+      variants: [...tempData.variants, { price: '', size: '', stock: '' }],
+    });
+  };
+
+  const removeVariant = (index) => {
+    const updatedVariants = [...tempData.variants];
+    updatedVariants.splice(index, 1);
+    setTempData({ ...tempData, variants: updatedVariants });
+  };
+
+  const saveChanges = () => {
+    const variants = tempData.variants.map((v) => ({
+      price: Number(v.price) || 0,
+      size: v.size,
+      stock: Number(v.stock) || 0,
+    }));
+    onSave({ ...tempData, variants });
+    setEditMode(false);
+  };
+
   return (
-    <div className='bg-white shadow-md rounded-lg p-4 border hover:shadow-lg transition flex flex-col'>
-      {/* Image on top */}
-      {product.image && (
-        <div className='relative w-full h-40 mb-4'>
+    <tr
+      className={`${
+        isOdd ? 'bg-white' : 'bg-gray-50'
+      } hover:bg-indigo-50 transition-colors duration-150 ease-in-out`}
+    >
+      <td className="px-6 py-4 whitespace-nowrap border-r border-gray-200 text-center">
+        {product.image ? (
           <Image
             src={product.image}
             alt={product.name}
-            fill
-            sizes='(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw'
-            style={{ objectFit: 'cover' }}
-            className='rounded'
+            width={80}
+            height={60}
+            className="rounded-lg shadow-sm"
           />
-        </div>
-      )}
+        ) : (
+          <span className="text-gray-400 italic">No Image</span>
+        )}
+      </td>
 
-      {editMode ? (
-        <>
+      <td className="px-6 py-4 whitespace-nowrap border-r border-gray-200">
+        {editMode ? (
           <input
-            name='name'
+            name="name"
             value={tempData.name}
             onChange={handleChange}
-            placeholder='Product Name'
-            className='border p-2 w-full rounded mb-2'
+            className="border rounded-md p-2 w-full focus:outline-none focus:ring-2 focus:ring-indigo-400"
           />
+        ) : (
+          <span className="font-medium text-gray-900">{product.name}</span>
+        )}
+      </td>
+
+      <td className="px-6 py-4 whitespace-nowrap border-r border-gray-200">
+        {editMode ? (
           <input
-            name='price'
-            value={tempData.price}
-            type='number'
+            name="category"
+            value={tempData.category}
             onChange={handleChange}
-            placeholder='Price'
-            className='border p-2 w-full rounded mb-2'
+            className="border rounded-md p-2 w-full focus:outline-none focus:ring-2 focus:ring-indigo-400"
           />
+        ) : (
+          <span className="text-gray-700">{product.category || '-'}</span>
+        )}
+      </td>
+
+      <td className="px-6 py-4 max-w-xs whitespace-normal border-r border-gray-200">
+        {editMode ? (
           <textarea
-            name='description'
+            name="description"
             value={tempData.description}
             onChange={handleChange}
-            placeholder='Description'
-            className='border p-2 w-full rounded mb-3'
+            rows={2}
+            className="border rounded-md p-2 w-full resize-none focus:outline-none focus:ring-2 focus:ring-indigo-400"
           />
-          <div className='flex gap-2 mt-auto'>
+        ) : (
+          <p className="text-gray-700 line-clamp-3">{product.description || '-'}</p>
+        )}
+      </td>
+
+      <td className="px-6 py-4 max-w-sm whitespace-normal border-r border-gray-200">
+        {editMode ? (
+          <>
+            {tempData.variants.map((v, i) => (
+              <div key={i} className="flex items-center gap-2 mb-2">
+                <input
+                  type="number"
+                  placeholder="Price"
+                  value={v.price}
+                  onChange={(e) => handleVariantChange(i, 'price', e.target.value)}
+                  className="border rounded-md p-1 w-20 focus:outline-none focus:ring-2 focus:ring-indigo-400"
+                  min="0"
+                />
+                <input
+                  type="text"
+                  placeholder="Size"
+                  value={v.size}
+                  onChange={(e) => handleVariantChange(i, 'size', e.target.value)}
+                  className="border rounded-md p-1 w-20 focus:outline-none focus:ring-2 focus:ring-indigo-400"
+                />
+                <input
+                  type="number"
+                  placeholder="Stock"
+                  value={v.stock}
+                  onChange={(e) => handleVariantChange(i, 'stock', e.target.value)}
+                  className="border rounded-md p-1 w-20 focus:outline-none focus:ring-2 focus:ring-indigo-400"
+                  min="0"
+                />
+                <button
+                  onClick={() => removeVariant(i)}
+                  className="text-red-600 hover:text-red-800 font-bold px-2"
+                  title="Remove Variant"
+                  type="button"
+                >
+                  &times;
+                </button>
+              </div>
+            ))}
             <button
-              onClick={() => {
-                onSave(tempData);
-                setEditMode(false);
-              }}
-              className='bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded'
+              onClick={addVariant}
+              className="bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-1 rounded transition"
+              type="button"
+            >
+              + Add Variant
+            </button>
+          </>
+        ) : product.variants && product.variants.length > 0 ? (
+          <ul className="list-disc list-inside text-gray-700 space-y-1">
+            {product.variants.map((v, i) => (
+              <li key={i}>
+                ₹{v.price} | Size: {v.size} | Stock: {v.stock}
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <span className="text-gray-400 italic">-</span>
+        )}
+      </td>
+
+      <td className="px-6 py-4 whitespace-nowrap text-center space-x-2">
+        {editMode ? (
+          <>
+            <button
+              onClick={saveChanges}
+              className="bg-green-600 hover:bg-green-700 text-white px-4 py-1 rounded-md transition"
+              type="button"
             >
               Save
             </button>
             <button
               onClick={() => setEditMode(false)}
-              className='bg-gray-300 hover:bg-gray-400 text-gray-800 px-4 py-2 rounded'
+              className="bg-gray-300 hover:bg-gray-400 text-gray-800 px-4 py-1 rounded-md transition"
+              type="button"
             >
               Cancel
             </button>
-          </div>
-        </>
-      ) : (
-        <>
-          <h3 className='text-lg font-semibold text-gray-800'>
-            {product.name}
-          </h3>
-          <p className='text-green-700 font-medium'>₹{product.price}</p>
-          <p className='text-gray-600 mt-1 mb-3'>{product.description}</p>
-          <div className='flex gap-2 mt-auto'>
+          </>
+        ) : (
+          <>
             <button
               onClick={() => setEditMode(true)}
-              className='bg-yellow-500 hover:bg-yellow-600 text-white px-4 py-1 rounded'
+              className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-1 rounded-md transition"
+              type="button"
             >
               Edit
             </button>
             <button
               onClick={onDelete}
-              className='bg-red-600 hover:bg-red-700 text-white px-4 py-1 rounded'
+              className="bg-red-600 hover:bg-red-700 text-white px-4 py-1 rounded-md transition"
+              type="button"
             >
               Delete
             </button>
-          </div>
-        </>
-      )}
+            <button
+              onClick={onView}
+              className="bg-indigo-500 hover:bg-indigo-600 text-white px-4 py-1 rounded-md transition"
+              type="button"
+            >
+              View
+            </button>
+          </>
+        )}
+      </td>
+    </tr>
+  );
+}
+
+function Modal({ children, onClose }) {
+  return (
+    <div
+      className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50"
+      onClick={onClose}
+    >
+      <div
+        className="bg-white rounded-lg max-w-2xl w-full p-6 shadow-lg"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {children}
+      </div>
     </div>
   );
 }

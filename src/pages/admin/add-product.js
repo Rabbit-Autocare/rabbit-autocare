@@ -7,7 +7,6 @@ export default function AddProductPage() {
     <div className='flex'>
       <AdminSidebar />
       <main className='ml-60 p-6 w-full'>
-        <h1 className='text-2xl font-bold mb-4'>Add New Product</h1>
         <AddProductForm onProductAdded={() => alert('Product added!')} />
       </main>
     </div>

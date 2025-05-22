@@ -116,23 +116,23 @@ export default function CartPage() {
       }),
     ];
 
-    const { error } = await supabase.from('orders').insert([
-      {
-        user_id: userId,
-        items: orderItems,
-        total: calculateTotal(),
-      },
-    ]);
+    // const { error } = await supabase.from('orders').insert([
+    //   {
+    //     user_id: userId,
+    //     items: orderItems,
+    //     total: calculateTotal(),
+    //   },
+    // ]);
 
-    if (!error) {
-      // await supabase.from('cart_items').delete().eq('user_id', userId);
-      // await supabase.from('combo_cart').delete().eq('user_id', userId);
-      fetchAllData();
-      alert('Done');
+    // if (!error) {
+    //   // await supabase.from('cart_items').delete().eq('user_id', userId);
+    //   // await supabase.from('combo_cart').delete().eq('user_id', userId);
+    //   fetchAllData();
+    //   alert('Done');
       router.push(`/checkout`);
-    } else {
-      alert('Failed to place order.');
-    }
+    // } else {
+    //   alert('Failed to place order.');
+    // }
   };
 
   if (loading) {

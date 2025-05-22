@@ -1,122 +1,177 @@
 'use client';
 import { useEffect, useState } from 'react';
 import { supabase } from '../../lib/supabaseClient';
-import '../../app/globals.css';
-import AdminLayout from '@/components/layouts/AdminLayout';
-export default function InventoryManagerPage() {
+import AdminSidebar from '../../components/admin/AdminSidebar';
+import "../../app/globals.css";
+export default function InventoryTable() {
   const [products, setProducts] = useState([]);
-  const [updatedStock, setUpdatedStock] = useState({});
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
 
+  // Fetch products with variants from Supabase
   const fetchProducts = async () => {
+    setLoading(true);
     const { data, error } = await supabase
       .from('products')
-      .select('id, name, stock');
-
+      .select('id, name, variants')
+      .order('name', { ascending: true });
     if (error) {
-      console.error('Error fetching products:', error);
+      setError(error.message);
     } else {
       setProducts(data);
+      setError(null);
     }
+    setLoading(false);
   };
 
   useEffect(() => {
     fetchProducts();
   }, []);
 
-  const handleStockChange = (productId, value) => {
-    setUpdatedStock({
-      ...updatedStock,
-      [productId]: value,
-    });
-  };
+  // Handle selling 1 unit of a variant (decrement stock)
+  const handleSellUnit = async (productId, variantIndex) => {
+    const product = products.find((p) => p.id === productId);
+    if (!product) return;
 
-  const updateStock = async (productId) => {
-    const newStock = parseInt(updatedStock[productId]);
-    if (isNaN(newStock)) {
-      alert('Enter a valid number');
+    const variantsCopy = [...product.variants];
+    const variant = variantsCopy[variantIndex];
+
+    if (variant.stock <= 0) {
+      alert('Stock is already zero!');
       return;
     }
 
-    setLoading(true);
+    variantsCopy[variantIndex] = {
+      ...variant,
+      stock: variant.stock - 1,
+    };
 
+    // Update DB
     const { error } = await supabase
       .from('products')
-      .update({ stock: newStock })
+      .update({ variants: variantsCopy })
       .eq('id', productId);
 
     if (error) {
-      console.error('Stock update error:', error);
-      alert('Failed to update stock');
-    } else {
-      alert('Stock updated successfully');
-      fetchProducts(); // Refresh
-      setUpdatedStock({ ...updatedStock, [productId]: '' });
+      alert('Failed to update stock: ' + error.message);
+      return;
     }
 
-    setLoading(false);
+    // Update UI
+    setProducts((prev) =>
+      prev.map((p) =>
+        p.id === productId ? { ...p, variants: variantsCopy } : p
+      )
+    );
   };
 
-  return (
-    <>
-      <AdminLayout>
-        <div className='p-6 max-w-4xl mx-auto bg-white rounded shadow'>
-          <h2 className='text-2xl font-semibold mb-6 text-gray-800 text-center'>
-            Inventory Manager
-          </h2>
-          <table className='w-full border'>
-            <thead className='bg-gray-100 text-left'>
+  return (  
+    <div className='display flex'>
+  <AdminSidebar/>
+    <div className="p-6 bg-white rounded-lg shadow-lg  mx-auto">
+    
+      <h1 className="text-3xl font-bold mb-6 text-gray-800">Inventory Management</h1>
+
+      {loading && <p>Loading products...</p>}
+      {error && <p className="text-red-600">{error}</p>}
+
+      {!loading && !error && (
+        <div className="overflow-x-auto">
+          <table className="min-w-full divide-y divide-gray-200 border border-gray-300 rounded-md">
+            <thead className="bg-gray-50">
               <tr>
-                <th className='p-3 border'>Product Name</th>
-                <th className='p-3 border'>Current Stock</th>
-                <th className='p-3 border'>Update Stock</th>
-                <th className='p-3 border'>Action</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Product Name
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Variant (Size)
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Price (₹)
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Stock
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Actions
+                </th>
               </tr>
             </thead>
-            <tbody>
-              {products.map((prod) => (
-                <tr key={prod.id} className='text-sm'>
-                  <td className='p-3 border'>{prod.name}</td>
-                  <td
-                    className={`p-3 border ${
-                      prod.stock < 5 ? 'text-red-600 font-bold' : ''
-                    }`}
-                  >
-                    {prod.stock}
-                  </td>
-                  <td className='p-3 border'>
-                    <input
-                      type='number'
-                      placeholder='Enter new stock'
-                      value={updatedStock[prod.id] || ''}
-                      onChange={(e) =>
-                        handleStockChange(prod.id, e.target.value)
-                      }
-                      className='border rounded p-1 w-24'
-                    />
-                  </td>
-                  <td className='p-3 border'>
-                    <button
-                      onClick={() => updateStock(prod.id)}
-                      disabled={loading}
-                      className='bg-blue-600 text-white px-3 py-1 rounded hover:bg-blue-700'
-                    >
-                      {loading ? 'Updating...' : 'Update'}
-                    </button>
-                  </td>
-                </tr>
-              ))}
+
+            <tbody className="bg-white divide-y divide-gray-200">
               {products.length === 0 && (
                 <tr>
-                  <td colSpan='4' className='p-4 text-center text-gray-500'>
+                  <td colSpan={5} className="text-center py-4 text-gray-500">
                     No products found.
                   </td>
                 </tr>
               )}
+
+              {products.map((product) =>
+                product.variants?.map((variant, idx) => {
+                  const lowStock = variant.stock < 10;
+
+                  return (
+                    <tr
+                      key={`${product.id}-${idx}`}
+                      className={lowStock ? 'bg-red-50' : ''}
+                    >
+                      {idx === 0 && (
+                        <td
+                          rowSpan={product.variants.length}
+                          className="px-6 py-4 whitespace-nowrap font-semibold text-gray-900"
+                        >
+                          {product.name}
+                        </td>
+                      )}
+
+                      <td className="px-6 py-4 whitespace-nowrap">{variant.size}</td>
+                      <td className="px-6 py-4 whitespace-nowrap text-green-700 font-medium">
+                        ₹{variant.price ?? product.price ?? '-'}
+                      </td>
+
+                      <td
+                        className={`px-6 py-4 whitespace-nowrap font-semibold ${
+                          lowStock ? 'text-red-600' : 'text-gray-900'
+                        } flex items-center gap-1`}
+                      >
+                        {variant.stock}
+                        {lowStock && (
+                          <span
+                            title="Low Stock"
+                            className="text-red-600 text-xl select-none"
+                          >
+                            ⚠️
+                          </span>
+                        )}
+                      </td>
+
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <button
+                          onClick={() => handleSellUnit(product.id, idx)}
+                          disabled={variant.stock === 0}
+                          className={`px-3 py-1 rounded-md text-white ${
+                            variant.stock === 0
+                              ? 'bg-gray-400 cursor-not-allowed'
+                              : 'bg-blue-600 hover:bg-blue-700'
+                          } transition`}
+                          title={
+                            variant.stock === 0
+                              ? 'Out of Stock'
+                              : 'Sell 1 unit'
+                          }
+                        >
+                          Sell 1 unit
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })
+              )}
             </tbody>
           </table>
         </div>
-      </AdminLayout>
-    </>
+      )}
+    </div></div>
   );
 }

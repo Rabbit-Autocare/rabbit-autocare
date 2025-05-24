@@ -4,7 +4,7 @@ import { useRouter } from 'next/navigation';
 import { useState, useEffect } from 'react';
 import { Menu, X, ShoppingCart } from 'lucide-react';
 import { supabase } from '../lib/supabaseClient';
-import { useCart } from '@/hooks/useCart';
+import { useCart } from '../hooks/useCart';
 import '../app/globals.css';
 
 export default function MainNavbar() {

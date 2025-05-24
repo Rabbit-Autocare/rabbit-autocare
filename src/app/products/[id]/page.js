@@ -1,14 +1,14 @@
 // ================================
 // Individual product page with variant selection and cart functionality
-
 'use client';
-import { useEffect, useState } from 'react';
+import React, { useEffect, useState, use } from 'react';
 import { supabase } from '../../../lib/supabaseClient';
 import RootLayout from '../../../components/layouts/RootLayout';
 
 export default function ProductDetail({ params }) {
-  // Get product ID from URL parameters
-  const productId = params.id;
+  // Unwrap params promise to get actual params object
+  const resolvedParams = use(params);
+  const productId = resolvedParams.id;
 
   // State management for product detail page
   const [product, setProduct] = useState(null); // Current product data
@@ -70,42 +70,43 @@ export default function ProductDetail({ params }) {
 
   // Function to add current product/variant to user's cart
   const handleAddToCart = async () => {
-    // Validation checks before adding to cart
-    if (!userId) {
-      alert('Please log in to add items to cart.');
-      return;
-    }
+  if (!userId) {
+    alert('Please log in to add items to cart.');
+    return;
+  }
 
-    if (!selectedVariant) {
-      alert('Please select a size.');
-      return;
-    }
+  if (!selectedVariant || !selectedVariant.price || !selectedVariant.size) {
+    alert('Please select a valid size.');
+    return;
+  }
 
-    setAdding(true); // Show loading state
+  setAdding(true);
 
-    // Insert item into cart_items table
-    const { error } = await supabase.from('cart_items').insert({
-      user_id: userId,
-      product_id: product.id,
-      quantity,
-      name: product.name,
-      price: selectedVariant.price,
-      image: selectedVariant.image || product.image,
-      variant_size: selectedVariant.size,
-    });
-
-    setAdding(false); // Hide loading state
-
-    // Handle result of cart insertion
-    if (error) {
-      console.error('Error adding to cart:', error);
-      alert('Error adding item to cart.');
-    } else {
-      alert('Item added to cart!');
-    }
+  // Sanitize and prepare the data to insert
+  const cartItem = {
+    user_id: userId,
+    product_id: product.id,
+    quantity,
+    name: product.name,
+    price: parseFloat(selectedVariant.price), // Ensure it's a number
+    image: selectedVariant.image || product.image,
+    variant_size: selectedVariant.size,
   };
 
-  // Function for immediate purchase (add to cart then go to checkout)
+  console.log('Inserting cart item:', cartItem); // Debug log
+
+  const { error } = await supabase.from('cart_items').insert(cartItem);
+
+  setAdding(false);
+
+  if (error) {
+    console.error('Error adding to cart:', error);
+    alert('Error adding item to cart. Please try again.');
+  } else {
+    alert('Item added to cart!');
+  }
+};
+
   const handleBuyNow = async () => {
     await handleAddToCart(); // Add to cart first
     window.location.href = '/checkout'; // Navigate to checkout page
@@ -123,7 +124,7 @@ export default function ProductDetail({ params }) {
           {/* Left Side: Product Image */}
           <div className='md:w-1/2'>
             <img
-              src={selectedVariant.image || product.image} // Show variant image or fallback to product image
+              src={ product.image} // Show variant image or fallback to product image
               alt={product.name}
               className='rounded-xl w-full h-auto border'
             />

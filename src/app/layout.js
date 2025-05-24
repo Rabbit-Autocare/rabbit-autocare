@@ -1,9 +1,11 @@
 import { Inter } from 'next/font/google';
 import './globals.css';
-//import Navbar from '@/components/layout/Navbar';
 import Footer from '@/components/layout/Footer';
-import MainNavbar from '@/components/MainNavbar';
 import { CartProvider } from '@/contexts/CartContext';
+import MainNavbar from '@/components/navigation/MainNavbar';
+import { ThemeProvider } from '@/contexts/ThemeContext';
+import { AuthProvider } from '@/contexts/AuthContext';
+
 const inter = Inter({ subsets: ['latin'] });
 
 export const metadata = {
@@ -13,13 +15,22 @@ export const metadata = {
 
 export default function RootLayout({ children }) {
   return (
-    <html lang='en'>
-      <body className={inter.className}>
-        <CartProvider>
-          <MainNavbar/>
-        {children}
-        <Footer />
-        </CartProvider>
+    <html lang="en" suppressHydrationWarning>
+      <body className={inter.className} suppressHydrationWarning>
+        <AuthProvider>
+          <ThemeProvider
+            attribute="class"
+            defaultTheme="system"
+            enableSystem
+            disableTransitionOnChange
+          >
+            <CartProvider>
+              <MainNavbar />
+              {children}
+              <Footer />
+            </CartProvider>
+          </ThemeProvider>
+        </AuthProvider>
       </body>
     </html>
   );

@@ -1,5 +1,5 @@
 import React from 'react';
-import MainNavbar from '../MainNavbar';
+// import MainNavbar from '../MainNavbar';
 import '../../app/globals.css';
 import CartDrawer from '../cart/CartDrawer';
 

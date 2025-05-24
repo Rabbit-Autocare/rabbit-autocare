@@ -1,6 +1,6 @@
 import React from 'react';
 import UserSidebar from '../user/UserSidebar';
-import MainNavbar from '../MainNavbar';
+import MainNavbar from '@/components/navigation/MainNavbar';
 import '../../app/globals.css';
 
 export default function UserLayout({ children }) {

@@ -1,6 +1,6 @@
 import React from 'react';
 import AdminSidebar from '../admin/AdminSidebar';
-import MainNavbar from '../MainNavbar';
+// import MainNavbar from '../MainNavbar';
 import '../../app/globals.css';
 
 export default function AdminLayout({ children }) {

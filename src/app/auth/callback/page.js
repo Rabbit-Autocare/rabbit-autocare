@@ -1,59 +1,69 @@
-'use client';
-import { useEffect } from 'react';
-import { useRouter } from 'next/navigation';
-import { supabase } from '@/lib/supabaseClient';
+// app/auth/callback/page.jsx
+"use client";
+import { useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { supabase } from "@/lib/supabaseClient";
 
-export default function CallbackPage() {
-  const router = useRouter();
+export default function AuthCallbackPage() {
+	const router = useRouter();
 
-  useEffect(() => {
-    const processLogin = async () => {
-      const { data: { user }, error } = await supabase.auth.getUser();
+	useEffect(() => {
+		const handleAuthCallback = async () => {
+			try {
+				// Wait for Supabase to process the OAuth callback
+				const {
+					data: { session },
+					error,
+				} = await supabase.auth.getSession();
 
-      if (error || !user) {
-        console.error('❌ Auth error:', error);
-        return;
-      }
+				if (error) throw error;
+				if (!session) throw new Error("No session found");
 
-      const email = user.email;
+				console.log("Session details:", session);
 
-      // 🛡️ Step 1: Check if user is an admin
-      const { data: adminMatch, error: adminError } = await supabase
-        .from('admins')
-        .select('email')
-        .eq('email', email)
-        .single();
+				// Check if user is admin from auth_users table
+				const { data: userData, error: userError } = await supabase
+					.from("auth_users")
+					.select("*")
+					.eq("id", session.user.id)
+					.single();
 
-      if (adminMatch) {
-        console.log('✅ Admin detected:', email);
-        router.push('/admin'); // Redirect to admin dashboard
-        return; // ⛔ Don't save in users table
-      }
+				if (userError) {
+					console.error("Error fetching user data:", userError);
+					window.location.href = "/";
+					return;
+				}
 
-      // 👤 Step 2: It's a normal user — create username
-      let username = email.split('@')[0].replace(/[^a-zA-Z]/g, '');
-      if (!username || username.length < 3) {
-        username = 'user' + Math.floor(Math.random() * 9000 + 1000);
-      }
+				console.log("User details from database:", userData);
 
-      // 🗃️ Step 3: Save normal user in users table
-      const { error: dbError } = await supabase.from('users').upsert({
-        id: user.id,
-        email: email,
-        name: username,
-      });
+				// Check if user is banned
+				if (userData?.is_banned === true) {
+					console.error("User is banned");
+					router.push("/login?error=user_banned");
+					return;
+				}
 
-      if (dbError) {
-        console.error('❌ Failed to save user:', dbError);
-        return;
-      }
+				// Redirect based on is_admin status
+				if (userData?.is_admin === true) {
+					window.location.href = "/admin";
+				} else {
+					window.location.href = "/";
+				}
+			} catch (error) {
+				console.error("Auth callback error:", error);
+				router.push("/login?error=auth_failed");
+			}
+		};
 
-      console.log('✅ User saved:', { email, name: username });
-      router.push('/user'); // Redirect to user dashboard
-    };
+		handleAuthCallback();
+	}, [router]);
 
-    processLogin();
-  }, []);
-
-  return <p>Signing you in...</p>;
+	return (
+		<div className="flex justify-center items-center h-screen">
+			<div className="text-center">
+				<h1 className="text-2xl font-bold mb-4">Authenticating...</h1>
+				<p>Please wait while we log you in.</p>
+			</div>
+		</div>
+	);
 }

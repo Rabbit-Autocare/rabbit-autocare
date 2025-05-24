@@ -1,12 +1,12 @@
 'use client'
 import React, { useEffect, useState } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
-import { supabase } from '../../lib/supabaseClient';
+import { supabase } from '@/lib/supabaseClient';
 
-import '../../app/globals.css';
-import RootLayout from '../../components/layouts/RootLayout';
-import AddressSection from '../../components/Address/AddressSection';
-import OrderSummary from '../../components/checkout-order/OrderSummary';
+import '@/app/globals.css';
+import RootLayout from '@/components/layouts/RootLayout';
+import AddressSection from '@/components/Address/AddressSection';
+import OrderSummary from '@/components/checkout-order/OrderSummary';
 
 export default function CheckoutPage() {
   const searchParams = useSearchParams();

@@ -2,8 +2,8 @@
 // Individual product page with variant selection and cart functionality
 'use client';
 import React, { useEffect, useState, use } from 'react';
-import { supabase } from '../../../lib/supabaseClient';
-import RootLayout from '../../../components/layouts/RootLayout';
+import { supabase } from '@/lib/supabaseClient';
+import RootLayout from '@/components/layouts/RootLayout';
 
 export default function ProductDetail({ params }) {
   // Unwrap params promise to get actual params object

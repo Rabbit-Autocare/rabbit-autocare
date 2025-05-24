@@ -4,7 +4,7 @@ import Footer from '@/components/layout/Footer';
 import { CartProvider } from '@/contexts/CartContext';
 import MainNavbar from '@/components/navigation/MainNavbar';
 import { ThemeProvider } from '@/contexts/ThemeContext';
-import { AuthProvider } from '@/contexts/AuthContext';
+//import { AuthProvider } from '@/contexts/AuthContext';
 
 const inter = Inter({ subsets: ['latin'] });
 
@@ -17,7 +17,7 @@ export default function RootLayout({ children }) {
   return (
     <html lang="en" suppressHydrationWarning>
       <body className={inter.className} suppressHydrationWarning>
-        <AuthProvider>
+     
           <ThemeProvider
             attribute="class"
             defaultTheme="system"
@@ -30,7 +30,6 @@ export default function RootLayout({ children }) {
               <Footer />
             </CartProvider>
           </ThemeProvider>
-        </AuthProvider>
       </body>
     </html>
   );

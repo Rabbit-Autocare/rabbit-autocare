@@ -1,13 +1,8 @@
 'use client';
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { supabase } from '../../../lib/supabaseClient';
+import { supabase } from '@/lib/supabaseClient';
 
-/**
- * Auth Callback Page
- * This page handles the OAuth callback from Google authentication
- * It processes the authentication response and creates/updates user data
- */
 export default function CallbackPage() {
   const router = useRouter();
 
@@ -29,10 +24,6 @@ export default function CallbackPage() {
         .eq('email', email)
         .single();
 
-      // Add a longer delay before redirect to ensure session is properly set
-      await new Promise(resolve => setTimeout(resolve, 2000))
-
-      // Redirect based on user role
       if (adminMatch) {
         console.log('✅ Admin detected:', email);
         router.push('/admin'); // Redirect to admin dashboard

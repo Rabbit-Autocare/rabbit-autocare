@@ -3,9 +3,9 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { supabase } from '../../lib/supabaseClient';
+import { supabase } from '@/lib/supabaseClient';
 import { useRouter } from 'next/navigation';
-import RootLayout from '../../components/layouts/RootLayout';
+import RootLayout from '@/components/layouts/RootLayout';
 import Image from 'next/image';
 import '../../app/globals.css';
 

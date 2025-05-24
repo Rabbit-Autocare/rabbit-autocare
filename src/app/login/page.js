@@ -1,90 +1,76 @@
-'use client'
-import { useAuth } from '../../contexts/AuthContext'
-import { useRouter } from 'next/navigation'
+// app/login/page.jsx
+
+'use client';
+
+import { useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+import { supabase } from '@/lib/supabaseClient';
 
 export default function LoginPage() {
-  const { user, userData, loading, signInWithGoogle, signOut } = useAuth()
-  const router = useRouter()
+  const router = useRouter();
 
-  if (loading) {
-    return (
-      <div className="p-6 max-w-md mx-auto text-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-700 mx-auto"></div>
-        <p className="mt-4">Loading...</p>
-      </div>
-    )
-  }
+  const handleLogin = async () => {
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: 'google',
+    });
+    if (error) console.error('Login Error:', error.message);
+  };
 
-  if (user) {
-    return (
-      <div className="p-6 max-w-md mx-auto text-center space-y-6">
-        <div className="bg-white shadow-md rounded-lg p-6">
-          <h1 className="text-2xl font-bold mb-4">User Profile</h1>
+  useEffect(() => {
+    const checkUserAndRedirect = async () => {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
 
-          <div className="space-y-4 text-left">
-            <div>
-              <p className="text-gray-600">Name:</p>
-              <p className="font-semibold">{userData?.name || 'Not set'}</p>
-            </div>
+      if (!session) return;
 
-            <div>
-              <p className="text-gray-600">Email:</p>
-              <p className="font-semibold">{user.email}</p>
-            </div>
+      const user = session.user;
+      const { email, id } = user;
 
-            <div>
-              <p className="text-gray-600">User Type:</p>
-              <p className="font-semibold">
-                {userData?.is_admin ? 'Admin' : 'Regular User'}
-              </p>
-            </div>
+      // Step 1: Check if user is admin
+      const { data: admin } = await supabase
+        .from('admins')
+        .select('email')
+        .eq('email', email)
+        .single();
 
-            <div>
-              <p className="text-gray-600">Account Status:</p>
-              <p className={`font-semibold ${userData?.is_banned ? 'text-red-600' : 'text-green-600'}`}>
-                {userData?.is_banned ? 'Banned' : 'Active'}
-              </p>
-            </div>
-          </div>
+      if (admin) {
+        router.push('/admin');
+        return;
+      }
 
-          <div className="mt-6 space-y-4">
-            {userData?.is_admin ? (
-              <button
-                onClick={() => router.push('/admin')}
-                className="w-full bg-purple-600 text-white py-2 px-4 rounded hover:bg-purple-700 transition"
-              >
-                Go to Admin Dashboard
-              </button>
-            ) : (
-              <button
-                onClick={() => router.push('/dashboard')}
-                className="w-full bg-blue-600 text-white py-2 px-4 rounded hover:bg-blue-700 transition"
-              >
-                Go to Dashboard
-              </button>
-            )}
+      // Step 2: If not admin, check if user already exists
+      const { data: existingUser } = await supabase
+        .from('users')
+        .select('email')
+        .eq('email', email)
+        .single();
 
-            <button
-              onClick={signOut}
-              className="w-full bg-red-500 text-white py-2 px-4 rounded hover:bg-red-600 transition"
-            >
-              Logout
-            </button>
-          </div>
-        </div>
-      </div>
-    )
-  }
+      if (!existingUser) {
+        // Step 3: Insert user
+        await supabase.from('users').insert([
+          {
+            id: id,
+            email: email,
+            name: user.user_metadata?.name || '',
+          },
+        ]);
+      }
+
+      router.push('/dashboard');
+    };
+
+    checkUserAndRedirect();
+  }, []);
 
   return (
-    <div className="p-6 max-w-md mx-auto text-center space-y-6">
-      <h1 className="text-2xl font-bold">Login with Google</h1>
+    <div className="flex justify-center items-center h-screen">
       <button
-        onClick={signInWithGoogle}
-        className="w-full bg-red-500 hover:bg-red-600 text-white py-2 px-4 rounded transition"
+        onClick={handleLogin}
+        className="bg-blue-600 text-white px-6 py-3 rounded shadow"
       >
-        Sign in with Google
+        Login with Google
       </button>
     </div>
-  )
+  );
 }

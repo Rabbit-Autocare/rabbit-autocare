@@ -18,6 +18,7 @@ export default function ProductsPage() {
   const [selectedCategory, setSelectedCategory] = useState(''); // Category filter
   const [minPrice, setMinPrice] = useState(''); // Minimum price filter
   const [maxPrice, setMaxPrice] = useState(''); // Maximum price filter
+  const [imageErrors, setImageErrors] = useState({}); // Track failed image loads
   const router = useRouter(); // Next.js router for navigation
 
   // Effect hook that runs when component mounts and when sort changes
@@ -47,6 +48,27 @@ export default function ProductsPage() {
       // If size is already selected, remove it; otherwise add it
       prev.includes(size) ? prev.filter((s) => s !== size) : [...prev, size]
     );
+  };
+
+  // Function to handle image load errors
+  const handleImageError = (productId) => {
+    setImageErrors(prev => ({
+      ...prev,
+      [productId]: true
+    }));
+  };
+
+  // Function to get proper image URL or return fallback
+  const getImageUrl = (product) => {
+    if (!product.image) return null;
+    
+    // If it's already a full URL, return as is
+    if (product.image.startsWith('http')) {
+      return product.image;
+    }
+    
+    // If it's a relative path, construct the full Supabase URL
+    return `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/product-images/${product.image}`;
   };
 
   // Complex filtering logic that chains multiple filter conditions
@@ -185,24 +207,51 @@ export default function ProductsPage() {
                 const prices = product.variants?.map((v) => v.price) || [];
                 const minPrice = Math.min(...prices);
                 const maxPrice = Math.max(...prices);
+                const imageUrl = getImageUrl(product);
+                const hasImageError = imageErrors[product.id];
+
                 return (
                   <div
                     key={product.id}
                     className="bg-white shadow-md rounded-xl overflow-hidden hover:shadow-lg transition duration-300"
                   >
-                    {/* Product Image */}
-                    {product.image && (
-                      <div className="relative w-full h-48">
-                      <Image
-  src={product.image}
-  alt={product.name}
-  fill
-  sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-  style={{ objectFit: 'cover' }}
-  priority={false}
-/>
-                      </div>
-                    )}
+                    {/* Product Image with Error Handling */}
+                    <div className="relative w-full h-48 bg-gray-100">
+                      {imageUrl && !hasImageError ? (
+                        <Image
+                          src={imageUrl}
+                          alt={product.name}
+                          fill
+                          sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                          style={{ objectFit: 'cover' }}
+                          priority={false}
+                          onError={() => handleImageError(product.id)}
+                          placeholder="blur"
+                          blurDataURL="data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAYEBQYFBAYGBQYHBwYIChAKCgkJChQODwwQFxQYGBcUFhYaHSUfGhsjHBYWICwgIyYnKSopGR8tMC0oMCUoKSj/2wBDAQcHBwoIChMKChMoGhYaKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCj/wAARCAAIAAoDASIAAhEBAxEB/8QAFQABAQAAAAAAAAAAAAAAAAAAAAv/xAAhEAACAQMDBQAAAAAAAAAAAAABAgMABAUGIWGRkqGx0f/EABUBAQEAAAAAAAAAAAAAAAAAAAMF/8QAGhEAAgIDAAAAAAAAAAAAAAAAAAECEgMRkf/aAAwDAQACEQMRAD8AltJagyeH0AthI5xdrLcNM91BF5pX2HaH9bcfaSXWGaRmknyJckliyjqTzSlT54b6bk+h0R//2Q=="
+                        />
+                      ) : (
+                        // Fallback placeholder when image fails to load or doesn't exist
+                        <div className="w-full h-full flex items-center justify-center bg-gray-200">
+                          <div className="text-center text-gray-500">
+                            <svg
+                              className="w-12 h-12 mx-auto mb-2"
+                              fill="none"
+                              stroke="currentColor"
+                              viewBox="0 0 24 24"
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
+                              />
+                            </svg>
+                            <p className="text-sm">No Image</p>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
                     {/* Product Details */}
                     <div className="p-4">
                       <h3 className="text-lg font-semibold text-gray-900">{product.name}</h3>

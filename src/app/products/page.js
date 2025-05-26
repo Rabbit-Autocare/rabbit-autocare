@@ -193,14 +193,14 @@ export default function ProductsPage() {
                     {/* Product Image */}
                     {product.image && (
                       <div className="relative w-full h-48">
-                        <Image
-                          src={product.image}
-                          alt={product.name}
-                          fill
-                          sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-                          style={{ objectFit: 'cover' }}
-                          priority={false}
-                        />
+                      <Image
+  src={product.image}
+  alt={product.name}
+  fill
+  sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+  style={{ objectFit: 'cover' }}
+  priority={false}
+/>
                       </div>
                     )}
                     {/* Product Details */}

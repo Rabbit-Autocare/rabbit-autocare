@@ -4,7 +4,7 @@
 import { useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
-import Footer from "@/components/layout/Footer";
+import Footer from "@/components/navigation/Footer";
 import { CartProvider } from "@/contexts/CartContext";
 import MainNavbar from "@/components/navigation/MainNavbar";
 import { ThemeProvider } from "@/contexts/ThemeContext";

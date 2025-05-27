@@ -77,7 +77,7 @@
 }
 
 .dark {
-  --background: #000000; /* black */
+  --background: #101010; /* black */
   --foreground: #FFFFFF; /* white */
 
   --card: #333333; /* dark grey */

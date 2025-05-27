@@ -1,10 +1,10 @@
 import React from 'react';
-import RootLayout from '../../components/layouts/RootLayout';
+// import RootLayout from '../../components/layouts/RootLayout';
 import Image from 'next/image';
 
 export default function AboutPage() {
   return (
-
+<>
       {/* Hero section */}
       <div className='p-24'>
         <div className='mb-12 relative w-fit'>
@@ -47,6 +47,6 @@ export default function AboutPage() {
           </p>
         </div>
       </div>
-
+</>
   );
 }

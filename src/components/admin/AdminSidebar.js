@@ -8,12 +8,9 @@ export default function AdminSidebar() {
   const navItems = [
     { name: 'Dashboard', path: '/admin' },
     { name: 'Users', path: '/admin/users' },
-    { name: 'Products', path: '/admin/product' },
-    { name: 'Add Product', path: '/admin/add-product' },
-    { name: 'Profile', path: '/admin/profile' },
-    { name: 'Inventory', path: '/admin/inventory' },
+    { name: 'Products', path: '/admin/products' },
     { name: 'Add-Combo', path: '/admin/combo' },
-      { name: 'Combos', path: '/admin/combos' },
+    { name: 'Combos', path: '/admin/combos' },
     { name: 'Coupons', path: '/admin/coupons' },
   ];
 

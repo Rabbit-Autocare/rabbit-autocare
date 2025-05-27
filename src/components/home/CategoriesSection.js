@@ -16,19 +16,20 @@ export default function CategoriesSection() {
               key={category}
               className='bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition group'
             >
-              <Link href={`/products?category=${category}`}>
+              <Link href={`/shop/${category}`}>
                 <div className='aspect-square relative'>
                   <div className='absolute inset-0 bg-gray-200' />
                   <div className='absolute inset-0 flex items-center justify-center'>
-                    <span className='text-gray-600 text-lg'>
-                      {category}
-                    </span>
+                    <span className='text-gray-600 text-lg'>{category}</span>
                   </div>
                 </div>
                 <div className='p-4 bg-white'>
-                  <h3 className='font-semibold group-hover:text-blue-600 transition'>
+                  <h3 className='font-medium text-gray-800 group-hover:text-blue-600 transition'>
                     {category}
                   </h3>
+                  <p className='text-gray-500 text-sm mt-1'>
+                    Browse our {category.toLowerCase()} collection
+                  </p>
                 </div>
               </Link>
             </div>

@@ -1,4 +1,4 @@
-'use client';
+"use client";
 
 import { useState } from "react";
 import Link from "next/link";
@@ -7,7 +7,7 @@ import { cn } from "@/lib/utils";
 import { useCart } from "@/hooks/useCart";
 import CartDrawer from "@/components/cart/CartDrawer";
 
-// Shop categories - easy to update
+// Shop categories - updated to match database categories
 const shopCategories = [
 	{
 		name: "Car Interior",
@@ -20,39 +20,39 @@ const shopCategories = [
 		image: "/placeholder.svg?height=200&width=300",
 	},
 	{
-		name: "Microfibers",
-		href: "/shop/microfibers",
+		name: "Microfiber Cloths",
+		href: "/shop/microfiber-cloths",
 		image: "/placeholder.svg?height=200&width=300",
 	},
 	{
-		name: "Bestsellers",
-		href: "/shop/bestsellers",
+		name: "Kits & Combos",
+		href: "/shop/kits-combos",
 		image: "/placeholder.svg?height=200&width=300",
 	},
 ];
 
 // Coupons data
 const coupons = [
-	{
-		code: "WELCOME20",
-		description: "20% off on first order",
-		discount: "20% OFF",
-	},
-	{
-		code: "BULK50",
-		description: "50% off on bulk orders",
-		discount: "50% OFF",
-	},
-	{
-		code: "FREESHIP",
-		description: "Free shipping on orders above ₹999",
-		discount: "FREE SHIPPING",
-	},
-	{
-		code: "SAVE30",
-		description: "30% off on car care combo",
-		discount: "30% OFF",
-	},
+  {
+    code: 'WELCOME20',
+    description: '20% off on first order',
+    discount: '20% OFF',
+  },
+  {
+    code: 'BULK50',
+    description: '50% off on bulk orders',
+    discount: '50% OFF',
+  },
+  {
+    code: 'FREESHIP',
+    description: 'Free shipping on orders above ₹999',
+    discount: 'FREE SHIPPING',
+  },
+  {
+    code: 'SAVE30',
+    description: '30% off on car care combo',
+    discount: '30% OFF',
+  },
 ];
 
 export default function BottomNavbar() {
@@ -176,90 +176,90 @@ export default function BottomNavbar() {
 							</Button>
 						</div>
 
-            {/* Shine icon (wish list) */}
-            <Button
-              variant='ghost'
-              size='icon'
-              className='h-auto w-auto p-0 hover:bg-transparent'
-            >
-              <svg
-                width='25'
-                height='26'
-                viewBox='0 0 25 26'
-                fill='none'
-                xmlns='http://www.w3.org/2000/svg'
-              >
-                <path
-                  d='M10.3511 16.6461C10.2581 16.2856 10.0702 15.9566 9.80693 15.6934C9.54368 15.4301 9.2147 15.2422 8.85421 15.1492L2.46358 13.5013C2.35455 13.4704 2.25859 13.4047 2.19026 13.3143C2.12193 13.2239 2.08496 13.1136 2.08496 13.0003C2.08496 12.8869 2.12193 12.7767 2.19026 12.6863C2.25859 12.5958 2.35455 12.5302 2.46358 12.4992L8.85421 10.8503C9.21457 10.7574 9.54347 10.5696 9.80671 10.3066C10.0699 10.0435 10.2579 9.71474 10.3511 9.35444L11.999 2.96381C12.0296 2.85435 12.0952 2.75792 12.1858 2.68922C12.2763 2.62053 12.3869 2.58334 12.5006 2.58334C12.6142 2.58334 12.7248 2.62053 12.8153 2.68922C12.9059 2.75792 12.9715 2.85435 13.0021 2.96381L14.649 9.35444C14.742 9.71493 14.9299 10.0439 15.1931 10.3072C15.4564 10.5704 15.7854 10.7583 16.1459 10.8513L22.5365 12.4982C22.6464 12.5285 22.7433 12.594 22.8124 12.6847C22.8814 12.7754 22.9188 12.8863 22.9188 13.0003C22.9188 13.1143 22.8814 13.2251 22.8124 13.3158C22.7433 13.4065 22.6464 13.472 22.5365 13.5024L16.1459 15.1492C15.7854 15.2422 15.4564 15.4301 15.1931 15.6934C14.9299 15.9566 14.742 16.2856 14.649 16.6461L13.0011 23.0367C12.9704 23.1462 12.9048 23.2426 12.8143 23.3113C12.7237 23.38 12.6132 23.4172 12.4995 23.4172C12.3859 23.4172 12.2753 23.38 12.1847 23.3113C12.0942 23.2426 12.0286 23.1462 11.998 23.0367L10.3511 16.6461Z'
-                  stroke='black'
-                  strokeWidth='1.5'
-                  strokeLinecap='round'
-                  strokeLinejoin='round'
-                />
-                <path
-                  d='M20.833 3.625V7.79167'
-                  stroke='black'
-                  strokeWidth='1.5'
-                  strokeLinecap='round'
-                  strokeLinejoin='round'
-                />
-                <path
-                  d='M22.9167 5.70834H18.75'
-                  stroke='black'
-                  strokeWidth='1.5'
-                  strokeLinecap='round'
-                  strokeLinejoin='round'
-                />
-                <path
-                  d='M4.16699 18.2083V20.2916'
-                  stroke='black'
-                  strokeWidth='1.5'
-                  strokeLinecap='round'
-                  strokeLinejoin='round'
-                />
-                <path
-                  d='M5.20833 19.25H3.125'
-                  stroke='black'
-                  strokeWidth='1.5'
-                  strokeLinecap='round'
-                  strokeLinejoin='round'
-                />
-              </svg>
-              <span className='sr-only'>Shine List</span>
-            </Button>
+						{/* Shine icon (wish list) */}
+						<Button
+							variant="ghost"
+							size="icon"
+							className="h-auto w-auto p-0 hover:bg-transparent"
+						>
+							<svg
+								width="25"
+								height="26"
+								viewBox="0 0 25 26"
+								fill="none"
+								xmlns="http://www.w3.org/2000/svg"
+							>
+								<path
+									d="M10.3511 16.6461C10.2581 16.2856 10.0702 15.9566 9.80693 15.6934C9.54368 15.4301 9.2147 15.2422 8.85421 15.1492L2.46358 13.5013C2.35455 13.4704 2.25859 13.4047 2.19026 13.3143C2.12193 13.2239 2.08496 13.1136 2.08496 13.0003C2.08496 12.8869 2.12193 12.7767 2.19026 12.6863C2.25859 12.5958 2.35455 12.5302 2.46358 12.4992L8.85421 10.8503C9.21457 10.7574 9.54347 10.5696 9.80671 10.3066C10.0699 10.0435 10.2579 9.71474 10.3511 9.35444L11.999 2.96381C12.0296 2.85435 12.0952 2.75792 12.1858 2.68922C12.2763 2.62053 12.3869 2.58334 12.5006 2.58334C12.6142 2.58334 12.7248 2.62053 12.8153 2.68922C12.9059 2.75792 12.9715 2.85435 13.0021 2.96381L14.649 9.35444C14.742 9.71493 14.9299 10.0439 15.1931 10.3072C15.4564 10.5704 15.7854 10.7583 16.1459 10.8513L22.5365 12.4982C22.6464 12.5285 22.7433 12.594 22.8124 12.6847C22.8814 12.7754 22.9188 12.8863 22.9188 13.0003C22.9188 13.1143 22.8814 13.2251 22.8124 13.3158C22.7433 13.4065 22.6464 13.472 22.5365 13.5024L16.1459 15.1492C15.7854 15.2422 15.4564 15.4301 15.1931 15.6934C14.9299 15.9566 14.742 16.2856 14.649 16.6461L13.0011 23.0367C12.9704 23.1462 12.9048 23.2426 12.8143 23.3113C12.7237 23.38 12.6132 23.4172 12.4995 23.4172C12.3859 23.4172 12.2753 23.38 12.1847 23.3113C12.0942 23.2426 12.0286 23.1462 11.998 23.0367L10.3511 16.6461Z"
+									stroke="black"
+									strokeWidth="1.5"
+									strokeLinecap="round"
+									strokeLinejoin="round"
+								/>
+								<path
+									d="M20.833 3.625V7.79167"
+									stroke="black"
+									strokeWidth="1.5"
+									strokeLinecap="round"
+									strokeLinejoin="round"
+								/>
+								<path
+									d="M22.9167 5.70834H18.75"
+									stroke="black"
+									strokeWidth="1.5"
+									strokeLinecap="round"
+									strokeLinejoin="round"
+								/>
+								<path
+									d="M4.16699 18.2083V20.2916"
+									stroke="black"
+									strokeWidth="1.5"
+									strokeLinecap="round"
+									strokeLinejoin="round"
+								/>
+								<path
+									d="M5.20833 19.25H3.125"
+									stroke="black"
+									strokeWidth="1.5"
+									strokeLinecap="round"
+									strokeLinejoin="round"
+								/>
+							</svg>
+							<span className="sr-only">Shine List</span>
+						</Button>
 
-            {/* Cart icon */}
-            <Button
-              variant='ghost'
-              size='icon'
-              onClick={openCart}
-              className='relative h-auto w-auto p-0 hover:bg-transparent'
-            >
-              <svg
-                xmlns='http://www.w3.org/2000/svg'
-                width='20'
-                height='20'
-                viewBox='0 0 24 24'
-                fill='none'
-                stroke='currentColor'
-                strokeWidth='2'
-                strokeLinecap='round'
-                strokeLinejoin='round'
-              >
-                <circle cx='9' cy='21' r='1' />
-                <circle cx='20' cy='21' r='1' />
-                <path d='M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6' />
-              </svg>
-              {cartCount > 0 && (
-                <span className='absolute -top-1 -right-1 bg-blue-600 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center'>
-                  {cartCount}
-                </span>
-              )}
-              <span className='sr-only'>Cart</span>
-            </Button>
-          </div>
-        </div>
-      </div>
+						{/* Cart icon */}
+						<Button
+							variant="ghost"
+							size="icon"
+							onClick={openCart}
+							className="relative h-auto w-auto p-0 hover:bg-transparent"
+						>
+							<svg
+								xmlns="http://www.w3.org/2000/svg"
+								width="20"
+								height="20"
+								viewBox="0 0 24 24"
+								fill="none"
+								stroke="currentColor"
+								strokeWidth="2"
+								strokeLinecap="round"
+								strokeLinejoin="round"
+							>
+								<circle cx="9" cy="21" r="1" />
+								<circle cx="20" cy="21" r="1" />
+								<path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6" />
+							</svg>
+							{cartCount > 0 && (
+								<span className="absolute -top-1 -right-1 bg-purple-600 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
+									{cartCount}
+								</span>
+							)}
+							<span className="sr-only">Cart</span>
+						</Button>
+					</div>
+				</div>
+			</div>
 
 			{/* Desktop Shop dropdown with hover */}
 			<div
@@ -297,37 +297,37 @@ export default function BottomNavbar() {
 				</div>
 			</div>
 
-			{/* Coupons dropdown with hover */}
-			<div
-				className={cn(
-					"absolute right-6 top-full bg-white shadow-lg z-30 border border-gray-200 rounded-lg overflow-hidden transition-all duration-300 ease-in-out w-80",
-					isCouponsOpen ? "max-h-96 opacity-100" : "max-h-0 opacity-0",
-				)}
-				onMouseEnter={() => setIsCouponsOpen(true)}
-				onMouseLeave={() => setIsCouponsOpen(false)}
-			>
-				<div className="p-4">
-					<h3 className="font-semibold text-lg mb-4">Available Coupons</h3>
-					<div className="space-y-3">
-						{coupons.map((coupon, index) => (
-							<div
-								key={index}
-								className="flex items-center justify-between p-3 border border-gray-200 rounded-lg hover:bg-gray-50"
-							>
-								<div className="flex-1">
-									<div className="font-medium text-sm">{coupon.code}</div>
-									<div className="text-xs text-gray-600">
-										{coupon.description}
-									</div>
-								</div>
-								<div className="bg-green-100 text-green-800 px-2 py-1 rounded text-xs font-medium">
-									{coupon.discount}
-								</div>
-							</div>
-						))}
-					</div>
-				</div>
-			</div>
+      {/* Coupons dropdown with hover */}
+      <div
+        className={cn(
+          'absolute right-6 top-full bg-white shadow-lg z-30 border border-gray-200 rounded-lg overflow-hidden transition-all duration-300 ease-in-out w-80',
+          isCouponsOpen ? 'max-h-96 opacity-100' : 'max-h-0 opacity-0'
+        )}
+        onMouseEnter={() => setIsCouponsOpen(true)}
+        onMouseLeave={() => setIsCouponsOpen(false)}
+      >
+        <div className='p-4'>
+          <h3 className='font-semibold text-lg mb-4'>Available Coupons</h3>
+          <div className='space-y-3'>
+            {coupons.map((coupon, index) => (
+              <div
+                key={index}
+                className='flex items-center justify-between p-3 border border-gray-200 rounded-lg hover:bg-gray-50'
+              >
+                <div className='flex-1'>
+                  <div className='font-medium text-sm'>{coupon.code}</div>
+                  <div className='text-xs text-gray-600'>
+                    {coupon.description}
+                  </div>
+                </div>
+                <div className='bg-green-100 text-green-800 px-2 py-1 rounded text-xs font-medium'>
+                  {coupon.discount}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
 
 			{/* Cart Drawer */}
 			<CartDrawer />

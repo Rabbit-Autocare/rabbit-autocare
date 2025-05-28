@@ -1,6 +1,5 @@
-import { supabase } from '@/lib/supabaseClient';
-import { cookies } from 'next/headers';
 import { NextResponse } from 'next/server';
+import { supabase } from '@/lib/supabaseClient';
 
 // Add a new product
 export async function POST(request) {
@@ -20,9 +19,10 @@ export async function POST(request) {
       name: productData.name,
       description: productData.description || '',
       category: productData.category,
-      image: productData.image || null, // Use the image property directly
+      image: productData.image || null,
       variants: productData.variants || [],
       created_at: new Date().toISOString(),
+      // Don't include updated_at for new products
     };
 
     // Insert the product into the database
@@ -34,10 +34,6 @@ export async function POST(request) {
     if (error) {
       console.error('Supabase insert error:', error);
       throw new Error(error.message);
-    }
-
-    if (!data || data.length === 0) {
-      throw new Error('Product was not created');
     }
 
     return NextResponse.json({
@@ -66,16 +62,19 @@ export async function PUT(request) {
       );
     }
 
+    // Remove updated_at from the update data to avoid schema errors
+    const productUpdate = {
+      name: updateData.name,
+      description: updateData.description || '',
+      category: updateData.category,
+      image: updateData.image || null,
+      variants: updateData.variants || [],
+      // Don't include updated_at
+    };
+
     const { data, error } = await supabase
       .from('products')
-      .update({
-        name: updateData.name,
-        description: updateData.description || '',
-        category: updateData.category,
-        image: updateData.image || null, // Use the image property directly
-        variants: updateData.variants || [],
-        updated_at: new Date().toISOString(),
-      })
+      .update(productUpdate)
       .eq('id', id)
       .select();
 
@@ -93,6 +92,39 @@ export async function PUT(request) {
     console.error('Error updating product:', error);
     return NextResponse.json(
       { error: error.message || 'Failed to update product' },
+      { status: 500 }
+    );
+  }
+}
+
+// Delete a product
+export async function DELETE(request) {
+  try {
+    const { searchParams } = new URL(request.url);
+    const id = searchParams.get('id');
+
+    if (!id) {
+      return NextResponse.json(
+        { error: 'Product ID is required' },
+        { status: 400 }
+      );
+    }
+
+    const { error } = await supabase.from('products').delete().eq('id', id);
+
+    if (error) {
+      console.error('Supabase delete error:', error);
+      throw new Error(error.message);
+    }
+
+    return NextResponse.json({
+      success: true,
+      message: 'Product deleted successfully',
+    });
+  } catch (error) {
+    console.error('Error deleting product:', error);
+    return NextResponse.json(
+      { error: error.message || 'Failed to delete product' },
       { status: 500 }
     );
   }

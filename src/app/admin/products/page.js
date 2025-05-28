@@ -89,6 +89,15 @@ export default function ProductsPage() {
     }
 
     try {
+      // Get the active session
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+
+      if (!session) {
+        throw new Error('Unauthorized - Please log in');
+      }
+
       // Use direct Supabase query with auth
       const { error } = await supabase.from('products').delete().eq('id', id);
 
@@ -107,6 +116,12 @@ export default function ProductsPage() {
    * Handle edit product click
    */
   const handleEditClick = (product) => {
+    // Check if authenticated first
+    if (!user) {
+      alert('Unauthorized - Please log in');
+      return;
+    }
+
     setEditingProduct(product);
     setShowAddProductForm(true);
   };

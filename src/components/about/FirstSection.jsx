@@ -34,7 +34,7 @@ export default function FirstSection() {
 
         {/* Mobile/Tablet Heading */}
         <div className="relative w-fit lg:hidden">
-          <h1 className="text-[32px] sm:text-[40px] md:text-[56px] md:w-[628px] font-bold leading-tight space-y-2">
+          <h1 className="text-[36px] sm:text-[40px] md:text-[56px] md:w-[628px] font-bold leading-tight space-y-2">
             <div>
               <span className="bg-gradient-to-r from-[#601E8D] to-black bg-clip-text text-transparent">Lorem</span>{' '}
               <span className="text-black">ipsum dolor</span>

@@ -4,11 +4,7 @@ import Image from 'next/image';
 
 export default function AboutPage() {
   return (
-<<<<<<< HEAD
     <>
-=======
-<>
->>>>>>> 40c4643f54a9163bf182ae9d04607553a7807feb
       {/* Hero section */}
       <div className='p-24'>
         <div className='mb-12 relative w-fit'>
@@ -51,10 +47,6 @@ export default function AboutPage() {
           </p>
         </div>
       </div>
-<<<<<<< HEAD
     </>
-=======
-</>
->>>>>>> 40c4643f54a9163bf182ae9d04607553a7807feb
   );
 }

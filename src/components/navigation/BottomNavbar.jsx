@@ -33,26 +33,26 @@ const shopCategories = [
 
 // Coupons data
 const coupons = [
-	{
-		code: "WELCOME20",
-		description: "20% off on first order",
-		discount: "20% OFF",
-	},
-	{
-		code: "BULK50",
-		description: "50% off on bulk orders",
-		discount: "50% OFF",
-	},
-	{
-		code: "FREESHIP",
-		description: "Free shipping on orders above ₹999",
-		discount: "FREE SHIPPING",
-	},
-	{
-		code: "SAVE30",
-		description: "30% off on car care combo",
-		discount: "30% OFF",
-	},
+  {
+    code: 'WELCOME20',
+    description: '20% off on first order',
+    discount: '20% OFF',
+  },
+  {
+    code: 'BULK50',
+    description: '50% off on bulk orders',
+    discount: '50% OFF',
+  },
+  {
+    code: 'FREESHIP',
+    description: 'Free shipping on orders above ₹999',
+    discount: 'FREE SHIPPING',
+  },
+  {
+    code: 'SAVE30',
+    description: '30% off on car care combo',
+    discount: '30% OFF',
+  },
 ];
 
 export default function BottomNavbar() {
@@ -297,37 +297,37 @@ export default function BottomNavbar() {
 				</div>
 			</div>
 
-			{/* Coupons dropdown with hover */}
-			<div
-				className={cn(
-					"absolute right-6 top-full bg-white shadow-lg z-30 border border-gray-200 rounded-lg overflow-hidden transition-all duration-300 ease-in-out w-80",
-					isCouponsOpen ? "max-h-96 opacity-100" : "max-h-0 opacity-0",
-				)}
-				onMouseEnter={() => setIsCouponsOpen(true)}
-				onMouseLeave={() => setIsCouponsOpen(false)}
-			>
-				<div className="p-4">
-					<h3 className="font-semibold text-lg mb-4">Available Coupons</h3>
-					<div className="space-y-3">
-						{coupons.map((coupon, index) => (
-							<div
-								key={index}
-								className="flex items-center justify-between p-3 border border-gray-200 rounded-lg hover:bg-gray-50"
-							>
-								<div className="flex-1">
-									<div className="font-medium text-sm">{coupon.code}</div>
-									<div className="text-xs text-gray-600">
-										{coupon.description}
-									</div>
-								</div>
-								<div className="bg-green-100 text-green-800 px-2 py-1 rounded text-xs font-medium">
-									{coupon.discount}
-								</div>
-							</div>
-						))}
-					</div>
-				</div>
-			</div>
+      {/* Coupons dropdown with hover */}
+      <div
+        className={cn(
+          'absolute right-6 top-full bg-white shadow-lg z-30 border border-gray-200 rounded-lg overflow-hidden transition-all duration-300 ease-in-out w-80',
+          isCouponsOpen ? 'max-h-96 opacity-100' : 'max-h-0 opacity-0'
+        )}
+        onMouseEnter={() => setIsCouponsOpen(true)}
+        onMouseLeave={() => setIsCouponsOpen(false)}
+      >
+        <div className='p-4'>
+          <h3 className='font-semibold text-lg mb-4'>Available Coupons</h3>
+          <div className='space-y-3'>
+            {coupons.map((coupon, index) => (
+              <div
+                key={index}
+                className='flex items-center justify-between p-3 border border-gray-200 rounded-lg hover:bg-gray-50'
+              >
+                <div className='flex-1'>
+                  <div className='font-medium text-sm'>{coupon.code}</div>
+                  <div className='text-xs text-gray-600'>
+                    {coupon.description}
+                  </div>
+                </div>
+                <div className='bg-green-100 text-green-800 px-2 py-1 rounded text-xs font-medium'>
+                  {coupon.discount}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
 
 			{/* Cart Drawer */}
 			<CartDrawer />

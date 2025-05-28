@@ -75,11 +75,9 @@ export default function ProductForm({ product = null, onSuccess, onCancel }) {
         return;
       }
 
-      const {
-        data: { publicUrl },
-      } = supabase.storage.from('product-images').getPublicUrl(filePath);
-
-      setFormData({ ...formData, imageUrl: publicUrl });
+      // Instead of storing the full public URL, just store the file path
+      // This makes it more consistent across environments
+      setFormData({ ...formData, imageUrl: filePath });
       setMessage({ type: 'success', text: 'Image uploaded successfully!' });
     } catch (error) {
       console.error('Unexpected error:', error);
@@ -124,7 +122,7 @@ export default function ProductForm({ product = null, onSuccess, onCancel }) {
         name: formData.name.trim(),
         description: formData.description.trim(),
         category: formData.category.trim(),
-        image: formData.imageUrl,
+        image: formData.imageUrl, // Use just the filename/path instead of full URL
         variants: validVariants.map((variant) => ({
           size: variant.size.trim(),
           price: parseFloat(variant.price),
@@ -182,6 +180,13 @@ export default function ProductForm({ product = null, onSuccess, onCancel }) {
     } finally {
       setLoading(false);
     }
+  };
+
+  // First, add this helper function inside your component
+  const getImageUrl = (imagePath) => {
+    if (!imagePath) return null;
+    if (imagePath.startsWith('http')) return imagePath;
+    return `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/product-images/${imagePath}`;
   };
 
   return (
@@ -268,7 +273,7 @@ export default function ProductForm({ product = null, onSuccess, onCancel }) {
               <p className='text-sm text-gray-600 mb-2'>Image Preview:</p>
               <div className='w-40 h-40 border border-gray-300 rounded-md overflow-hidden'>
                 <Image
-                  src={formData.imageUrl}
+                  src={getImageUrl(formData.imageUrl)}
                   alt='Product preview'
                   width={160}
                   height={160}

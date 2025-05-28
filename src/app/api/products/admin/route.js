@@ -20,7 +20,7 @@ export async function POST(request) {
       name: productData.name,
       description: productData.description || '',
       category: productData.category,
-      image: productData.imageUrl || null,
+      image: productData.image || null, // Use the image property directly
       variants: productData.variants || [],
       created_at: new Date().toISOString(),
     };
@@ -72,7 +72,7 @@ export async function PUT(request) {
         name: updateData.name,
         description: updateData.description || '',
         category: updateData.category,
-        image: updateData.imageUrl || null,
+        image: updateData.image || null, // Use the image property directly
         variants: updateData.variants || [],
         updated_at: new Date().toISOString(),
       })

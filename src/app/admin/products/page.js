@@ -1,8 +1,10 @@
 'use client';
 import { useEffect, useState } from 'react';
 import AdminLayout from '../../../components/layouts/AdminLayout';
+import ProductForm from '../../../components/forms/ProductForm';
 import '../../../app/globals.css';
 import Image from 'next/image';
+import { supabase } from '@/lib/supabaseClient';
 
 /**
  * Product Management Component
@@ -12,6 +14,51 @@ export default function ProductsPage() {
   const [products, setProducts] = useState([]);
   const [modalProduct, setModalProduct] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [showAddProductForm, setShowAddProductForm] = useState(false);
+  const [editingProduct, setEditingProduct] = useState(null);
+  const [user, setUser] = useState(null);
+
+  // Check if the user is authenticated and is an admin
+  useEffect(() => {
+    async function checkAuth() {
+      // Get the current session
+      const {
+        data: { session },
+        error,
+      } = await supabase.auth.getSession();
+
+      if (error) {
+        console.error('Auth error:', error);
+        return;
+      }
+
+      if (session?.user) {
+        // Get user details including admin status
+        const { data: userData, error: userError } = await supabase
+          .from('auth_users')
+          .select('is_admin')
+          .eq('id', session.user.id)
+          .single();
+
+        if (userError) {
+          console.error('User data error:', userError);
+          return;
+        }
+
+        if (userData?.is_admin) {
+          setUser(session.user);
+        } else {
+          // Redirect non-admin users
+          window.location.href = '/unauthorized';
+        }
+      } else {
+        // Redirect unauthenticated users
+        window.location.href = '/login?redirect=/admin/products';
+      }
+    }
+
+    checkAuth();
+  }, []);
 
   /**
    * Fetches all products from the API
@@ -19,14 +66,11 @@ export default function ProductsPage() {
   const fetchProducts = async () => {
     setLoading(true);
     try {
-      const response = await fetch('/api/products');
-      const data = await response.json();
+      // Use direct Supabase query instead of API endpoint
+      const { data, error } = await supabase.from('products').select('*');
 
-      if (data.products) {
-        setProducts(data.products);
-      } else {
-        console.error('Error fetching products:', data.error);
-      }
+      if (error) throw error;
+      setProducts(data || []);
     } catch (error) {
       console.error('Failed to fetch products:', error);
     } finally {
@@ -45,78 +89,80 @@ export default function ProductsPage() {
     }
 
     try {
-      const response = await fetch(`/api/products/${id}`, {
-        method: 'DELETE',
-      });
+      // Use direct Supabase query with auth
+      const { error } = await supabase.from('products').delete().eq('id', id);
 
-      const data = await response.json();
+      if (error) throw error;
 
-      if (data.success) {
-        // Optimistically remove from state
-        setProducts(products.filter((p) => p.id !== id));
-      } else {
-        alert(`Failed to delete: ${data.error}`);
-      }
+      // Optimistically remove from state
+      setProducts(products.filter((p) => p.id !== id));
+      alert('Product deleted successfully');
     } catch (error) {
       console.error('Error deleting product:', error);
-      alert('An error occurred while deleting the product.');
+      alert(`Failed to delete: ${error.message}`);
     }
   };
 
   /**
-   * Updates product data
-   *
-   * @param {string} id - Product ID to update
-   * @param {Object} newData - Updated product data
+   * Handle edit product click
    */
-  const handleEdit = async (id, newData) => {
-    try {
-      const response = await fetch(`/api/products/${id}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(newData),
-      });
-
-      const data = await response.json();
-
-      if (data.success) {
-        // Update the product in state
-        setProducts(products.map((p) => (p.id === id ? data.product : p)));
-      } else {
-        alert(`Failed to update: ${data.error}`);
-      }
-    } catch (error) {
-      console.error('Error updating product:', error);
-      alert('An error occurred while updating the product.');
-    }
+  const handleEditClick = (product) => {
+    setEditingProduct(product);
+    setShowAddProductForm(true);
   };
+
+  /**
+   * Handle form submission success
+   */
+  const handleFormSuccess = (result) => {
+    fetchProducts(); // Refresh products after adding/editing
+    setShowAddProductForm(false);
+    setEditingProduct(null);
+  };
+
+  // Fetch products when user is authenticated
+  useEffect(() => {
+    if (user) {
+      fetchProducts();
+    }
+  }, [user]);
 
   // Helper function to get image URL
   const getImageUrl = (imagePath) => {
     if (!imagePath) return null;
-
-    // If it's already a full URL, return as is
-    if (imagePath.startsWith('http')) {
-      return imagePath;
-    }
-
-    // If it's a relative path, construct the full Supabase URL
+    if (imagePath.startsWith('http')) return imagePath;
     return `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/product-images/${imagePath}`;
   };
 
-  // Fetch products on component mount
-  useEffect(() => {
-    fetchProducts();
-  }, []);
+  // If not authenticated yet, show loading
+  if (!user) {
+    return (
+      <AdminLayout>
+        <div className='min-h-screen bg-gray-50 flex items-center justify-center'>
+          <div className='text-center'>
+            <div className='text-xl font-medium'>
+              Checking authentication...
+            </div>
+          </div>
+        </div>
+      </AdminLayout>
+    );
+  }
 
   return (
     <AdminLayout>
       <div className='min-h-screen bg-gray-50 p-8'>
-        <h1 className='text-4xl font-extrabold mb-8 text-gray-900 tracking-wide'>
-          Product Management
-        </h1>
+        <div className='flex justify-between items-center mb-8'>
+          <h1 className='text-4xl font-extrabold text-gray-900 tracking-wide'>
+            Product Management
+          </h1>
+          <button
+            onClick={() => setShowAddProductForm(true)}
+            className='bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-md transition font-medium flex items-center gap-2'
+          >
+            <span>+ Add New Product</span>
+          </button>
+        </div>
 
         {loading ? (
           <div className='text-center py-8'>
@@ -165,10 +211,10 @@ export default function ProductsPage() {
                     key={product.id}
                     product={product}
                     onDelete={() => handleDelete(product.id)}
-                    onEdit={() => handleEdit(product)}
+                    onEdit={() => handleEditClick(product)}
                     onView={() => setModalProduct(product)}
                     isOdd={idx % 2 !== 0}
-                    getImageUrl={getImageUrl} // Pass the helper function as a prop
+                    getImageUrl={getImageUrl}
                   />
                 ))}
               </tbody>
@@ -218,6 +264,26 @@ export default function ProductsPage() {
             >
               Close
             </button>
+          </Modal>
+        )}
+
+        {showAddProductForm && (
+          <Modal
+            onClose={() => {
+              setShowAddProductForm(false);
+              setEditingProduct(null);
+            }}
+          >
+            <div className='p-6'>
+              <ProductForm
+                product={editingProduct}
+                onSuccess={handleFormSuccess}
+                onCancel={() => {
+                  setShowAddProductForm(false);
+                  setEditingProduct(null);
+                }}
+              />
+            </div>
           </Modal>
         )}
       </div>

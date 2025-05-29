@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { Button } from "@/components/ui/button";
+
 import { useTheme } from "@/contexts/ThemeContext";
 import { useCart } from "@/hooks/useCart";
 import CartDrawer from "@/components/cart/CartDrawer";
@@ -78,10 +78,8 @@ export default function MobileNavbar() {
 			<div className="bg-white border-b border-gray-200 py-3 px-4">
 				<div className="flex justify-between items-center">
 					{/* Left - Hamburger Menu */}
-					<Button
-						variant="ghost"
-						size="icon"
-						className="h-auto w-auto p-0 hover:bg-transparent"
+					<button
+						className="h-auto w-auto p-0 hover:bg-transparent bg-transparent border-none cursor-pointer transition-colors"
 						onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
 					>
 						{isMobileMenuOpen ? (
@@ -89,7 +87,7 @@ export default function MobileNavbar() {
 						) : (
 							<Menu size={24} className="text-gray-600" strokeWidth={1.5} />
 						)}
-					</Button>
+					</button>
 
 					{/* Center - Logo */}
 					<Link href="/" className="flex-1 flex justify-center">
@@ -106,11 +104,7 @@ export default function MobileNavbar() {
 					<div className="flex items-center space-x-3">
 						{/* User Icon */}
 						<Link href="/login">
-							<Button
-								variant="ghost"
-								size="icon"
-								className="h-auto w-auto p-0 hover:bg-transparent"
-							>
+							<button className="h-auto w-auto p-0 hover:bg-transparent bg-transparent border-none cursor-pointer transition-colors">
 								<Image
 									src="/assets/account.svg"
 									alt="user"
@@ -118,14 +112,12 @@ export default function MobileNavbar() {
 									height={18}
 								/>
 								<span className="sr-only">User account</span>
-							</Button>
+							</button>
 						</Link>
 
 						{/* Coupons Icon */}
-						<Button
-							variant="ghost"
-							size="icon"
-							className="h-auto w-auto p-0 hover:bg-transparent"
+						<button
+							className="h-auto w-auto p-0 hover:bg-transparent bg-transparent border-none cursor-pointer transition-colors"
 							onClick={() => setShowCoupons(!showCoupons)}
 						>
 							<svg
@@ -165,14 +157,10 @@ export default function MobileNavbar() {
 								/>
 							</svg>
 							<span className="sr-only">Coupons</span>
-						</Button>
+						</button>
 
 						{/* Wishlist Icon */}
-						<Button
-							variant="ghost"
-							size="icon"
-							className="h-auto w-auto p-0 hover:bg-transparent"
-						>
+						<button className="h-auto w-auto p-0 hover:bg-transparent bg-transparent border-none cursor-pointer transition-colors">
 							<svg
 								width="18"
 								height="18"
@@ -217,14 +205,12 @@ export default function MobileNavbar() {
 								/>
 							</svg>
 							<span className="sr-only">Wishlist</span>
-						</Button>
+						</button>
 
 						{/* Cart Icon */}
-						<Button
-							variant="ghost"
-							size="icon"
+						<button
 							onClick={openCart}
-							className="relative h-auto w-auto p-0 hover:bg-transparent"
+							className="relative h-auto w-auto p-0 hover:bg-transparent bg-transparent border-none cursor-pointer transition-colors"
 						>
 							<svg
 								xmlns="http://www.w3.org/2000/svg"
@@ -247,7 +233,7 @@ export default function MobileNavbar() {
 								</span>
 							)}
 							<span className="sr-only">Cart</span>
-						</Button>
+						</button>
 					</div>
 				</div>
 			</div>
@@ -260,11 +246,7 @@ export default function MobileNavbar() {
 						placeholder="Search for microfiber clothes or any other product..."
 						className="w-full pl-4 pr-12 py-2.5 text-sm border-b border-gray-300 focus:outline-none focus:border-gray-500 bg-transparent"
 					/>
-					<Button
-						variant="ghost"
-						size="icon"
-						className="absolute right-2 top-1/2 -translate-y-1/2 h-8 w-8 hover:bg-transparent"
-					>
+					<button className="absolute right-2 top-1/2 -translate-y-1/2 h-8 w-8 hover:bg-transparent bg-transparent border-none cursor-pointer flex items-center justify-center transition-colors">
 						<svg
 							xmlns="http://www.w3.org/2000/svg"
 							width="16"
@@ -281,7 +263,7 @@ export default function MobileNavbar() {
 							<line x1="21" y1="21" x2="16.65" y2="16.65" />
 						</svg>
 						<span className="sr-only">Search</span>
-					</Button>
+					</button>
 				</div>
 			</div>
 
@@ -332,14 +314,12 @@ export default function MobileNavbar() {
 						</Link>
 
 						{/* Close Button */}
-						<Button
-							variant="ghost"
-							size="icon"
-							className="h-auto w-auto p-0 hover:bg-transparent"
+						<button
+							className="h-auto w-auto p-0 hover:bg-transparent bg-transparent border-none cursor-pointer transition-colors"
 							onClick={() => setIsMobileMenuOpen(false)}
 						>
 							<X size={24} className="text-gray-600" strokeWidth={1.5} />
-						</Button>
+						</button>
 					</div>
 
 					{/* Menu Content */}
@@ -397,9 +377,8 @@ export default function MobileNavbar() {
 
 						{/* Theme Toggle */}
 						<div className="pt-4 border-t border-gray-200">
-							<Button
-								variant="ghost"
-								className="flex items-center gap-3 hover:bg-gray-50 w-full justify-start p-3 rounded-lg"
+							<button
+								className="flex items-center gap-3 hover:bg-gray-50 w-full justify-start p-3 rounded-lg bg-transparent border-none cursor-pointer transition-colors"
 								onClick={toggleTheme}
 							>
 								{theme === "dark" ? (
@@ -442,7 +421,7 @@ export default function MobileNavbar() {
 								<span className="text-sm font-medium">
 									{theme === "dark" ? "Light Mode" : "Dark Mode"}
 								</span>
-							</Button>
+							</button>
 						</div>
 
 						{/* Extra padding at bottom for scrolling */}

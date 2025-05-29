@@ -1,9 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { Button } from "@/components/ui/button";
 import { useTheme } from "@/contexts/ThemeContext";
 import Image from "next/image";
+
 // Top navigation links - easy to update
 const topNavLinks = [
 	{ name: "HOME", href: "/" },
@@ -34,10 +34,8 @@ export default function TopNavbar() {
 					</ul>
 				</nav>
 				<div className="flex items-center space-x-4">
-					<Button
-						variant="ghost"
-						size="icon"
-						className="text-white hover:text-gray-300"
+					<button
+						className="text-white hover:text-gray-300 bg-transparent border-none p-2 rounded-md flex items-center justify-center cursor-pointer transition-colors focus:outline-none"
 						onClick={toggleTheme}
 					>
 						{theme === "dark" ? (
@@ -78,14 +76,10 @@ export default function TopNavbar() {
 							</svg>
 						)}
 						<span className="sr-only">Toggle theme</span>
-					</Button>
+					</button>
 
 					<Link href="/login">
-						<Button
-							variant="ghost"
-							size="icon"
-							className="text-white hover:text-gray-300"
-						>
+						<button className="text-white hover:text-gray-300 bg-transparent border-none p-2 rounded-md flex items-center justify-center cursor-pointer transition-colors focus:outline-none">
 							<Image
 								src="/assets/account.svg"
 								alt="user"
@@ -93,25 +87,8 @@ export default function TopNavbar() {
 								height={20}
 							/>
 							<span className="sr-only">User account</span>
-						</Button>
+						</button>
 					</Link>
-					{/* <Button variant="ghost" src size="icon" className="text-white hover:text-gray-300">
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              width="16"
-              height="16"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            >
-              <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
-              <circle cx="12" cy="7" r="4" />
-            </svg>
-            <span className="sr-only">User account</span>
-          </Button> */}
 				</div>
 			</div>
 		</div>

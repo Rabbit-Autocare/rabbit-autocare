@@ -381,13 +381,34 @@ function ProductRow({ product, onDelete, onEdit, onView, isOdd, getImageUrl }) {
 }
 
 function Modal({ children, onClose }) {
+  // Lock body scroll when component mounts
+  useEffect(() => {
+    // Save the current scroll position
+    const scrollY = window.scrollY;
+    
+    // Add styles to prevent scrolling on body
+    document.body.style.position = 'fixed';
+    document.body.style.top = `-${scrollY}px`;
+    document.body.style.width = '100%';
+    
+    // Cleanup function to restore scrolling when modal closes
+    return () => {
+      document.body.style.position = '';
+      document.body.style.top = '';
+      document.body.style.width = '';
+      
+      // Restore scroll position
+      window.scrollTo(0, scrollY);
+    };
+  }, []);
+
   return (
     <div
-      className='fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50'
+      className='fixed inset-0 bg-gray-500/30 flex justify-center items-center z-50'
       onClick={onClose}
     >
       <div
-        className='bg-white rounded-lg max-w-4xl w-full shadow-lg max-h-[90vh] overflow-y-auto'
+        className='bg-white rounded-lg max-w-4xl w-full shadow-xl max-h-[90vh] overflow-y-auto'
         onClick={(e) => e.stopPropagation()}
       >
         {children}

@@ -155,6 +155,7 @@ export default function CheckoutPage() {
 			if (error) throw error;
 
 			if (appliedCoupon) {
+				// Insert usage record
 				await supabase.from("user_coupons").insert([
 					{
 						user_id: userId,
@@ -163,6 +164,14 @@ export default function CheckoutPage() {
 						used_at: new Date().toISOString(),
 					},
 				]);
+
+				// Also update the usage_count in the coupons table if you want to directly track it there
+				await supabase
+					.from("coupons")
+					.rpc("increment_coupon_usage", { coupon_id: appliedCoupon.id });
+
+				// Clear from localStorage
+				localStorage.removeItem("appliedCoupon");
 			}
 
 			await supabase.from("cart_items").delete().eq("user_id", userId);

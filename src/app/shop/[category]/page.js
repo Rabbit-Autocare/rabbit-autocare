@@ -1,13 +1,15 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, use } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
 import ProductGrid from "@/components/shop/ProductGrid";
 import FilterSidebar from "@/components/shop/FilterSidebar";
 
 export default function CategoryPage({ params }) {
-	const category = params.category;
+	// Unwrap the params Promise using React.use()
+	const resolvedParams = use(params);
+	const category = resolvedParams.category;
 	const router = useRouter();
 
 	// State variables to manage the component's data and UI

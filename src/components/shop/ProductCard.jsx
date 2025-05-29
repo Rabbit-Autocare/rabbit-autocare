@@ -18,9 +18,35 @@ const ProductCard = ({ product }) => {
 	const minPrice = prices.length > 0 ? Math.min(...prices) : 0;
 
 	// Get the first image URL from product images or use the image field
-	const imageUrl =
+	const rawImageUrl =
 		product.image ||
 		(product.images && product.images.length > 0 ? product.images[0] : null);
+
+	// Validate and sanitize the image URL
+	const getValidImageUrl = (url) => {
+		if (!url) return null;
+
+		try {
+			// If it's already a valid absolute URL, return it
+			new URL(url);
+			return url;
+		} catch {
+			// If it's a relative URL or invalid, try to make it absolute
+			if (typeof url === "string" && url.trim()) {
+				// If it starts with /, treat as absolute path
+				if (url.startsWith("/")) {
+					return url;
+				}
+				// If it doesn't start with http/https, assume it's a relative path
+				if (!url.startsWith("http")) {
+					return `/${url}`;
+				}
+			}
+			return null;
+		}
+	};
+
+	const imageUrl = getValidImageUrl(rawImageUrl);
 
 	// Get the number of ratings (placeholder for now)
 	const ratingCount =
@@ -46,11 +72,12 @@ const ProductCard = ({ product }) => {
 			>
 				{imageUrl && !hasImageError ? (
 					<Image
-						src={imageUrl || "/placeholder.svg"}
+						src={imageUrl}
 						alt={product.name}
 						fill
 						className="object-contain p-4"
 						onError={handleImageError}
+						unoptimized={!imageUrl.startsWith("http")} // Disable optimization for local images if needed
 					/>
 				) : (
 					<div className="flex items-center justify-center h-full bg-gray-100">

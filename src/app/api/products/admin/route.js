@@ -19,10 +19,10 @@ export async function POST(request) {
       name: productData.name,
       description: productData.description || '',
       category: productData.category,
-      image: productData.image || null,
+      // Remove the image field, use only images array
+      images: productData.images || [],
       variants: productData.variants || [],
       created_at: new Date().toISOString(),
-      // Don't include updated_at for new products
     };
 
     // Insert the product into the database
@@ -62,14 +62,13 @@ export async function PUT(request) {
       );
     }
 
-    // Remove updated_at from the update data to avoid schema errors
+    // Remove the image field, use only images array
     const productUpdate = {
       name: updateData.name,
       description: updateData.description || '',
       category: updateData.category,
-      image: updateData.image || null,
+      images: updateData.images || [],
       variants: updateData.variants || [],
-      // Don't include updated_at
     };
 
     const { data, error } = await supabase

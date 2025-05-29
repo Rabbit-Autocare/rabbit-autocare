@@ -31,6 +31,11 @@ export default function CouponSection() {
 		fetchUserCoupons();
 	}, []);
 
+	// Refetch available coupons whenever the coupon state changes
+	useEffect(() => {
+		fetchUserCoupons();
+	}, [coupon]); // This will refetch when a coupon is applied or removed
+
 	const handleApplyCoupon = (e) => {
 		e.preventDefault();
 		if (couponCode.trim()) {

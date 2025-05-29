@@ -1,9 +1,11 @@
-import { supabase } from '@/lib/supabaseClient';
 import { NextResponse } from 'next/server';
+import { createServerComponentClient } from '@supabase/auth-helpers-nextjs';
+import { cookies } from 'next/headers';
 
 // Delete a product by ID
 export async function DELETE(request, { params }) {
   try {
+    const supabase = createServerComponentClient({ cookies });
     const { id } = params;
 
     if (!id) {
@@ -11,6 +13,27 @@ export async function DELETE(request, { params }) {
         { error: 'Product ID is required' },
         { status: 400 }
       );
+    }
+
+    // First, get the product details to access image paths
+    const { data: product, error: productFetchError } = await supabase
+      .from('products')
+      .select('*')
+      .eq('id', id)
+      .single();
+
+    if (productFetchError) {
+      console.error('Error fetching product details:', productFetchError);
+      return NextResponse.json(
+        {
+          error: `Failed to fetch product details: ${productFetchError.message}`,
+        },
+        { status: 500 }
+      );
+    }
+
+    if (!product) {
+      return NextResponse.json({ error: 'Product not found' }, { status: 404 });
     }
 
     // Step 1: Delete related cart items
@@ -57,7 +80,29 @@ export async function DELETE(request, { params }) {
       );
     }
 
-    // Step 4: Finally delete the product
+    // Step 4: Delete images from storage bucket
+    if (product.images && product.images.length > 0) {
+      // Filter out images that are URLs (not in our storage)
+      const storedImages = product.images.filter(
+        (img) => !img.startsWith('http://') && !img.startsWith('https://')
+      );
+
+      if (storedImages.length > 0) {
+        const { error: storageDeleteError } = await supabase.storage
+          .from('product-images')
+          .remove(storedImages);
+
+        if (storageDeleteError) {
+          console.error(
+            'Error deleting product images from storage:',
+            storageDeleteError
+          );
+          // Don't return error, continue with product deletion
+        }
+      }
+    }
+
+    // Step 5: Finally delete the product
     const { error: productDeleteError } = await supabase
       .from('products')
       .delete()

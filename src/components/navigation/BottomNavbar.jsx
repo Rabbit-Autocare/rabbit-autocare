@@ -5,8 +5,13 @@ import Link from "next/link";
 import { useCart } from "@/hooks/useCart";
 import CartDrawer from "@/components/cart/CartDrawer";
 
-// Shop categories - updated to match database categories
+// Shop categories - updated to match database categories and include All Products
 const shopCategories = [
+	{
+		name: "All Products",
+		href: "/shop/all",
+		image: "/placeholder.svg?height=200&width=300",
+	},
 	{
 		name: "Car Interior",
 		href: "/shop/car-interior",
@@ -19,7 +24,7 @@ const shopCategories = [
 	},
 	{
 		name: "Microfiber Cloths",
-		href: "/shop/microfiber-cloths",
+		href: "/shop/microfiber-cloth",
 		image: "/placeholder.svg?height=200&width=300",
 	},
 	{
@@ -252,7 +257,7 @@ export default function BottomNavbar() {
 				onMouseLeave={() => setIsShopOpen(false)}
 			>
 				<div className="container mx-auto py-8 px-6">
-					<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+					<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
 						{shopCategories.map((category, index) => (
 							<Link
 								key={index}

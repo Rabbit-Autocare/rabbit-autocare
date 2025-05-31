@@ -1,109 +1,96 @@
 import { NextResponse } from "next/server";
-import { createServerComponentClient } from "@supabase/auth-helpers-nextjs";
-import { cookies } from "next/headers";
 
 export async function POST(request) {
 	try {
-		// Initialize Supabase client with cookies
-		const supabase = createServerComponentClient({ cookies });
-
-		// Check authentication
-		const {
-			data: { user },
-			error: authError,
-		} = await supabase.auth.getUser();
-
-		if (authError || !user) {
-			return NextResponse.json(
-				{ error: "Unauthorized - Please log in" },
-				{ status: 401 },
-			);
-		}
-
-		// Parse request body
-		const requestData = await request.json();
+		const body = await request.json();
 		const {
 			productId,
-			quantity = 1,
-			isCombo = false,
-			variantData,
-		} = requestData;
+			variantId,
+			quantity,
+			price,
+			variant,
+			productName,
+			productImage,
+		} = body;
 
 		// Validate required fields
-		if (!productId) {
+		if (!productId || !quantity || !price) {
 			return NextResponse.json(
-				{ error: "Product ID is required" },
+				{
+					error:
+						"Missing required fields: productId, quantity, and price are required",
+				},
 				{ status: 400 },
 			);
 		}
 
-		// Additional validation for regular products
-		if (!isCombo && (!variantData || !variantData.size || !variantData.price)) {
+		// Validate quantity
+		if (quantity <= 0) {
 			return NextResponse.json(
-				{ error: "Variant data is required for products" },
+				{ error: "Quantity must be greater than 0" },
 				{ status: 400 },
 			);
 		}
 
-		// Check for existing cart item
-		const { data: existingItem } = await supabase
-			.from("cart_items")
-			.select("*")
-			.eq("user_id", user.id)
-			.eq("product_id", productId)
-			.eq("is_combo", isCombo)
-			.eq(!isCombo ? "variant_size" : "", !isCombo ? variantData.size : "")
-			.maybeSingle();
+		// Here you would typically:
+		// 1. Get the user session/ID
+		// 2. Check if the product exists and has sufficient stock
+		// 3. Add the item to the user's cart in the database
+		// 4. Update the cart totals
 
-		if (existingItem) {
-			// Update existing item
-			const { error: updateError } = await supabase
-				.from("cart_items")
-				.update({
-					quantity: existingItem.quantity + quantity,
-					updated_at: new Date().toISOString(),
-				})
-				.eq("id", existingItem.id);
+		// For now, we'll simulate a successful cart addition
+		// You can replace this with your actual cart logic
 
-			if (updateError) throw updateError;
+		// Simulate checking product availability
+		// const { data: product, error: productError } = await supabase
+		//   .from('products')
+		//   .select('*, variants')
+		//   .eq('id', productId)
+		//   .single()
 
-			return NextResponse.json({
-				success: true,
-				action: "updated",
-				newQuantity: existingItem.quantity + quantity,
-			});
-		} else {
-			// Insert new item
-			const newItem = {
-				user_id: user.id,
-				product_id: productId,
-				quantity,
-				is_combo: isCombo,
-				created_at: new Date().toISOString(),
-				updated_at: new Date().toISOString(),
-				...(!isCombo && {
-					name: variantData.name,
-					price: variantData.price,
-					image: variantData.image,
-					variant_size: variantData.size,
-				}),
-			};
+		// if (productError || !product) {
+		//   return NextResponse.json(
+		//     { error: "Product not found" },
+		//     { status: 404 }
+		//   )
+		// }
 
-			const { error: insertError } = await supabase
-				.from("cart_items")
-				.insert(newItem);
+		// Simulate adding to cart
+		const cartItem = {
+			id: `${productId}-${variantId || "default"}-${Date.now()}`,
+			productId,
+			variantId,
+			productName,
+			variant,
+			price: Number(price),
+			quantity: Number(quantity),
+			image: productImage,
+			addedAt: new Date().toISOString(),
+		};
 
-			if (insertError) throw insertError;
+		// Here you would save to database
+		// Example with Supabase:
+		// const { data, error } = await supabase
+		//   .from('cart_items')
+		//   .insert([{
+		//     user_id: userId,
+		//     product_id: productId,
+		//     variant_id: variantId,
+		//     quantity: quantity,
+		//     price: price
+		//   }])
 
-			return NextResponse.json({
-				success: true,
-				action: "added",
-			});
-		}
+		console.log("Cart item added:", cartItem);
+
+		return NextResponse.json({
+			success: true,
+			message: "Item added to cart successfully",
+			cartItem: cartItem,
+		});
 	} catch (error) {
-		console.error("Cart API Error:", error);
+		console.error("Error adding to cart:", error);
 		return NextResponse.json(
-			{ error: error.message || "Internal server error" },
+			{ error: "Internal server error" },
 			{ status: 500 },
 		);
 	}

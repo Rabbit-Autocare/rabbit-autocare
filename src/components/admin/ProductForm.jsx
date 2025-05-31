@@ -1,630 +1,1000 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
 import { ProductService } from "@/lib/service/productService";
-import { supabase } from "@/lib/supabaseClient";
+import { Plus, Trash2, Package, Palette, Ruler, Hash, DollarSign, Archive, Tag, X, Image as ImageIcon } from "lucide-react";
 
-/**
- * Enhanced Product Form Component
- * Handles creating and editing products with image upload
- */
-export default function ProductForm({ product, onSuccess, onCancel }) {
-	const [formData, setFormData] = useState({
-		id: "",
+export default function EnhancedProductForm({ product = null, onSuccess, onCancel }) {
+	const [loading, setLoading] = useState(false);
+	const [saving, setSaving] = useState(false);
+	const isEditing = !!product;
+
+	// Form state
+	const [form, setForm] = useState({
+		product_code: "",
 		name: "",
+		main_category_id: "",
 		description: "",
-		key_features: [""],
-		category: "",
-		variant_type: "",
-		variants: [{ value: "", price: "", stock: 0, color: "", gsm: "" }],
-		image: [],
+		is_microfiber: false,
+		subcategories: [],
+		variants: [],
+		main_image_url: "",
+		images: [],
+		key_features: [],
+		taglines: [],
 	});
 
-	const [loading, setLoading] = useState(false);
-	const [errors, setErrors] = useState({});
-	const [isEditing, setIsEditing] = useState(false);
-	const [imageFiles, setImageFiles] = useState([]);
-	const [imageUploading, setImageUploading] = useState(false);
+	// Microdata
+	const [allSizes, setAllSizes] = useState([]);
+	const [allColors, setAllColors] = useState([]);
+	const [allCategories, setAllCategories] = useState([]);
+	const [selectedCategory, setSelectedCategory] = useState(null);
 
-	// Categories and variant types
-	const categories = [
-		{ value: "car interior", label: "Car Interior" },
-		{ value: "car exterior", label: "Car Exterior" },
-		{ value: "microfiber cloth", label: "Microfiber Cloth" },
-	];
+	// UI states
+	const [activeVariantIndex, setActiveVariantIndex] = useState(null);
+	const [bulkActions, setBulkActions] = useState({
+		showBulkPrice: false,
+		bulkPrice: "",
+		showBulkStock: false,
+		bulkStock: "",
+	});
 
-	const variantTypes = [
-		{ value: "quantity", label: "Quantity (ML/GM)" },
-		{ value: "size", label: "Size (Dimensions)" },
-	];
+	// New state for image upload
+	const [uploadingImages, setUploadingImages] = useState(false);
+	const [newKeyFeature, setNewKeyFeature] = useState("");
+	const [newTagline, setNewTagline] = useState("");
 
-	// Initialize form with product data for editing
 	useEffect(() => {
-		if (product) {
-			setIsEditing(true);
-			setFormData({
-				id: product.id || "",
-				name: product.name || "",
-				description: product.description || "",
-				key_features:
-					product.key_features?.length > 0 ? product.key_features : [""],
-				category: product.category || "",
-				variant_type: product.variant_type || "",
-				variants:
-					product.variants?.length > 0
-						? product.variants
-						: [{ value: "", price: "", stock: 0, color: "", gsm: "" }],
-				image: Array.isArray(product.image) ? product.image : [],
-			});
-		}
-	}, [product]);
+		fetchMasterData();
+	}, [isEditing]);
 
-	// Handle input changes
-	const handleInputChange = (field, value) => {
-		setFormData((prev) => ({
-			...prev,
-			[field]: value,
-		}));
-
-		// Clear field error when user starts typing
-		if (errors[field]) {
-			setErrors((prev) => ({
-				...prev,
-				[field]: null,
-			}));
-		}
-	};
-
-	// Handle image file selection
-	const handleImageChange = (e) => {
-		const files = Array.from(e.target.files);
-		setImageFiles(files);
-	};
-
-	// Upload images to Supabase storage
-	const uploadImages = async (files) => {
-		const uploadedPaths = [];
-
-		for (const file of files) {
-			const fileExt = file.name.split('.').pop();
-			const fileName = `${formData.id}_${Date.now()}.${fileExt}`;
-			const filePath = `products/${fileName}`;
-
-			const { data, error } = await supabase.storage
-				.from('product-images')
-				.upload(filePath, file);
-
-			if (error) {
-				throw new Error(`Failed to upload ${file.name}: ${error.message}`);
-			}
-
-			uploadedPaths.push(data.path);
-		}
-
-		return uploadedPaths;
-	};
-
-	// Remove image from form
-	const removeImage = async (imageIndex, imagePath) => {
+	const fetchMasterData = async () => {
+		setLoading(true);
 		try {
-			// If it's an existing image, delete from storage
-			if (imagePath && isEditing) {
-				const { error } = await supabase.storage
-					.from('product-images')
-					.remove([imagePath]);
+			const [sizesRes, colorsRes, categoriesRes] = await Promise.all([
+				ProductService.getSizes(),
+				ProductService.getColors(),
+				ProductService.getCategories(),
+			]);
 
-				if (error) {
-					console.error('Error deleting image:', error);
-				}
+			setAllSizes(sizesRes.data || []);
+			setAllColors(colorsRes.data || []);
+			setAllCategories(categoriesRes.data || []);
+
+			// Call populateEditForm after categories are loaded in edit mode
+			if (isEditing) {
+				populateEditForm();
 			}
 
-			// Remove from form data
-			const newImages = formData.image.filter((_, index) => index !== imageIndex);
-			setFormData(prev => ({
-				...prev,
-				image: newImages
-			}));
-		} catch (error) {
-			console.error('Error removing image:', error);
+		} catch (err) {
+			console.error("Error fetching master data:", err);
+			alert("Error fetching form data: " + err.message);
+		} finally {
+			setLoading(false);
 		}
 	};
 
-	// Handle key features changes
-	const handleKeyFeatureChange = (index, value) => {
-		const newFeatures = [...formData.key_features];
-		newFeatures[index] = value;
-		setFormData((prev) => ({
-			...prev,
-			key_features: newFeatures,
-		}));
+	const populateEditForm = () => {
+		if (!product) return;
+
+		// Find and set the selected main category
+		const mainCategory = allCategories.find(c => c.id === product.main_category_id);
+		if (mainCategory) {
+			setSelectedCategory(mainCategory);
+		}
+
+		// Get subcategory IDs from the fetched product data
+		// The API returns subcategories nested within a 'category' object
+		const subcategoryIds = product.product_subcategories?.map(sc => parseInt(sc.category?.id)).filter(Boolean) || [];
+
+		// Map fetched variants to form state structure
+		const productVariants = product.variants?.map(variant => {
+			// Ensure core fields are present and correctly typed
+			const baseVariant = {
+				stock: parseInt(variant.stock) || 0,
+				price: parseFloat(variant.price) || 0,
+			};
+
+			// Map specific fields based on product's microfiber status
+			if (product.is_microfiber) {
+				return {
+					...baseVariant,
+					// Microfiber specific fields with defaults, ensuring correct mapping from fetched variant
+					gsm_value: variant.gsm_value || '',
+					size_id: variant.size_id?.toString() || '', // Ensure size_id is string for select
+					color_id: variant.color_id?.toString() || '', // Ensure color_id is string for select
+				};
+			} else { // Assume liquid if not microfiber
+				return {
+					...baseVariant,
+					// Liquid specific fields with defaults, ensuring correct mapping from fetched variant
+					quantity: variant.quantity || '',
+					unit: variant.unit || 'ml', // Default to ml if unit is missing
+				};
+			}
+		}) || [];
+
+		setForm({
+			product_code: product.product_code || "",
+			name: product.name || "",
+			main_category_id: product.main_category_id?.toString() || "",
+			description: product.description || "",
+			is_microfiber: product.is_microfiber || false,
+			subcategories: subcategoryIds, // Use integer IDs
+			variants: productVariants, // Use mapped variants
+			main_image_url: product.main_image_url || "",
+			images: product.images || [],
+			key_features: product.key_features || [],
+			taglines: product.taglines || [],
+		});
 	};
 
-	const addKeyFeature = () => {
-		setFormData((prev) => ({
+	const handleInput = (e) => {
+		const { name, value, type, checked } = e.target;
+		setForm((prev) => ({
 			...prev,
-			key_features: [...prev.key_features, ""],
+			[name]: type === "checkbox" ? checked : value
 		}));
-	};
 
-	const removeKeyFeature = (index) => {
-		if (formData.key_features.length > 1) {
-			const newFeatures = formData.key_features.filter((_, i) => i !== index);
-			setFormData((prev) => ({
+		if (name === "main_category_id") {
+			const category = allCategories.find((c) => c.id.toString() === value);
+			setSelectedCategory(category);
+			setForm((prev) => ({
 				...prev,
-				key_features: newFeatures,
+				is_microfiber: category?.is_microfiber || false,
+				variants: []
 			}));
 		}
 	};
 
-	// Handle variant changes
+	const handleSubcategoryChange = (categoryIdString) => {
+		const categoryId = parseInt(categoryIdString);
+		setForm(prev => ({
+			...prev,
+			subcategories: prev.subcategories.includes(categoryId)
+				? prev.subcategories.filter(id => id !== categoryId)
+				: [...prev.subcategories, categoryId]
+		}));
+	};
+
 	const handleVariantChange = (index, field, value) => {
-		const newVariants = [...formData.variants];
-		newVariants[index] = {
-			...newVariants[index],
-			[field]: value,
-		};
-		setFormData((prev) => ({
-			...prev,
-			variants: newVariants,
-		}));
+		const newVariants = [...form.variants];
+		if (form.is_microfiber) {
+			newVariants[index] = {
+				...newVariants[index],
+				[field]: value,
+			};
+		} else {
+			// Handle liquid product sizes
+			newVariants[index] = {
+				...newVariants[index],
+				[field]: value,
+			};
+		}
+		setForm({ ...form, variants: newVariants });
 	};
 
 	const addVariant = () => {
-		setFormData((prev) => ({
-			...prev,
-			variants: [
-				...prev.variants,
-				{ value: "", price: "", stock: 0, color: "", gsm: "" },
-			],
-		}));
+		const newVariants = [...form.variants];
+		if (form.is_microfiber) {
+			newVariants.push({
+				gsm_value: "",
+				color_id: "",
+				size_id: "",
+				stock: 0,
+				price: 0,
+			});
+		} else {
+			// Add new liquid product size
+			newVariants.push({
+				quantity: "",
+				unit: "ml", // Default unit
+				price: 0,
+				stock: 0,
+			});
+		}
+		setForm({ ...form, variants: newVariants });
 	};
 
 	const removeVariant = (index) => {
-		if (formData.variants.length > 1) {
-			const newVariants = formData.variants.filter((_, i) => i !== index);
-			setFormData((prev) => ({
-				...prev,
-				variants: newVariants,
-			}));
-		}
+		const newVariants = [...form.variants];
+		newVariants.splice(index, 1);
+		setForm({ ...form, variants: newVariants });
 	};
 
-	// Get image URL for display
-	const getImageUrl = (imagePath) => {
-		if (!imagePath) return null;
-		if (typeof imagePath === 'string' && imagePath.startsWith("http")) return imagePath;
-		return `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/product-images/${imagePath}`;
+	const duplicateVariant = (index) => {
+		const variantToDuplicate = { ...form.variants[index] };
+		const updated = [...form.variants];
+		updated.splice(index + 1, 0, variantToDuplicate);
+		setForm({ ...form, variants: updated });
 	};
 
-	// Handle form submission
+	const applyBulkPrice = () => {
+		if (!bulkActions.bulkPrice) return;
+
+		const updated = form.variants.map(variant => ({
+			...variant,
+			price: parseFloat(bulkActions.bulkPrice)
+		}));
+		setForm({ ...form, variants: updated });
+		setBulkActions({ ...bulkActions, showBulkPrice: false, bulkPrice: "" });
+	};
+
+	const applyBulkStock = () => {
+		if (!bulkActions.bulkStock) return;
+
+		const updated = form.variants.map(variant => ({
+			...variant,
+			stock: parseInt(bulkActions.bulkStock)
+		}));
+		setForm({ ...form, variants: updated });
+		setBulkActions({ ...bulkActions, showBulkStock: false, bulkStock: "" });
+	};
+
 	const handleSubmit = async (e) => {
 		e.preventDefault();
-		setLoading(true);
-		setErrors({});
+		if (saving) return;
 
-		try {
-			// Upload new images if any
-			let uploadedImagePaths = [...formData.image];
-			if (imageFiles.length > 0) {
-				setImageUploading(true);
-				const newImagePaths = await uploadImages(imageFiles);
-				uploadedImagePaths = [...uploadedImagePaths, ...newImagePaths];
-				setImageUploading(false);
+		// Validation
+		if (!form.name.trim()) {
+			alert("Product name is required");
+			return;
+		}
+		if (!form.main_category_id) {
+			alert("Please select a category");
+			return;
+		}
+		if (form.variants.length === 0) {
+			alert("Please add at least one variant");
+			return;
+		}
+
+		// Validate variants
+		for (let i = 0; i < form.variants.length; i++) {
+			const variant = form.variants[i];
+			// Validate based on whether the product is microfiber
+			if (form.is_microfiber) {
+				// Microfiber validation
+				if (!variant.gsm_value || !variant.size_id || !variant.color_id) {
+					alert(`Variant ${i + 1}: Please fill all required fields (GSM, size, color)`);
+					return;
+				}
+				// Check if stock and price are valid numbers
+				if (variant.stock === null || variant.stock === undefined || isNaN(variant.stock) || variant.stock < 0) {
+					alert(`Variant ${i + 1}: Stock must be a non-negative number.`);
+					return;
+				}
+				if (variant.price === null || variant.price === undefined || isNaN(variant.price) || variant.price < 0) {
+					alert(`Variant ${i + 1}: Price must be a non-negative number.`);
+					return;
+				}
+			} else { // Assume liquid validation
+				// Liquid validation
+				if (!variant.quantity || !variant.unit) {
+					alert(`Variant ${i + 1}: Please fill quantity and unit`);
+					return;
+				}
+				// Check if quantity, stock, and price are valid numbers
+				if (variant.quantity === null || variant.quantity === undefined || isNaN(variant.quantity) || variant.quantity < 0) {
+					alert(`Variant ${i + 1}: Quantity must be a non-negative number.`);
+					return;
+				}
+				if (variant.stock === null || variant.stock === undefined || isNaN(variant.stock) || variant.stock < 0) {
+					alert(`Variant ${i + 1}: Stock must be a non-negative number.`);
+					return;
+				}
+				if (variant.price === null || variant.price === undefined || isNaN(variant.price) || variant.price < 0) {
+					alert(`Variant ${i + 1}: Price must be a non-negative number.`);
+					return;
+				}
 			}
+		}
 
-			// Prepare form data with uploaded images
-			const submitData = {
-				...formData,
-				image: uploadedImagePaths,
-				key_features: formData.key_features.filter(
-					(feature) => feature.trim() !== "",
-				),
-				variants: formData.variants.map((variant) => ({
-					...variant,
-					price: parseFloat(variant.price),
-					stock: parseInt(variant.stock) || 0,
-					...(formData.category === "microfiber cloth" && {
-						color: variant.color,
-						gsm: parseInt(variant.gsm) || 0,
-					}),
-				})),
+		setSaving(true);
+		try {
+			const payload = {
+				...form,
+				main_category_id: parseInt(form.main_category_id),
+				subcategories: form.subcategories.map(id => parseInt(id)),
+				variants: form.variants.map(variant => {
+					const baseVariant = {
+						stock: parseInt(variant.stock) || 0,
+						price: parseFloat(variant.price) || 0,
+					};
+					if (form.is_microfiber) {
+						return {
+							...baseVariant,
+							gsm_value: parseFloat(variant.gsm_value) || 0,
+							color_id: parseInt(variant.color_id) || null,
+							size_id: parseInt(variant.size_id) || null,
+						};
+					} else {
+						return {
+							...baseVariant,
+							quantity: parseFloat(variant.quantity) || 0,
+							unit: variant.unit || '',
+						};
+					}
+				})
 			};
 
-			// Client-side validation
-			const validation = ProductService.validateProductData(submitData);
-			if (!validation.isValid) {
-				const errorObj = {};
-				validation.errors.forEach((error) => {
-					const field = error.split(":")[0] || error.split(" ")[0];
-					errorObj[field] = error;
-				});
-				setErrors(errorObj);
-				setLoading(false);
-				return;
-			}
-
-			let result;
 			if (isEditing) {
-				result = await ProductService.updateProduct(formData.id, submitData);
+				await ProductService.updateProduct(product.id, payload);
+				alert("Product updated successfully!");
 			} else {
-				result = await ProductService.createProduct(submitData);
+				await ProductService.createProduct(payload);
+				alert("Product created successfully!");
 			}
 
-			if (result.success) {
-				onSuccess(result);
-			} else {
-				throw new Error(result.error || "Operation failed");
-			}
-		} catch (error) {
-			console.error("Form submission error:", error);
-			setErrors({ submit: error.message });
+			onSuccess?.();
+		} catch (err) {
+			console.error("Error saving product:", err);
+			alert("Error saving product: " + err.message);
 		} finally {
-			setLoading(false);
-			setImageUploading(false);
+			setSaving(false);
 		}
 	};
 
+	const handleImageUpload = async (e) => {
+		const files = Array.from(e.target.files);
+		if (files.length === 0) return;
+
+		setUploadingImages(true);
+		const uploadedUrls = [];
+
+		try {
+			for (const file of files) {
+				// Validate file type
+				if (!file.type.startsWith('image/')) {
+					alert('Please upload only image files');
+					continue;
+				}
+
+				// Validate file size (max 5MB)
+				if (file.size > 5 * 1024 * 1024) {
+					alert('File size should be less than 5MB');
+					continue;
+				}
+
+				const formData = new FormData();
+				formData.append('file', file);
+
+				const response = await fetch('/api/upload', {
+					method: 'POST',
+					body: formData,
+				});
+
+				if (!response.ok) {
+					const error = await response.json();
+					throw new Error(error.error || 'Upload failed');
+				}
+
+				const data = await response.json();
+				uploadedUrls.push(data.url);
+			}
+
+			// Update images state with new URLs
+			setForm(prev => ({
+				...prev,
+				images: [...prev.images, ...uploadedUrls]
+			}));
+
+			// Set the first uploaded image as main image if none exists
+			if (!form.main_image_url && uploadedUrls.length > 0) {
+				setForm(prev => ({ ...prev, main_image_url: uploadedUrls[0] }));
+			}
+		} catch (error) {
+			console.error('Error uploading images:', error);
+			alert('Failed to upload images: ' + error.message);
+		} finally {
+			setUploadingImages(false);
+		}
+	};
+
+	const handleSetMainImage = (url) => {
+		setForm(prev => ({ ...prev, main_image_url: url }));
+	};
+
+	const handleRemoveImage = (url) => {
+		setForm(prev => ({
+			...prev,
+			images: prev.images.filter(img => img !== url),
+			main_image_url: prev.main_image_url === url ? (prev.images[0] || "") : prev.main_image_url
+		}));
+	};
+
+	const handleAddKeyFeature = () => {
+		if (!newKeyFeature.trim()) return;
+		setForm(prev => ({
+			...prev,
+			key_features: [...prev.key_features, newKeyFeature.trim()]
+		}));
+		setNewKeyFeature("");
+	};
+
+	const handleRemoveKeyFeature = (index) => {
+		setForm(prev => ({
+			...prev,
+			key_features: prev.key_features.filter((_, i) => i !== index)
+		}));
+	};
+
+	const handleAddTagline = () => {
+		if (!newTagline.trim()) return;
+		setForm(prev => ({
+			...prev,
+			taglines: [...prev.taglines, newTagline.trim()]
+		}));
+		setNewTagline("");
+	};
+
+	const handleRemoveTagline = (index) => {
+		setForm(prev => ({
+			...prev,
+			taglines: prev.taglines.filter((_, i) => i !== index)
+		}));
+	};
+
+	if (loading) {
+		return (
+			<div className="flex items-center justify-center p-8">
+				<div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+				<span className="ml-2">Loading form data...</span>
+			</div>
+		);
+	}
+
 	return (
-		<div className="max-w-4xl mx-auto bg-white rounded-lg shadow-lg">
-			<div className="px-6 py-4 border-b border-gray-200">
+		<div className="max-w-6xl mx-auto p-6 bg-white rounded-lg shadow-lg">
+			<div className="flex justify-between items-center mb-6">
 				<h2 className="text-2xl font-bold text-gray-800">
-					{isEditing ? "Edit Product" : "Add New Product"}
+					{isEditing ? "Edit Product" : "Create New Product"}
 				</h2>
+				<button
+					onClick={onCancel}
+					className="text-gray-500 hover:text-gray-700"
+				>
+					<X size={24} />
+				</button>
 			</div>
 
-			<form onSubmit={handleSubmit} className="p-6 space-y-6">
-				{/* Product ID and Name */}
-				<div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+			<form onSubmit={handleSubmit} className="space-y-6">
+				{/* Basic Product Info */}
+				<div className="grid grid-cols-1 md:grid-cols-2 gap-6">
 					<div>
 						<label className="block text-sm font-medium text-gray-700 mb-2">
-							Product ID *
+							<Hash className="inline w-4 h-4 mr-1" />
+							Product Code
 						</label>
 						<input
 							type="text"
-							value={formData.id}
-							onChange={(e) => handleInputChange("id", e.target.value)}
-							disabled={isEditing}
-							className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-								isEditing ? "bg-gray-100 cursor-not-allowed" : "border-gray-300"
-							} ${errors.id ? "border-red-500" : ""}`}
-							placeholder="e.g., CAR-INT-001"
+							name="product_code"
+							value={form.product_code}
+							onChange={handleInput}
+							className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+							placeholder="PRD-001"
 						/>
-						{errors.id && (
-							<p className="text-red-500 text-sm mt-1">{errors.id}</p>
-						)}
 					</div>
 
 					<div>
 						<label className="block text-sm font-medium text-gray-700 mb-2">
+							<Package className="inline w-4 h-4 mr-1" />
 							Product Name *
 						</label>
 						<input
 							type="text"
-							value={formData.name}
-							onChange={(e) => handleInputChange("name", e.target.value)}
-							className={`w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-								errors.name ? "border-red-500" : ""
-							}`}
+							name="name"
+							value={form.name}
+							onChange={handleInput}
+							required
+							className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
 							placeholder="Enter product name"
 						/>
-						{errors.name && (
-							<p className="text-red-500 text-sm mt-1">{errors.name}</p>
-						)}
 					</div>
 				</div>
 
-				{/* Description */}
+				<div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+					<div>
+						<label className="block text-sm font-medium text-gray-700 mb-2">
+							<Archive className="inline w-4 h-4 mr-1" />
+							Main Category *
+						</label>
+						<select
+							name="main_category_id"
+							value={form.main_category_id}
+							onChange={handleInput}
+							required
+							className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+						>
+							<option value="">Select a category</option>
+							{allCategories.map((category) => (
+								<option key={category.id} value={category.id}>
+									{category.name} {category.is_microfiber ? "(Microfiber)" : "(Liquid)"}
+								</option>
+							))}
+						</select>
+					</div>
+
+					<div>
+						<label className="block text-sm font-medium text-gray-700 mb-2">
+							<Tag className="inline w-4 h-4 mr-1" />
+							Additional Categories
+						</label>
+						<div className="max-h-32 overflow-y-auto border border-gray-300 rounded-lg p-2">
+							{allCategories
+								.filter(c => c.id.toString() !== form.main_category_id)
+								.map((category) => (
+									<label key={category.id} className="flex items-center space-x-2 p-1 hover:bg-gray-50 rounded">
+										<input
+											type="checkbox"
+											checked={form.subcategories.includes(category.id)}
+											onChange={() => handleSubcategoryChange(category.id.toString())}
+											className="rounded text-blue-600 focus:ring-blue-500"
+										/>
+										<span className="text-sm">
+											{category.name} {category.is_microfiber ? "(Microfiber)" : "(Liquid)"}
+										</span>
+									</label>
+								))}
+						</div>
+					</div>
+				</div>
+
 				<div>
 					<label className="block text-sm font-medium text-gray-700 mb-2">
 						Description
 					</label>
 					<textarea
-						value={formData.description}
-						onChange={(e) => handleInputChange("description", e.target.value)}
-						rows={4}
-						className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-						placeholder="Enter detailed product description"
+						name="description"
+						value={form.description}
+						onChange={handleInput}
+						rows={3}
+						className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+						placeholder="Product description..."
 					/>
 				</div>
 
-				{/* Product Images */}
-				<div>
-					<label className="block text-sm font-medium text-gray-700 mb-2">
-						Product Images
-					</label>
+				{/* Image Upload Section */}
+				<div className="border-t pt-6">
+					<h3 className="text-lg font-semibold text-gray-800 mb-4">Product Images</h3>
+					<div className="space-y-4">
+						<div className="flex items-center gap-4">
+							<label className="flex-1">
+								<div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center cursor-pointer hover:border-blue-500 transition-colors">
+									<input
+										type="file"
+										multiple
+										accept="image/*"
+										onChange={handleImageUpload}
+										className="hidden"
+									/>
+									<ImageIcon className="mx-auto h-12 w-12 text-gray-400" />
+									<p className="mt-2 text-sm text-gray-600">
+										Click to upload images
+									</p>
+									<p className="text-xs text-gray-500">
+										PNG, JPG, GIF up to 10MB
+									</p>
+								</div>
+							</label>
+						</div>
 
-					{/* Existing Images */}
-					{formData.image.length > 0 && (
-						<div className="mb-4">
-							<p className="text-sm text-gray-600 mb-2">Current Images:</p>
+						{form.images.length > 0 && (
 							<div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-								{formData.image.map((imagePath, index) => (
-									<div key={index} className="relative">
+								{form.images.map((url, index) => (
+									<div key={url} className="relative group">
 										<img
-											src={getImageUrl(imagePath)}
-											alt={`Product ${index + 1}`}
-											className="w-full h-24 object-cover rounded-md border"
+											src={url}
+											alt={`Product image ${index + 1}`}
+											className={`w-full h-32 object-cover rounded-lg ${
+												form.main_image_url === url ? 'ring-2 ring-blue-500' : ''
+											}`}
 										/>
-										<button
-											type="button"
-											onClick={() => removeImage(index, imagePath)}
-											className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-sm hover:bg-red-600"
-										>
-											×
-										</button>
+										<div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-50 transition-opacity rounded-lg flex items-center justify-center gap-2">
+											<button
+												type="button"
+												onClick={() => handleSetMainImage(url)}
+												className="p-1 bg-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+												title="Set as main image"
+											>
+												<ImageIcon size={16} />
+											</button>
+											<button
+												type="button"
+												onClick={() => handleRemoveImage(url)}
+												className="p-1 bg-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+												title="Remove image"
+											>
+												<Trash2 size={16} />
+											</button>
+										</div>
 									</div>
 								))}
 							</div>
-						</div>
-					)}
-
-					{/* Upload New Images */}
-					<div>
-						<input
-							type="file"
-							multiple
-							accept="image/*"
-							onChange={handleImageChange}
-							className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-						/>
-						<p className="text-sm text-gray-500 mt-1">
-							Select multiple images (JPG, PNG, WebP)
-						</p>
-						{imageUploading && (
-							<p className="text-blue-500 text-sm mt-2">Uploading images...</p>
 						)}
 					</div>
 				</div>
 
-				{/* Key Features */}
-				<div>
-					<label className="block text-sm font-medium text-gray-700 mb-2">
-						Key Features
-					</label>
-					{formData.key_features.map((feature, index) => (
-						<div key={index} className="flex items-center gap-2 mb-2">
+				{/* Key Features Section */}
+				<div className="border-t pt-6">
+					<h3 className="text-lg font-semibold text-gray-800 mb-4">Key Features</h3>
+					<div className="space-y-4">
+						<div className="flex gap-2">
 							<input
 								type="text"
-								value={feature}
-								onChange={(e) => handleKeyFeatureChange(index, e.target.value)}
-								className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-								placeholder={`Feature ${index + 1}`}
+								value={newKeyFeature}
+								onChange={(e) => setNewKeyFeature(e.target.value)}
+								placeholder="Add a key feature"
+								className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+								onKeyPress={(e) => e.key === 'Enter' && handleAddKeyFeature()}
 							/>
-							{formData.key_features.length > 1 && (
-								<button
-									type="button"
-									onClick={() => removeKeyFeature(index)}
-									className="px-3 py-2 bg-red-500 text-white rounded-md hover:bg-red-600 transition"
-								>
-									Remove
-								</button>
-							)}
+							<button
+								type="button"
+								onClick={handleAddKeyFeature}
+								className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+							>
+								Add
+							</button>
 						</div>
-					))}
-					<button
-						type="button"
-						onClick={addKeyFeature}
-						className="mt-2 px-4 py-2 bg-green-500 text-white rounded-md hover:bg-green-600 transition"
-					>
-						Add Feature
-					</button>
-				</div>
-
-				{/* Category and Variant Type */}
-				<div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-					<div>
-						<label className="block text-sm font-medium text-gray-700 mb-2">
-							Category *
-						</label>
-						<select
-							value={formData.category}
-							onChange={(e) => handleInputChange("category", e.target.value)}
-							className={`w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-								errors.category ? "border-red-500" : ""
-							}`}
-						>
-							<option value="">Select Category</option>
-							{categories.map((cat) => (
-								<option key={cat.value} value={cat.value}>
-									{cat.label}
-								</option>
-							))}
-						</select>
-						{errors.category && (
-							<p className="text-red-500 text-sm mt-1">{errors.category}</p>
-						)}
-					</div>
-
-					<div>
-						<label className="block text-sm font-medium text-gray-700 mb-2">
-							Variant Type *
-						</label>
-						<select
-							value={formData.variant_type}
-							onChange={(e) =>
-								handleInputChange("variant_type", e.target.value)
-							}
-							className={`w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-								errors.variant_type ? "border-red-500" : ""
-							}`}
-						>
-							<option value="">Select Variant Type</option>
-							{variantTypes.map((type) => (
-								<option key={type.value} value={type.value}>
-									{type.label}
-								</option>
-							))}
-						</select>
-						{errors.variant_type && (
-							<p className="text-red-500 text-sm mt-1">{errors.variant_type}</p>
-						)}
-					</div>
-				</div>
-
-				{/* Variants */}
-				<div>
-					<label className="block text-sm font-medium text-gray-700 mb-2">
-						Product Variants *
-					</label>
-					{formData.variants.map((variant, index) => (
-						<div
-							key={index}
-							className="border border-gray-200 rounded-lg p-4 mb-4 bg-gray-50"
-						>
-							<div className="flex justify-between items-center mb-3">
-								<h4 className="text-md font-medium text-gray-700">
-									Variant {index + 1}
-								</h4>
-								{formData.variants.length > 1 && (
+						<div className="space-y-2">
+							{form.key_features.map((feature, index) => (
+								<div key={index} className="flex items-center gap-2 bg-gray-50 p-2 rounded">
+									<span className="flex-1">{feature}</span>
 									<button
 										type="button"
-										onClick={() => removeVariant(index)}
-										className="px-3 py-1 bg-red-500 text-white text-sm rounded-md hover:bg-red-600 transition"
+										onClick={() => handleRemoveKeyFeature(index)}
+										className="text-red-600 hover:text-red-800"
 									>
-										Remove
+										<Trash2 size={16} />
 									</button>
-								)}
-							</div>
-
-							<div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-								<div>
-									<label className="block text-sm font-medium text-gray-600 mb-1">
-										{formData.variant_type === "quantity"
-											? "Quantity (e.g., 100ml, 200gm)"
-											: "Size (e.g., 10x10 cm)"}
-									</label>
-									<input
-										type="text"
-										value={variant.value}
-										onChange={(e) =>
-											handleVariantChange(index, "value", e.target.value)
-										}
-										className="w-full px-2 py-1 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500"
-										placeholder={
-											formData.variant_type === "quantity"
-												? "100ml"
-												: "10x10 cm"
-										}
-									/>
 								</div>
-
-								<div>
-									<label className="block text-sm font-medium text-gray-600 mb-1">
-										Price (₹)
-									</label>
-									<input
-										type="number"
-										value={variant.price}
-										onChange={(e) =>
-											handleVariantChange(index, "price", e.target.value)
-										}
-										className="w-full px-2 py-1 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500"
-										placeholder="200"
-										min="0"
-										step="0.01"
-									/>
-								</div>
-
-								<div>
-									<label className="block text-sm font-medium text-gray-600 mb-1">
-										Stock Quantity
-									</label>
-									<input
-										type="number"
-										value={variant.stock}
-										onChange={(e) =>
-											handleVariantChange(index, "stock", e.target.value)
-										}
-										className="w-full px-2 py-1 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500"
-										placeholder="50"
-										min="0"
-									/>
-								</div>
-							</div>
-
-							{/* Additional fields for microfiber cloth */}
-							{formData.category === "microfiber cloth" && (
-								<div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-3">
-									<div>
-										<label className="block text-sm font-medium text-gray-600 mb-1">
-											Color
-										</label>
-										<input
-											type="text"
-											value={variant.color}
-											onChange={(e) =>
-												handleVariantChange(index, "color", e.target.value)
-											}
-											className="w-full px-2 py-1 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500"
-											placeholder="Red, Blue, Green"
-										/>
-									</div>
-
-									<div>
-										<label className="block text-sm font-medium text-gray-600 mb-1">
-											GSM
-										</label>
-										<input
-											type="number"
-											value={variant.gsm}
-											onChange={(e) =>
-												handleVariantChange(index, "gsm", e.target.value)
-											}
-											className="w-full px-2 py-1 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500"
-											placeholder="200"
-											min="0"
-										/>
-									</div>
-								</div>
-							)}
+							))}
 						</div>
-					))}
-
-					<button
-						type="button"
-						onClick={addVariant}
-						className="mt-2 px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 transition"
-					>
-						Add Variant
-					</button>
-					{errors.variants && (
-						<p className="text-red-500 text-sm mt-1">{errors.variants}</p>
-					)}
+					</div>
 				</div>
 
-				{/* Submit Error */}
-				{errors.submit && (
-					<div className="bg-red-50 border border-red-200 rounded-md p-3">
-						<p className="text-red-600 text-sm">{errors.submit}</p>
+				{/* Taglines Section */}
+				<div className="border-t pt-6">
+					<h3 className="text-lg font-semibold text-gray-800 mb-4">Taglines</h3>
+					<div className="space-y-4">
+						<div className="flex gap-2">
+							<input
+								type="text"
+								value={newTagline}
+								onChange={(e) => setNewTagline(e.target.value)}
+								placeholder="Add a tagline"
+								className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+								onKeyPress={(e) => e.key === 'Enter' && handleAddTagline()}
+							/>
+							<button
+								type="button"
+								onClick={handleAddTagline}
+								className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+							>
+								Add
+							</button>
+						</div>
+						<div className="space-y-2">
+							{form.taglines.map((tagline, index) => (
+								<div key={index} className="flex items-center gap-2 bg-gray-50 p-2 rounded">
+									<span className="flex-1">{tagline}</span>
+									<button
+										type="button"
+										onClick={() => handleRemoveTagline(index)}
+										className="text-red-600 hover:text-red-800"
+									>
+										<Trash2 size={16} />
+									</button>
+								</div>
+							))}
+						</div>
 					</div>
-				)}
+				</div>
+
+				{/* Variants Section */}
+				<div className="border-t pt-6">
+					<div className="flex justify-between items-center mb-4">
+						<h3 className="text-lg font-semibold text-gray-800">
+							{form.is_microfiber ? "Microfiber Variants" : "Product Sizes"}
+						</h3>
+						<div className="flex gap-2">
+							{form.variants.length > 0 && (
+								<>
+									<button
+										type="button"
+										onClick={() => setBulkActions({ ...bulkActions, showBulkPrice: !bulkActions.showBulkPrice })}
+										className="px-3 py-1 text-sm bg-orange-100 text-orange-700 rounded hover:bg-orange-200"
+									>
+										<DollarSign className="inline w-4 h-4 mr-1" />
+										Bulk Price
+									</button>
+									<button
+										type="button"
+										onClick={() => setBulkActions({ ...bulkActions, showBulkStock: !bulkActions.showBulkStock })}
+										className="px-3 py-1 text-sm bg-purple-100 text-purple-700 rounded hover:bg-purple-200"
+									>
+										<Package className="inline w-4 h-4 mr-1" />
+										Bulk Stock
+									</button>
+								</>
+							)}
+							<button
+								type="button"
+								onClick={addVariant}
+								className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center gap-2"
+							>
+								<Plus size={16} />
+								Add Variant
+							</button>
+						</div>
+					</div>
+
+					{/* Bulk Actions */}
+					{bulkActions.showBulkPrice && (
+						<div className="mb-4 p-3 bg-orange-50 rounded-lg border">
+							<div className="flex items-center gap-2">
+								<input
+									type="number"
+									step="0.01"
+									value={bulkActions.bulkPrice}
+									onChange={(e) => setBulkActions({ ...bulkActions, bulkPrice: e.target.value })}
+									placeholder="Enter price for all variants"
+									className="flex-1 px-3 py-2 border rounded"
+								/>
+								<button
+									type="button"
+									onClick={applyBulkPrice}
+									className="px-4 py-2 bg-orange-600 text-white rounded hover:bg-orange-700"
+								>
+									Apply to All
+								</button>
+							</div>
+						</div>
+					)}
+
+					{bulkActions.showBulkStock && (
+						<div className="mb-4 p-3 bg-purple-50 rounded-lg border">
+							<div className="flex items-center gap-2">
+								<input
+									type="number"
+									value={bulkActions.bulkStock}
+									onChange={(e) => setBulkActions({ ...bulkActions, bulkStock: e.target.value })}
+									placeholder="Enter stock for all variants"
+									className="flex-1 px-3 py-2 border rounded"
+								/>
+								<button
+									type="button"
+									onClick={applyBulkStock}
+									className="px-4 py-2 bg-purple-600 text-white rounded hover:bg-purple-700"
+								>
+									Apply to All
+								</button>
+							</div>
+						</div>
+					)}
+
+					{/* Variants List */}
+					<div className="space-y-4">
+						{form.variants.map((variant, index) => (
+							<div
+								key={index}
+								className={`p-4 border rounded-lg ${
+									activeVariantIndex === index ? 'border-blue-500 bg-blue-50' : 'border-gray-200'
+								}`}
+								onClick={() => setActiveVariantIndex(index)}
+							>
+								<div className="flex justify-between items-start mb-3">
+									<h4 className="font-medium text-gray-800">
+										Variant {index + 1}
+									</h4>
+									<div className="flex gap-1">
+										<button
+											type="button"
+											onClick={(e) => {
+												e.stopPropagation();
+												duplicateVariant(index);
+											}}
+											className="p-1 text-blue-600 hover:bg-blue-100 rounded"
+											title="Duplicate variant"
+										>
+											<Plus size={16} />
+										</button>
+										<button
+											type="button"
+											onClick={(e) => {
+												e.stopPropagation();
+												removeVariant(index);
+											}}
+											className="p-1 text-red-600 hover:bg-red-100 rounded"
+											title="Remove variant"
+										>
+											<Trash2 size={16} />
+										</button>
+									</div>
+								</div>
+
+								{/* Conditionally render fields based on form.is_microfiber */}
+								{form.is_microfiber ? (
+									<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-3">
+										<div>
+											<label className="block text-xs font-medium text-gray-600 mb-1">
+												GSM Value *
+											</label>
+											<input
+												type="number"
+												step="0.1"
+												value={variant.gsm_value || ''}
+												onChange={(e) => handleVariantChange(index, "gsm_value", e.target.value)}
+												required
+												className="w-full px-2 py-1 text-sm border rounded focus:ring-1 focus:ring-blue-500"
+												placeholder="300"
+											/>
+										</div>
+
+										<div>
+											<label className="block text-xs font-medium text-gray-600 mb-1">
+												<Ruler className="inline w-3 h-3 mr-1" />
+												Size *
+											</label>
+											<select
+												value={variant.size_id || ''}
+												onChange={(e) => handleVariantChange(index, "size_id", e.target.value)}
+												required
+												className="w-full px-2 py-1 text-sm border rounded focus:ring-1 focus:ring-blue-500"
+											>
+												<option value="">Select size</option>
+												{allSizes.map((size) => (
+													<option key={size.id} value={size.id}>
+														{size.size_cm}
+													</option>
+												))}
+											</select>
+										</div>
+
+										<div>
+											<label className="block text-xs font-medium text-gray-600 mb-1">
+												<Palette className="inline w-3 h-3 mr-1" />
+												Color *
+											</label>
+											<select
+												value={variant.color_id || ''}
+												onChange={(e) => handleVariantChange(index, "color_id", e.target.value)}
+												required
+												className="w-full px-2 py-1 text-sm border rounded focus:ring-1 focus:ring-blue-500"
+											>
+												<option value="">Select color</option>
+												{allColors.map((color) => (
+													<option key={color.id} value={color.id}>
+														{color.name}
+													</option>
+												))}
+											</select>
+										</div>
+
+										<div>
+											<label className="block text-xs font-medium text-gray-600 mb-1">
+												<Package className="inline w-3 h-3 mr-1" />
+												Stock
+											</label>
+											<input
+												type="number"
+												value={variant.stock || 0}
+												onChange={(e) => handleVariantChange(index, "stock", parseInt(e.target.value))}
+												className="w-full px-2 py-1 text-sm border rounded focus:ring-1 focus:ring-blue-500"
+												placeholder="0"
+											/>
+										</div>
+
+										<div>
+											<label className="block text-xs font-medium text-gray-600 mb-1">
+												<DollarSign className="inline w-3 h-3 mr-1" />
+												Price
+											</label>
+											<input
+												type="number"
+												step="0.01"
+												value={variant.price || 0}
+												onChange={(e) => handleVariantChange(index, "price", parseFloat(e.target.value))}
+												className="w-full px-2 py-1 text-sm border rounded focus:ring-1 focus:ring-blue-500"
+												placeholder="0.00"
+											/>
+										</div>
+									</div>
+								) : (
+									<div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+										<div>
+											<label className="block text-xs font-medium text-gray-600 mb-1">
+												Quantity *
+											</label>
+											<input
+												type="number"
+												step="0.1"
+												value={variant.quantity || ''}
+												onChange={(e) => handleVariantChange(index, "quantity", e.target.value)}
+												required
+												className="w-full px-2 py-1 text-sm border rounded focus:ring-1 focus:ring-blue-500"
+												placeholder="500"
+											/>
+										</div>
+
+										<div>
+											<label className="block text-xs font-medium text-gray-600 mb-1">
+												Unit *
+											</label>
+											<select
+												value={variant.unit || ''}
+												onChange={(e) => handleVariantChange(index, "unit", e.target.value)}
+												required
+												className="w-full px-2 py-1 text-sm border rounded focus:ring-1 focus:ring-blue-500"
+											>
+												<option value="">Select Unit</option>
+												<option value="ml">ml</option>
+												<option value="L">L</option>
+											</select>
+										</div>
+
+										<div>
+											<label className="block text-xs font-medium text-gray-600 mb-1">
+												<Package className="inline w-3 h-3 mr-1" />
+												Stock *
+											</label>
+											<input
+												type="number"
+												value={variant.stock || 0}
+												onChange={(e) => handleVariantChange(index, "stock", parseInt(e.target.value))}
+												required
+												className="w-full px-2 py-1 text-sm border rounded focus:ring-1 focus:ring-blue-500"
+												placeholder="0"
+												min="0"
+											/>
+										</div>
+
+										<div>
+											<label className="block text-xs font-medium text-gray-600 mb-1">
+												<DollarSign className="inline w-3 h-3 mr-1" />
+												Price *
+											</label>
+											<input
+												type="number"
+												step="0.01"
+												value={variant.price || 0}
+												onChange={(e) => handleVariantChange(index, "price", parseFloat(e.target.value))}
+												required
+												className="w-full px-2 py-1 text-sm border rounded focus:ring-1 focus:ring-blue-500"
+												placeholder="0.00"
+												min="0"
+											/>
+										</div>
+									</div>
+								)}
+							</div>
+						))}
+
+						{form.variants.length === 0 && (
+							<div className="text-center py-8 text-gray-500 border-2 border-dashed border-gray-300 rounded-lg">
+								<Package className="mx-auto w-8 h-8 mb-2 opacity-50" />
+								<p>No variants added yet.</p>
+								<p className="text-sm">Click "Add Variant" to start adding product variants.</p>
+							</div>
+						)}
+					</div>
+				</div>
 
 				{/* Form Actions */}
-				<div className="flex justify-end gap-3 pt-4 border-t border-gray-200">
+				<div className="flex justify-end gap-3 pt-6 border-t">
 					<button
 						type="button"
 						onClick={onCancel}
-						className="px-6 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50 transition"
-						disabled={loading || imageUploading}
+						className="px-6 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50"
 					>
 						Cancel
 					</button>
 					<button
 						type="submit"
-						disabled={loading || imageUploading}
-						className={`px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition ${
-							loading || imageUploading ? "opacity-50 cursor-not-allowed" : ""
-						}`}
+						disabled={saving}
+						className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
 					>
-						{loading || imageUploading ? (
-							<span className="flex items-center gap-2">
-								<div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-								{imageUploading ? "Uploading..." : isEditing ? "Updating..." : "Creating..."}
-							</span>
-						) : isEditing ? (
-							"Update Product"
-						) : (
-							"Create Product"
-						)}
+						{saving && <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>}
+						{saving ? "Saving..." : (isEditing ? "Update Product" : "Create Product")}
 					</button>
 				</div>
 			</form>

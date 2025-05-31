@@ -1,328 +1,239 @@
+// /app/api/products/route.js
 import { NextResponse } from "next/server";
 import { supabase } from "@/lib/supabaseClient";
 
-// GET - Fetch all products or a specific product
+// Utility to handle errors consistently
+function errorResponse(message, status = 500) {
+	return NextResponse.json({ error: message }, { status });
+}
+
+// GET - Fetch all products or a specific product with related data
 export async function GET(request) {
 	try {
 		const { searchParams } = new URL(request.url);
 		const id = searchParams.get("id");
-		const category = searchParams.get("category");
-		const limit = searchParams.get("limit");
 
-		let query = supabase.from("products").select("*");
-
-		// If specific product ID is requested
 		if (id) {
-			const { data, error } = await query.eq("id", id).single();
+			// Get single product with all related data
+			const { data: product, error: productError } = await supabase
+				.from("products")
+				.select(`
+					*,
+					main_category:categories!products_main_category_id_fkey(*),
+					product_subcategories(
+						category:categories!product_subcategories_category_id_fkey(id)
+					)
+				`)
+				.eq("id", id)
+				.single();
 
-			if (error) {
-				if (error.code === "PGRST116") {
-					return NextResponse.json(
-						{ error: "Product not found" },
-						{ status: 404 },
-					);
-				}
-				throw new Error(error.message);
-			}
-
-			return NextResponse.json({
-				success: true,
-				product: data,
-			});
+			if (productError) return errorResponse(productError.message);
+			return NextResponse.json({ success: true, product });
 		}
 
-		// Filter by category if provided
-		if (category) {
-			query = query.eq("category", category);
-		}
+		// Get all products with basic info
+		const { data: products, error } = await supabase
+			.from("products")
+			.select(`
+				*,
+				main_category:categories!products_main_category_id_fkey(*),
+				product_subcategories(
+					category:categories!product_subcategories_category_id_fkey(id)
+				)
+			`);
 
-		// Apply limit if provided
-		if (limit) {
-			query = query.limit(parseInt(limit));
-		}
-
-		// Order by created_at descending
-		query = query.order("created_at", { ascending: false });
-
-		const { data, error } = await query;
-
-		if (error) {
-			throw new Error(error.message);
-		}
-
-		return NextResponse.json({
-			success: true,
-			products: data || [],
-			count: data?.length || 0,
-		});
+		if (error) return errorResponse(error.message);
+		return NextResponse.json({ success: true, products });
 	} catch (error) {
-		console.error("Error fetching products:", error);
-		return NextResponse.json(
-			{ error: error.message || "Failed to fetch products" },
-			{ status: 500 },
-		);
+		return errorResponse(error.message);
 	}
 }
 
 // POST - Create a new product
 export async function POST(request) {
 	try {
-		const productData = await request.json();
+		const {
+			product_code,
+			name,
+			description,
+			main_category_id,
+			is_microfiber,
+			main_image_url,
+			images,
+			variants,
+			key_features,
+			taglines,
+			subcategories
+		} = await request.json();
 
-		// Validate required fields
-		const requiredFields = [
-			"id",
-			"name",
-			"category",
-			"variant_type",
-			"variants",
-		];
-		const missingFields = requiredFields.filter((field) => !productData[field]);
-
-		if (missingFields.length > 0) {
-			return NextResponse.json(
-				{ error: `Missing required fields: ${missingFields.join(", ")}` },
-				{ status: 400 },
-			);
-		}
-
-		// Validate category
-		const validCategories = [
-			"car interior",
-			"car exterior",
-			"microfiber cloth",
-		];
-		if (!validCategories.includes(productData.category)) {
-			return NextResponse.json(
-				{
-					error: `Invalid category. Must be one of: ${validCategories.join(", ")}`,
-				},
-				{ status: 400 },
-			);
-		}
-
-		// Validate variant_type
-		const validVariantTypes = ["quantity", "size"];
-		if (!validVariantTypes.includes(productData.variant_type)) {
-			return NextResponse.json(
-				{
-					error: `Invalid variant_type. Must be one of: ${validVariantTypes.join(", ")}`,
-				},
-				{ status: 400 },
-			);
-		}
-
-		// Validate variants structure
-		if (
-			!Array.isArray(productData.variants) ||
-			productData.variants.length === 0
-		) {
-			return NextResponse.json(
-				{ error: "Variants must be a non-empty array" },
-				{ status: 400 },
-			);
-		}
-
-		// Validate each variant
-		for (const variant of productData.variants) {
-			if (!variant.value || !variant.price) {
-				return NextResponse.json(
-					{ error: "Each variant must have value and price" },
-					{ status: 400 },
-				);
-			}
-
-			// For microfiber products, validate additional fields
-			if (productData.category === "microfiber cloth") {
-				if (!variant.color || !variant.gsm) {
-					return NextResponse.json(
-						{
-							error:
-								"Microfiber products must have color and GSM for each variant",
-						},
-						{ status: 400 },
-					);
-				}
-			}
-		}
-
-		// Check if product ID already exists
-		const { data: existingProduct } = await supabase
+		// Start a transaction
+		const { data: product, error: productError } = await supabase
 			.from("products")
-			.select("id")
-			.eq("id", productData.id)
+			.insert([{
+				product_code,
+				name,
+				description,
+				main_category_id,
+				is_microfiber,
+				main_image_url,
+				images: images || [],
+				variants: variants?.map(variant => ({
+					...variant,
+					stock: parseInt(variant.stock) || 0,
+					price: parseFloat(variant.price) || 0
+				})) || [],
+				key_features: key_features || [],
+				taglines: taglines || []
+			}])
+			.select()
 			.single();
 
-		if (existingProduct) {
-			return NextResponse.json(
-				{ error: "Product with this ID already exists" },
-				{ status: 409 },
-			);
+		if (productError) return errorResponse(productError.message);
+
+		// Insert subcategories
+		if (subcategories?.length > 0) {
+			const subcategoryRecords = subcategories.map(category_id => ({
+				product_id: product.id,
+				category_id
+			}));
+
+			const { error: subcategoryError } = await supabase
+				.from("product_subcategories")
+				.insert(subcategoryRecords);
+
+			if (subcategoryError) return errorResponse(subcategoryError.message);
 		}
 
-		// Prepare the product object for insertion
-		const product = {
-			id: productData.id,
-			name: productData.name,
-			description: productData.description || "",
-			key_features: productData.key_features || [],
-			category: productData.category,
-			variant_type: productData.variant_type,
-			variants: productData.variants,
-			image: productData.image || [],
-		};
+		// Insert variants
+		if (variants?.length > 0) {
+			const variantRecords = variants.map(variant => ({
+				product_id: product.id,
+				// Determine and add variant_type based on is_microfiber flag
+				variant_type: is_microfiber ? 'microfiber' : 'liquid',
+				...variant,
+				stock: parseInt(variant.stock) || 0,
+				price: parseFloat(variant.price) || 0
+			}));
 
-		// Insert the product into the database
-		const { data, error } = await supabase
-			.from("products")
-			.insert([product])
-			.select();
+			// When storing in JSONB, no need to insert into a separate table
+			// const { error: variantError } = await supabase
+			// 	.from("product_variants")
+			// 	.insert(variantRecords);
 
-		if (error) {
-			console.error("Supabase insert error:", error);
-			throw new Error(error.message);
+			// if (variantError) return errorResponse(variantError.message);
 		}
 
 		return NextResponse.json(
-			{
-				success: true,
-				message: "Product created successfully",
-				product: data[0],
-			},
-			{ status: 201 },
+			{ success: true, product },
+			{ status: 201 }
 		);
 	} catch (error) {
-		console.error("Error creating product:", error);
-		return NextResponse.json(
-			{ error: error.message || "Failed to create product" },
-			{ status: 500 },
-		);
+		return errorResponse(error.message);
 	}
 }
 
-// PUT - Update an existing product
+// PUT - Update a product
 export async function PUT(request) {
 	try {
-		const { id, ...updateData } = await request.json();
+		const {
+			id,
+			product_code,
+			name,
+			description,
+			main_category_id,
+			is_microfiber,
+			main_image_url,
+			images,
+			variants,
+			key_features,
+			taglines,
+			subcategories
+		} = await request.json();
 
-		if (!id) {
-			return NextResponse.json(
-				{ error: "Product ID is required" },
-				{ status: 400 },
-			);
-		}
-
-		// Check if product exists
-		const { data: existingProduct, error: fetchError } = await supabase
+		// Update product
+		const { error: productError } = await supabase
 			.from("products")
-			.select("*")
-			.eq("id", id)
-			.single();
+			.update({
+				product_code,
+				name,
+				description,
+				main_category_id,
+				is_microfiber,
+				main_image_url,
+				images: images || [],
+				variants: variants?.map(variant => ({
+					...variant,
+					stock: parseInt(variant.stock) || 0,
+					price: parseFloat(variant.price) || 0
+				})) || [],
+				key_features: key_features || [],
+				taglines: taglines || [],
+				updated_at: new Date().toISOString()
+			})
+			.eq("id", id);
 
-		if (fetchError) {
-			if (fetchError.code === "PGRST116") {
-				return NextResponse.json(
-					{ error: "Product not found" },
-					{ status: 404 },
-				);
-			}
-			throw new Error(fetchError.message);
-		}
+		if (productError) return errorResponse(productError.message);
 
-		// Validate category if provided
-		if (updateData.category) {
-			const validCategories = [
-				"car interior",
-				"car exterior",
-				"microfiber cloth",
-			];
-			if (!validCategories.includes(updateData.category)) {
-				return NextResponse.json(
-					{
-						error: `Invalid category. Must be one of: ${validCategories.join(", ")}`,
-					},
-					{ status: 400 },
-				);
-			}
-		}
+		// Update subcategories
+		if (subcategories) {
+			// Delete existing subcategories
+			await supabase
+				.from("product_subcategories")
+				.delete()
+				.eq("product_id", id);
 
-		// Validate variant_type if provided
-		if (updateData.variant_type) {
-			const validVariantTypes = ["quantity", "size"];
-			if (!validVariantTypes.includes(updateData.variant_type)) {
-				return NextResponse.json(
-					{
-						error: `Invalid variant_type. Must be one of: ${validVariantTypes.join(", ")}`,
-					},
-					{ status: 400 },
-				);
-			}
-		}
+			// Insert new subcategories
+			if (subcategories.length > 0) {
+				const subcategoryRecords = subcategories.map(category_id => ({
+					product_id: id,
+					category_id
+				}));
 
-		// Validate variants if provided
-		if (updateData.variants) {
-			if (
-				!Array.isArray(updateData.variants) ||
-				updateData.variants.length === 0
-			) {
-				return NextResponse.json(
-					{ error: "Variants must be a non-empty array" },
-					{ status: 400 },
-				);
-			}
+				const { error: subcategoryError } = await supabase
+					.from("product_subcategories")
+					.insert(subcategoryRecords);
 
-			// Validate each variant
-			for (const variant of updateData.variants) {
-				if (!variant.value || !variant.price) {
-					return NextResponse.json(
-						{ error: "Each variant must have value and price" },
-						{ status: 400 },
-					);
-				}
+				if (subcategoryError) return errorResponse(subcategoryError.message);
 			}
 		}
 
-		// Prepare update object (only include provided fields)
-		const productUpdate = {};
-		const allowedFields = [
-			"name",
-			"description",
-			"key_features",
-			"category",
-			"variant_type",
-			"variants",
-			"image",
-		];
+		// Update variants
+		if (variants) {
+			// When storing in JSONB, no need to delete from a separate table first
+			// await supabase
+			// 	.from("product_variants")
+			// 	.delete()
+			// 	.eq("product_id", id);
 
-		allowedFields.forEach((field) => {
-			if (updateData.hasOwnProperty(field)) {
-				productUpdate[field] = updateData[field];
-			}
-		});
+			// Insert new variants (into the JSONB column of the products table)
+			const updatedVariants = variants.map(variant => ({
+				// Determine and add variant_type based on is_microfiber flag
+				variant_type: is_microfiber ? 'microfiber' : 'liquid',
+				...variant,
+				stock: parseInt(variant.stock) || 0,
+				price: parseFloat(variant.price) || 0
+			}));
 
-		// Update the product
-		const { data, error } = await supabase
-			.from("products")
-			.update(productUpdate)
-			.eq("id", id)
-			.select();
+			// The update happens in the product update query above, saving to the variants JSONB column
 
-		if (error) {
-			console.error("Supabase update error:", error);
-			throw new Error(error.message);
+			// if (variants.length > 0) {
+			// 	const variantRecords = variants.map(variant => ({
+			// 		product_id: id,
+			// 		variant_type: is_microfiber ? 'microfiber' : 'liquid',
+			// 		...variant
+			// 	}));
+
+			// 	const { error: variantError } = await supabase
+			// 		.from("product_variants")
+			// 		.insert(variantRecords);
+
+			// 	if (variantError) return errorResponse(variantError.message);
+			// }
 		}
 
-		return NextResponse.json({
-			success: true,
-			message: "Product updated successfully",
-			product: data[0],
-		});
+		return NextResponse.json({ success: true });
 	} catch (error) {
-		console.error("Error updating product:", error);
-		return NextResponse.json(
-			{ error: error.message || "Failed to update product" },
-			{ status: 500 },
-		);
+		return errorResponse(error.message);
 	}
 }
 
@@ -331,48 +242,17 @@ export async function DELETE(request) {
 	try {
 		const { searchParams } = new URL(request.url);
 		const id = searchParams.get("id");
+		if (!id) return errorResponse("ID is required", 400);
 
-		if (!id) {
-			return NextResponse.json(
-				{ error: "Product ID is required" },
-				{ status: 400 },
-			);
-		}
-
-		// Check if product exists
-		const { data: existingProduct, error: fetchError } = await supabase
+		const { error } = await supabase
 			.from("products")
-			.select("id")
-			.eq("id", id)
-			.single();
+			.delete()
+			.eq("id", id);
 
-		if (fetchError) {
-			if (fetchError.code === "PGRST116") {
-				return NextResponse.json(
-					{ error: "Product not found" },
-					{ status: 404 },
-				);
-			}
-			throw new Error(fetchError.message);
-		}
+		if (error) return errorResponse(error.message);
 
-		// Delete the product
-		const { error } = await supabase.from("products").delete().eq("id", id);
-
-		if (error) {
-			console.error("Supabase delete error:", error);
-			throw new Error(error.message);
-		}
-
-		return NextResponse.json({
-			success: true,
-			message: "Product deleted successfully",
-		});
+		return NextResponse.json({ success: true });
 	} catch (error) {
-		console.error("Error deleting product:", error);
-		return NextResponse.json(
-			{ error: error.message || "Failed to delete product" },
-			{ status: 500 },
-		);
+		return errorResponse(error.message);
 	}
 }

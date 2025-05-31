@@ -1,300 +1,418 @@
-// lib/services/productService.js
+// /lib/services/productService.js
 
-const API_BASE_URL = '/api/products';
+const API_BASE_URL = "/api/products"
+const SIZES_API = "/api/products/size"
+const COLORS_API = "/api/products/colors"
+const CATEGORIES_API = "/api/products/category"
 
-/**
- * Product Service - Centralized functions for product operations
- */
 export class ProductService {
+  // ============= PRODUCTS =============
 
-  /**
-   * Fetch all products or filter by category
-   * @param {Object} options - Query options
-   * @param {string} options.category - Filter by category
-   * @param {number} options.limit - Limit number of results
-   * @returns {Promise<Object>} API response
-   */
-  static async getProducts(options = {}) {
+  // Fetch all products or by product_code
+  static async getProducts({ code, limit } = {}) {
+    const params = new URLSearchParams()
+    if (code) params.append("code", code)
+    if (limit) params.append("limit", limit)
+    const url = params.toString() ? `${API_BASE_URL}?${params}` : API_BASE_URL
+
     try {
-      const params = new URLSearchParams();
+      const res = await fetch(url)
 
-      if (options.category) params.append('category', options.category);
-      if (options.limit) params.append('limit', options.limit.toString());
-
-      const url = params.toString() ? `${API_BASE_URL}?${params}` : API_BASE_URL;
-
-      const response = await fetch(url, {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      });
-
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || 'Failed to fetch products');
+      if (!res.ok) {
+        const errorText = await res.text()
+        try {
+          const errorJson = JSON.parse(errorText)
+          throw new Error(errorJson.error || `API error: ${res.status}`)
+        } catch (e) {
+          throw new Error(`API error: ${errorText || res.statusText || res.status}`)
+        }
       }
 
-      return await response.json();
+      const json = await res.json()
+      return json
     } catch (error) {
-      console.error('Error in getProducts:', error);
-      throw error;
+      console.error("Error in getProducts:", error)
+      throw error
     }
   }
 
-  /**
-   * Fetch a single product by ID
-   * @param {string} id - Product ID
-   * @returns {Promise<Object>} API response
-   */
-  static async getProduct(id) {
+  static async getProduct(code) {
+    return this.getProducts({ code })
+  }
+
+  static async createProduct(data) {
     try {
-      if (!id) {
-        throw new Error('Product ID is required');
+      const res = await fetch(API_BASE_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      })
+
+      if (!res.ok) {
+        const errorText = await res.text()
+        try {
+          const errorJson = JSON.parse(errorText)
+          throw new Error(errorJson.error || `API error: ${res.status}`)
+        } catch (e) {
+          throw new Error(`API error: ${errorText || res.statusText || res.status}`)
+        }
       }
 
-      const response = await fetch(`${API_BASE_URL}?id=${encodeURIComponent(id)}`, {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      });
-
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || 'Failed to fetch product');
-      }
-
-      return await response.json();
+      const json = await res.json()
+      return json
     } catch (error) {
-      console.error('Error in getProduct:', error);
-      throw error;
+      console.error("Error in createProduct:", error)
+      throw error
     }
   }
 
-  /**
-   * Create a new product
-   * @param {Object} productData - Product data
-   * @returns {Promise<Object>} API response
-   */
-  static async createProduct(productData) {
-    try {
-      // Validate required fields client-side
-      const requiredFields = ['id', 'name', 'category', 'variant_type', 'variants'];
-      const missingFields = requiredFields.filter(field => !productData[field]);
-
-      if (missingFields.length > 0) {
-        throw new Error(`Missing required fields: ${missingFields.join(', ')}`);
-      }
-
-      const response = await fetch(API_BASE_URL, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(productData),
-      });
-
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || 'Failed to create product');
-      }
-
-      return await response.json();
-    } catch (error) {
-      console.error('Error in createProduct:', error);
-      throw error;
-    }
-  }
-
-  /**
-   * Update an existing product
-   * @param {string} id - Product ID
-   * @param {Object} updateData - Data to update
-   * @returns {Promise<Object>} API response
-   */
   static async updateProduct(id, updateData) {
     try {
-      if (!id) {
-        throw new Error('Product ID is required');
-      }
-
-      const response = await fetch(API_BASE_URL, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+      const res = await fetch(API_BASE_URL, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ id, ...updateData }),
-      });
+      })
 
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || 'Failed to update product');
+      if (!res.ok) {
+        const errorText = await res.text()
+        try {
+          const errorJson = JSON.parse(errorText)
+          throw new Error(errorJson.error || `API error: ${res.status}`)
+        } catch (e) {
+          throw new Error(`API error: ${errorText || res.statusText || res.status}`)
+        }
       }
 
-      return await response.json();
+      const json = await res.json()
+      return json
     } catch (error) {
-      console.error('Error in updateProduct:', error);
-      throw error;
+      console.error("Error in updateProduct:", error)
+      throw error
     }
   }
 
-  /**
-   * Delete a product
-   * @param {string} id - Product ID
-   * @returns {Promise<Object>} API response
-   */
   static async deleteProduct(id) {
     try {
-      if (!id) {
-        throw new Error('Product ID is required');
+      const res = await fetch(`${API_BASE_URL}?id=${id}`, {
+        method: "DELETE",
+      })
+
+      if (!res.ok) {
+        const errorText = await res.text()
+        try {
+          const errorJson = JSON.parse(errorText)
+          throw new Error(errorJson.error || `API error: ${res.status}`)
+        } catch (e) {
+          throw new Error(`API error: ${errorText || res.statusText || res.status}`)
+        }
       }
 
-      const response = await fetch(`${API_BASE_URL}?id=${encodeURIComponent(id)}`, {
-        method: 'DELETE',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      });
-
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || 'Failed to delete product');
-      }
-
-      return await response.json();
+      const json = await res.json()
+      return json
     } catch (error) {
-      console.error('Error in deleteProduct:', error);
-      throw error;
+      console.error("Error in deleteProduct:", error)
+      throw error
     }
   }
 
-  /**
-   * Get products by category
-   * @param {string} category - Product category
-   * @returns {Promise<Object>} API response
-   */
-  static async getProductsByCategory(category) {
-    return this.getProducts({ category });
-  }
+  // ============= CATEGORIES =============
 
-  /**
-   * Search products by name (client-side filtering for now)
-   * @param {string} searchTerm - Search term
-   * @returns {Promise<Object>} Filtered products
-   */
-  static async searchProducts(searchTerm) {
+  static async getCategories() {
     try {
-      const response = await this.getProducts();
+      const res = await fetch(CATEGORIES_API)
 
-      if (!response.success) {
-        throw new Error('Failed to fetch products for search');
+      if (!res.ok) {
+        const errorText = await res.text()
+        try {
+          const errorJson = JSON.parse(errorText)
+          throw new Error(errorJson.error || `API error: ${res.status}`)
+        } catch (e) {
+          throw new Error(`API error: ${errorText || res.statusText || res.status}`)
+        }
       }
 
-      const filteredProducts = response.products.filter(product =>
-        product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        product.description?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        product.category.toLowerCase().includes(searchTerm.toLowerCase())
-      );
-
-      return {
-        success: true,
-        products: filteredProducts,
-        count: filteredProducts.length,
-      };
+      const json = await res.json()
+      return json
     } catch (error) {
-      console.error('Error in searchProducts:', error);
-      throw error;
+      console.error("Error in getCategories:", error)
+      throw error
     }
   }
 
-  /**
-   * Validate product data structure
-   * @param {Object} productData - Product data to validate
-   * @returns {Object} Validation result
-   */
-  static validateProductData(productData) {
-    const errors = [];
+  static async createCategory(data) {
+    try {
+      const res = await fetch(CATEGORIES_API, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      })
 
-    // Required fields
-    const requiredFields = ['id', 'name', 'category', 'variant_type', 'variants'];
-    requiredFields.forEach(field => {
-      if (!productData[field]) {
-        errors.push(`${field} is required`);
+      if (!res.ok) {
+        const errorText = await res.text()
+        try {
+          const errorJson = JSON.parse(errorText)
+          throw new Error(errorJson.error || `API error: ${res.status}`)
+        } catch (e) {
+          throw new Error(`API error: ${errorText || res.statusText || res.status}`)
+        }
       }
-    });
 
-    // Category validation
-    const validCategories = ['car interior', 'car exterior', 'microfiber cloth'];
-    if (productData.category && !validCategories.includes(productData.category)) {
-      errors.push(`Category must be one of: ${validCategories.join(', ')}`);
+      const json = await res.json()
+      return json
+    } catch (error) {
+      console.error("Error in createCategory:", error)
+      throw error
     }
+  }
 
-    // Variant type validation
-    const validVariantTypes = ['quantity', 'size'];
-    if (productData.variant_type && !validVariantTypes.includes(productData.variant_type)) {
-      errors.push(`Variant type must be one of: ${validVariantTypes.join(', ')}`);
-    }
+  static async updateCategory(id, data) {
+    try {
+      const res = await fetch(CATEGORIES_API, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id, ...data }),
+      })
 
-    // Variants validation
-    if (productData.variants) {
-      if (!Array.isArray(productData.variants) || productData.variants.length === 0) {
-        errors.push('Variants must be a non-empty array');
-      } else {
-        productData.variants.forEach((variant, index) => {
-          if (!variant.value) {
-            errors.push(`Variant ${index + 1}: value is required`);
-          }
-          if (!variant.price) {
-            errors.push(`Variant ${index + 1}: price is required`);
-          }
-          if (productData.category === 'microfiber cloth') {
-            if (!variant.color) {
-              errors.push(`Variant ${index + 1}: color is required for microfiber products`);
-            }
-            if (!variant.gsm) {
-              errors.push(`Variant ${index + 1}: GSM is required for microfiber products`);
-            }
-          }
-        });
+      if (!res.ok) {
+        const errorText = await res.text()
+        try {
+          const errorJson = JSON.parse(errorText)
+          throw new Error(errorJson.error || `API error: ${res.status}`)
+        } catch (e) {
+          throw new Error(`API error: ${errorText || res.statusText || res.status}`)
+        }
       }
+
+      const json = await res.json()
+      return json
+    } catch (error) {
+      console.error("Error in updateCategory:", error)
+      throw error
     }
-
-    return {
-      isValid: errors.length === 0,
-      errors,
-    };
   }
 
-  /**
-   * Format product data for display
-   * @param {Object} product - Product object
-   * @returns {Object} Formatted product data
-   */
-  static formatProductForDisplay(product) {
-    return {
-      ...product,
-      formattedPrice: product.variants?.length > 0
-        ? `₹${Math.min(...product.variants.map(v => v.price))} - ₹${Math.max(...product.variants.map(v => v.price))}`
-        : 'Price not available',
-      totalStock: product.variants?.reduce((total, variant) => total + (variant.stock || 0), 0) || 0,
-      availableVariants: product.variants?.filter(v => (v.stock || 0) > 0).length || 0,
-    };
-  }
-}
+  static async deleteCategory(id) {
+    try {
+      const res = await fetch(`${CATEGORIES_API}?id=${id}`, {
+        method: "DELETE",
+      })
 
-/**
- * Custom hook for product operations (if using React)
- */
-export function useProductService() {
-  return {
-    getProducts: ProductService.getProducts,
-    getProduct: ProductService.getProduct,
-    createProduct: ProductService.createProduct,
-    updateProduct: ProductService.updateProduct,
-    deleteProduct: ProductService.deleteProduct,
-    searchProducts: ProductService.searchProducts,
-    validateProductData: ProductService.validateProductData,
-    formatProductForDisplay: ProductService.formatProductForDisplay,
-  };
+      if (!res.ok) {
+        const errorText = await res.text()
+        try {
+          const errorJson = JSON.parse(errorText)
+          throw new Error(errorJson.error || `API error: ${res.status}`)
+        } catch (e) {
+          throw new Error(`API error: ${errorText || res.statusText || res.status}`)
+        }
+      }
+
+      const json = await res.json()
+      return json
+    } catch (error) {
+      console.error("Error in deleteCategory:", error)
+      throw error
+    }
+  }
+
+  // ============= SIZES =============
+
+  static async getSizes() {
+    try {
+      const res = await fetch(SIZES_API)
+
+      if (!res.ok) {
+        const errorText = await res.text()
+        try {
+          const errorJson = JSON.parse(errorText)
+          throw new Error(errorJson.error || `API error: ${res.status}`)
+        } catch (e) {
+          throw new Error(`API error: ${errorText || res.statusText || res.status}`)
+        }
+      }
+
+      const json = await res.json()
+      return json
+    } catch (error) {
+      console.error("Error in getSizes:", error)
+      throw error
+    }
+  }
+
+  static async createSize(data) {
+    try {
+      const res = await fetch(SIZES_API, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      })
+
+      if (!res.ok) {
+        const errorText = await res.text()
+        try {
+          const errorJson = JSON.parse(errorText)
+          throw new Error(errorJson.error || `API error: ${res.status}`)
+        } catch (e) {
+          throw new Error(`API error: ${errorText || res.statusText || res.status}`)
+        }
+      }
+
+      const json = await res.json()
+      return json
+    } catch (error) {
+      console.error("Error in createSize:", error)
+      throw error
+    }
+  }
+
+  static async updateSize(id, data) {
+    try {
+      const res = await fetch(SIZES_API, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id, ...data }),
+      })
+
+      if (!res.ok) {
+        const errorText = await res.text()
+        try {
+          const errorJson = JSON.parse(errorText)
+          throw new Error(errorJson.error || `API error: ${res.status}`)
+        } catch (e) {
+          throw new Error(`API error: ${errorText || res.statusText || res.status}`)
+        }
+      }
+
+      const json = await res.json()
+      return json
+    } catch (error) {
+      console.error("Error in updateSize:", error)
+      throw error
+    }
+  }
+
+  static async deleteSize(id) {
+    try {
+      const res = await fetch(`${SIZES_API}?id=${id}`, {
+        method: "DELETE",
+      })
+
+      if (!res.ok) {
+        const errorText = await res.text()
+        try {
+          const errorJson = JSON.parse(errorText)
+          throw new Error(errorJson.error || `API error: ${res.status}`)
+        } catch (e) {
+          throw new Error(`API error: ${errorText || res.statusText || res.status}`)
+        }
+      }
+
+      const json = await res.json()
+      return json
+    } catch (error) {
+      console.error("Error in deleteSize:", error)
+      throw error
+    }
+  }
+
+  // ============= COLORS =============
+
+  static async getColors() {
+    try {
+      const res = await fetch(COLORS_API)
+
+      if (!res.ok) {
+        const errorText = await res.text()
+        try {
+          const errorJson = JSON.parse(errorText)
+          throw new Error(errorJson.error || `API error: ${res.status}`)
+        } catch (e) {
+          throw new Error(`API error: ${errorText || res.statusText || res.status}`)
+        }
+      }
+
+      const json = await res.json()
+      return json
+    } catch (error) {
+      console.error("Error in getColors:", error)
+      throw error
+    }
+  }
+
+  static async createColor(data) {
+    try {
+      const res = await fetch(COLORS_API, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      })
+
+      if (!res.ok) {
+        const errorText = await res.text()
+        try {
+          const errorJson = JSON.parse(errorText)
+          throw new Error(errorJson.error || `API error: ${res.status}`)
+        } catch (e) {
+          throw new Error(`API error: ${errorText || res.statusText || res.status}`)
+        }
+      }
+
+      const json = await res.json()
+      return json
+    } catch (error) {
+      console.error("Error in createColor:", error)
+      throw error
+    }
+  }
+
+  static async updateColor(id, data) {
+    try {
+      const res = await fetch(COLORS_API, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id, ...data }),
+      })
+
+      if (!res.ok) {
+        const errorText = await res.text()
+        try {
+          const errorJson = JSON.parse(errorText)
+          throw new Error(errorJson.error || `API error: ${res.status}`)
+        } catch (e) {
+          throw new Error(`API error: ${errorText || res.statusText || res.status}`)
+        }
+      }
+
+      const json = await res.json()
+      return json
+    } catch (error) {
+      console.error("Error in updateColor:", error)
+      throw error
+    }
+  }
+
+  static async deleteColor(id) {
+    try {
+      const res = await fetch(`${COLORS_API}?id=${id}`, {
+        method: "DELETE",
+      })
+
+      if (!res.ok) {
+        const errorText = await res.text()
+        try {
+          const errorJson = JSON.parse(errorText)
+          throw new Error(errorJson.error || `API error: ${res.status}`)
+        } catch (e) {
+          throw new Error(`API error: ${errorText || res.statusText || res.status}`)
+        }
+      }
+
+      const json = await res.json()
+      return json
+    } catch (error) {
+      console.error("Error in deleteColor:", error)
+      throw error
+    }
+  }
 }

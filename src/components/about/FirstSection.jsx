@@ -4,7 +4,7 @@ import Image from 'next/image';
 
 export default function FirstSection() {
   return (
-    <section className="w-full flex justify-center px-4 md:px-16 lg:px-4 py-16">
+    <section className="w-full flex justify-center px-4 md:px-16 lg:px-10 xl:px-4 py-16">
       <div className="max-w-[1240px] w-full text-left relative">
         
         {/* Desktop Heading */}
@@ -24,7 +24,7 @@ export default function FirstSection() {
 
           {/* Star icon for desktop */}
           <Image
-            src="/assets/purple_shine.svg"
+            src="/assets/about/svg/purple_shine.svg"
             alt="Star Icon"
             width={28}
             height={38}

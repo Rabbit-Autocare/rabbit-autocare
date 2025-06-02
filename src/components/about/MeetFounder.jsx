@@ -4,7 +4,7 @@ import Image from 'next/image';
 
 export default function MeetFounder() {
   return (
-    <section className="w-full flex justify-center px-4 md:px-16 lg:px-4 md:py-14 lg:py-16">
+    <section className="w-full flex justify-center px-4 md:px-16 lg:px-8 xl:px-4 md:pb-16 lg:py-16">
       <div className="max-w-[1240px] w-full bg-[#f5f5f5] rounded-[50px] p-6 md:p-12 lg:p-16">
         <div className="flex flex-col lg:flex-row items-center justify-between gap-12">
 
@@ -38,7 +38,7 @@ export default function MeetFounder() {
           {/* Right: Founder Image */}
           <div className="flex-1 flex justify-center">
             <Image
-              src="/assets/images/founder.png" // Replace with your actual path
+              src="/assets/about/img/founder.png" // Replace with your actual path
               alt="Founder"
               width={400}
               height={400}

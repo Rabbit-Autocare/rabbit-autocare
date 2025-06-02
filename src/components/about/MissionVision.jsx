@@ -4,7 +4,7 @@ import Image from 'next/image'
 
 export default function MissionVision() {
   return (
-    <section className="w-full flex justify-center px-2 py-10 lg:py-16">
+    <section className="w-full flex justify-center px-2  lg:px-10 xl:px-2 py-10 lg:py-16">
       <div className="max-w-[1240px] w-full space-y-20 md:space-y-32">
 
         {/* Mission */}
@@ -15,7 +15,7 @@ export default function MissionVision() {
             <h2 className="text-[50px] md:text-[56px] px-4 md:px-16 font-bold">
               <span className="bg-gradient-to-r from-[#601E8D] tracking-wide to-black bg-clip-text text-transparent">Mission</span>
             </h2>
-            <Image src="/assets/purple_shine.svg" alt="Star Icon" width={28} height={38} className='-mb-16 -ml-2 ' />
+            <Image src="/assets/about/svg/purple_shine.svg" alt="Star Icon" width={28} height={38} className='-mb-16 -ml-2 ' />
           </div>
 
           {/* Image with layered boxes */}
@@ -24,7 +24,7 @@ export default function MissionVision() {
             <div className="absolute md:top-5 md:right-7 right-5 top-5 w-full h-full bg-gradient-to-br from-[#601E8D]/10 to-[#601E8D]/10 rounded-[20px] z-0" />
             <div className="relative z-10 rounded-[20px] w-full h-full overflow-hidden">
               <Image
-                src="/assets/images/mission.png"
+                src="/assets/about/img/mission.png"
                 alt="Car Interior"
                 fill
                 style={{ objectFit: 'cover' }}
@@ -35,7 +35,7 @@ export default function MissionVision() {
           {/* Star below image, aligned to right */}
           <div className="flex justify-end pr-4">
             <Image
-              src="/assets/purple_shine.svg"
+              src="/assets/about/svg/purple_shine.svg"
               alt="Star Icon"
               width={28}
               height={38}
@@ -65,22 +65,22 @@ export default function MissionVision() {
               <h2 className="text-[64px] font-bold tracking-wide">
                 <span className="bg-gradient-to-r from-[#601E8D] to-black bg-clip-text text-transparent">Mission</span>
               </h2>
-              <Image src="/assets/purple_shine.svg" alt="Star Icon" width={28} height={38} className="-mt-14 ml-0" />
+              <Image src="/assets/about/svg/purple_shine.svg" alt="Star Icon" width={28} height={38} className="-mt-14" />
             </div>
             <div className="flex gap-2">
-              <p className="text-[16px] text-[#1A1A1A] leading-relaxed">
+              <p className="text-[16px] text-[#1A1A1A] leading-relaxed xl:mr-0 lg:mr-5">
                 Lorem ipsum dolor sit amet consectetur. Pellentesque tristique sapien neque accumsan viverra. Facilisis
                 ullamcorper imperdiet orci sed aliquam vitae. Sed non egestas fringilla nullam. Sed quis leo tincidunt
                 sit purus ut penatibus ut. Egestas eleifend diam posuere commodo in aliquam. Lacus justo eget quis duis
                 nulla. Risus non ligula quisque malesuada nulla volutpat neque. Libero lectus vestibulum eget ipsum
                 feugiat velit enim.
               </p>
-              <Image src="/assets/purple_shine.svg" alt="Star Icon" width={28} height={38} className="mt-24" />
+              <Image src="/assets/about/svg/purple_shine.svg" alt="Star Icon" width={28} height={38} className="mt-24 xl:block hidden" />
             </div>
           </div>
 
           {/* Right Image */}
-          <div className="relative flex-1 max-w-[313px] h-[192px] xl:mr-0 lg:mr-4">
+          <div className="relative flex-1 max-w-[313px] h-[192px] xl:mr-0 lg:mr-4 lg:mt-16 xl:mt-0">
             {/* Layer 1 */}
 <div className="absolute -top-5 -right-6 w-full h-full bg-gradient-to-br from-[#601E8D]/22 to-[#601E8D]/20 rounded-[20px] z-0" />
 {/* Layer 2 */}
@@ -88,7 +88,7 @@ export default function MissionVision() {
 
             <div className="relative z-10 rounded-[20px] overflow-hidden">
               <Image
-                src="/assets/images/mission.png"
+                src="/assets/about/img/mission.png"
                 alt="Car Interior"
                 width={500}
                 height={300}
@@ -96,6 +96,7 @@ export default function MissionVision() {
               />
             </div>
           </div>
+          <Image src="/assets/about/svg/purple_shine.svg" alt="Star Icon" width={28} height={38} className="mt-[260px]  xl:hidden block" />
         </div>
 
         {/* Vision */}
@@ -106,7 +107,7 @@ export default function MissionVision() {
                        <h2 className="text-[50px] md:text-[56px] px-4 md:px-16 font-bold">
               <span className="bg-gradient-to-r from-[#601E8D] to-black bg-clip-text text-transparent">Vision</span>
             </h2>
-            <Image src="/assets/purple_shine.svg" alt="Star Icon" width={28} height={38} className="absolute left-[100%] top-[65%] mt-2" />
+            <Image src="/assets/about/svg/purple_shine.svg" alt="Star Icon" width={28} height={38} className="absolute left-[100%] top-[65%] mt-2" />
           </div>
 
           {/* Image */}
@@ -115,7 +116,7 @@ export default function MissionVision() {
             <div className="absolute md:top-5 md:right-7 right-5 top-5 w-full h-full bg-gradient-to-br from-[#601E8D]/10 to-[#601E8D]/10 rounded-[20px] z-0" />
             <div className="relative z-10 rounded-[20px] w-full h-full overflow-hidden">
               <Image
-                src="/assets/images/mission.png"
+                src="/assets/about/img/mission.png"
                 alt="Car Interior"
                 fill
                 style={{ objectFit: 'cover' }}
@@ -126,7 +127,7 @@ export default function MissionVision() {
            {/* Star below image, aligned to right */}
           <div className="flex justify-end pr-4">
             <Image
-              src="/assets/purple_shine.svg"
+              src="/assets/about/svg/purple_shine.svg"
               alt="Star Icon"
               width={28}
               height={38}
@@ -154,7 +155,7 @@ export default function MissionVision() {
                 <span className="bg-gradient-to-r from-[#601E8D] to-black bg-clip-text text-transparent">Vision</span>
               </h2>
               <Image
-                src="/assets/purple_shine.svg"
+                src="/assets/about/svg/purple_shine.svg"
                 alt="Star Icon"
                 width={28}
                 height={38}
@@ -162,25 +163,25 @@ export default function MissionVision() {
               />
             </div>
             <div className="flex gap-2">
-              <p className="text-[16px] text-[#1A1A1A] leading-relaxed">
+              <p className="text-[16px] text-[#1A1A1A] leading-relaxed xl:mr-0 lg:mr-5">
                 Lorem ipsum dolor sit amet consectetur. Pellentesque tristique sapien neque accumsan viverra.
                 Facilisis ullamcorper imperdiet orci sed aliquam vitae. Sed non egestas fringilla nullam. Sed quis leo
                 tincidunt sit purus ut penatibus ut. Egestas eleifend diam posuere commodo in aliquam. Lacus justo eget
                 quis duis nulla. Risus non ligula quisque malesuada nulla volutpat neque. Libero lectus vestibulum eget
                 ipsum feugiat velit enim.
               </p>
-              <Image src="/assets/purple_shine.svg" alt="Star Icon" width={28} height={38} className="mt-24" />
+              <Image src="/assets/about/svg/purple_shine.svg" alt="Star Icon" width={28} height={38} className="mt-24 xl:block hidden" />
             </div>
           </div>
 
-          <div className="relative flex-1 max-w-[313px] h-[192px] xl:mr-0 lg:mr-4">
+          <div className="relative flex-1 max-w-[313px] h-[192px] xl:mr-0 lg:mr-4 lg:mt-16 xl:mt-0">
            {/* Layer 1 */}
 <div className="absolute -top-5 -right-6 w-full h-full bg-gradient-to-br from-[#601E8D]/20 to-[#601E8D]/20 rounded-[20px] z-0" />
 {/* Layer 2 */}
 <div className="absolute top-5 right-6 w-full h-full bg-gradient-to-br from-[#601E8D]/10 to-[#601E8D]/10 rounded-[20px] z-0" />
             <div className="relative z-10 rounded-[20px] overflow-hidden">
               <Image
-                src="/assets/images/mission.png"
+                src="/assets/about/img/mission.png"
                 alt="Car Interior"
                 width={500}
                 height={300}
@@ -188,6 +189,7 @@ export default function MissionVision() {
               />
             </div>
           </div>
+                    <Image src="/assets/about/svg/purple_shine.svg" alt="Star Icon" width={28} height={38} className="mt-[260px]  xl:hidden block" />
         </div>
       </div>
     </section>

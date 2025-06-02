@@ -8,7 +8,7 @@ const images = [
   '/assets/about/img/mission.png',
 ];
 
-const titles = ['Interior', 'Exterior', 'Fiber Cloth', 'Maintenance'];
+const titles = ['Interior', 'Exterior', 'Fiber Cloth', 'Kits & Combos'];
 
 export default function CarInterior() {
   const [current, setCurrent] = useState(0);
@@ -134,17 +134,22 @@ export default function CarInterior() {
   const prev = () => animateTransition(-1);
 
   return (
-    <div className="relative w-full h-[500px] py-16 flex flex-col items-center overflow-hidden bg-white">
+    <div className="relative w-full h-[500px] xl:h-[600px] py-16 flex flex-col items-center overflow-hidden bg-white">
       {/* ✅ Dynamic Background Text with Fade */}
       <div
-        className="absolute bottom-[100px] md:bottom-[70px] lg:bottom-14 xl:bottom-10 tracking-wider text-[48px] md:text-[90px] lg:text-[120px] xl:text-[136px] font-extrabold text-gray-200 uppercase pointer-events-none select-none z-0"
+        className="absolute bottom-[102px] md:bottom-[70px] lg:bottom-14 xl:bottom-30 font-extrabold text-gray-100 uppercase       pointer-events-none select-none z-0 text-center w-full px-4 tracking-wider"
         style={{
+          fontSize: 'clamp(24px, 10vw, 136px)',
           opacity: titleOpacity,
-          transition: 'opacity 0.5s ease-in-out',
+          transition: 'opacity 0.1s ease-out',
+          whiteSpace: 'nowrap',
+          overflow: 'hidden',
+          textOverflow: 'ellipsis',
         }}
       >
         {displayedTitle}
       </div>
+
 
       {/* Cards Container */}
       <div className="flex justify-center items-center gap-6 w-full h-[350px] z-10 md:px-0 px-4 xl:px-4">
@@ -176,23 +181,29 @@ export default function CarInterior() {
 
       {/* Controls */}
       <div className="relative mt-10 z-10 w-full flex justify-center">
-        <div className="relative flex items-center justify-center w-[300px]">
+        <div className="relative flex items-center justify-center w-[350px]">
           <button
             onClick={prev}
             disabled={isAnimating}
-            className="absolute left-0 text-4xl w-10 h-10 flex items-center justify-center hover:bg-gray-800 hover:text-white transition disabled:opacity-50"
+            className="absolute left-0 text-4xl w-10 h-10 flex items-center justify-center md:mt-10 xl:mt-16 cursor-pointer"
           >
             ‹
           </button>
 
-          <h2 className="text-2xl font-bold text-black text-center mx-12 transition-all duration-500 ease-in-out">
+          <h2
+            className="text-2xl tracking-wider md:mt-10 xl:mt-16 font-bold text-black text-center mx-12 transition-all duration-500  ease-in-out whitespace-nowrap overflow-hidden text-ellipsis"
+            style={{
+              maxWidth: isMobile ? '292px' : '558px',
+            }}
+          >
             {`Car ${titles[current]}`}
           </h2>
+
 
           <button
             onClick={next}
             disabled={isAnimating}
-            className="absolute right-0 text-4xl w-10 h-10 flex items-center justify-center hover:bg-gray-800 hover:text-white transition disabled:opacity-50"
+            className="absolute right-0 text-4xl w-10 h-10 flex items-center justify-center md:mt-10 xl:mt-16 cursor-pointer"
           >
             ›
           </button>

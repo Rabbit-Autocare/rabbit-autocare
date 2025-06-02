@@ -223,21 +223,35 @@ export function CartProvider({ children }) {
     setCouponError(null);
 
     try {
-      const { data, error } = await supabase
+      // First check if the coupon exists and is active
+      const { data: couponData, error: couponError } = await supabase
         .from('coupons')
         .select('*')
         .eq('code', code.toUpperCase())
         .eq('is_active', true)
         .single();
 
-      if (error) {
+      if (couponError) {
         setCouponError('Invalid coupon code');
         setCoupon(null);
         return;
       }
 
+      // Check if user has already used this coupon
+      const { data: userCoupon, error: userCouponError } = await supabase
+        .from('user_coupons')
+        .select('*')
+        .eq('user_id', user.id)
+        .eq('coupon_id', couponData.id);
+
+      if (userCoupon && userCoupon.length > 0) {
+        setCouponError('You have already used this coupon');
+        setCoupon(null);
+        return;
+      }
+
       // Check if coupon is expired
-      if (!data.is_permanent && new Date(data.expiry_date) < new Date()) {
+      if (!couponData.is_permanent && new Date(couponData.expiry_date) < new Date()) {
         setCouponError('This coupon has expired');
         setCoupon(null);
         return;
@@ -245,13 +259,17 @@ export function CartProvider({ children }) {
 
       // Check minimum order requirement
       const subtotal = calculateSubtotal();
-      if (subtotal < data.min_order_amount) {
-        setCouponError(`Minimum order of ₹${data.min_order_amount} required`);
+      if (subtotal < couponData.min_order_amount) {
+        setCouponError(`Minimum order of ₹${couponData.min_order_amount} required`);
         setCoupon(null);
         return;
       }
 
-      setCoupon(data);
+      setCoupon(couponData);
+      
+      // Save to localStorage
+      localStorage.setItem("appliedCoupon", JSON.stringify(couponData));
+      
     } catch (error) {
       console.error('Error applying coupon:', error);
       setCouponError('Error applying coupon');
@@ -309,6 +327,12 @@ export function CartProvider({ children }) {
       setCouponError(
         `Coupon removed: Minimum order of ₹${coupon.min_order_amount} required to use ${coupon.code}`
       );
+      
+      // Also remove from localStorage
+      localStorage.removeItem("appliedCoupon");
+    } else {
+      // Ensure coupon is saved to localStorage when valid
+      localStorage.setItem("appliedCoupon", JSON.stringify(coupon));
     }
   }, [cartItems]);
 

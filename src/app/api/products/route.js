@@ -1,99 +1,258 @@
-import { createServerComponentClient } from '@supabase/auth-helpers-nextjs';
-import { cookies } from 'next/headers';
-import { NextResponse } from 'next/server';
+// /app/api/products/route.js
+import { NextResponse } from "next/server";
+import { supabase } from "@/lib/supabaseClient";
 
-// GET all products
-export async function GET(request) {
-  try {
-    const supabase = createServerComponentClient({ cookies });
-    const { searchParams } = new URL(request.url);
-
-    // Query parameters
-    const category = searchParams.get('category');
-    const minPrice = searchParams.get('minPrice');
-    const maxPrice = searchParams.get('maxPrice');
-    const sortBy = searchParams.get('sortBy') || 'created_at';
-    const sortOrder = searchParams.get('sortOrder') || 'desc';
-    const limit = searchParams.get('limit')
-      ? parseInt(searchParams.get('limit'))
-      : null;
-    const offset = searchParams.get('offset')
-      ? parseInt(searchParams.get('offset'))
-      : 0;
-
-    // Build query
-    let query = supabase.from('products').select('*');
-
-    // Apply filters if they exist
-    if (category) query = query.eq('category', category);
-
-    // Apply sorting
-    query = query.order(sortBy, { ascending: sortOrder === 'asc' });
-
-    // Apply pagination
-    if (limit) query = query.range(offset, offset + limit - 1);
-
-    // Execute query
-    const { data, error } = await query;
-
-    if (error) throw error;
-
-    return NextResponse.json({ products: data });
-  } catch (error) {
-    console.error('Products API Error:', error);
-    return NextResponse.json(
-      { error: error.message || 'Failed to fetch products' },
-      { status: 500 }
-    );
-  }
+// Utility to handle errors consistently
+function errorResponse(message, status = 500) {
+	return NextResponse.json({ error: message }, { status });
 }
 
-// POST create new product
+// GET - Fetch all products or a specific product with related data
+export async function GET(request) {
+	try {
+		const { searchParams } = new URL(request.url);
+		const id = searchParams.get("id");
+
+		if (id) {
+			// Get single product with all related data
+			const { data: product, error: productError } = await supabase
+				.from("products")
+				.select(`
+					*,
+					main_category:categories!products_main_category_id_fkey(*),
+					product_subcategories(
+						category:categories!product_subcategories_category_id_fkey(id)
+					)
+				`)
+				.eq("id", id)
+				.single();
+
+			if (productError) return errorResponse(productError.message);
+			return NextResponse.json({ success: true, product });
+		}
+
+		// Get all products with basic info
+		const { data: products, error } = await supabase
+			.from("products")
+			.select(`
+				*,
+				main_category:categories!products_main_category_id_fkey(*),
+				product_subcategories(
+					category:categories!product_subcategories_category_id_fkey(id)
+				)
+			`);
+
+		if (error) return errorResponse(error.message);
+		return NextResponse.json({ success: true, products });
+	} catch (error) {
+		return errorResponse(error.message);
+	}
+}
+
+// POST - Create a new product
 export async function POST(request) {
-  try {
-    const supabase = createServerComponentClient({ cookies });
+	try {
+		const {
+			product_code,
+			name,
+			description,
+			main_category_id,
+			is_microfiber,
+			main_image_url,
+			images,
+			variants,
+			key_features,
+			taglines,
+			subcategories
+		} = await request.json();
 
-    // Check authentication
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser();
-    if (authError || !user) {
-      return NextResponse.json(
-        { error: 'Unauthorized - Please log in' },
-        { status: 401 }
-      );
-    }
+		// Start a transaction
+		const { data: product, error: productError } = await supabase
+			.from("products")
+			.insert([{
+				product_code,
+				name,
+				description,
+				main_category_id,
+				is_microfiber,
+				main_image_url,
+				images: images || [],
+				variants: variants?.map(variant => ({
+					...variant,
+					stock: parseInt(variant.stock) || 0,
+					price: parseFloat(variant.price) || 0
+				})) || [],
+				key_features: key_features || [],
+				taglines: taglines || []
+			}])
+			.select()
+			.single();
 
-    // Parse request body
-    const productData = await request.json();
+		if (productError) return errorResponse(productError.message);
 
-    // Validate required fields
-    if (!productData.name || !productData.category) {
-      return NextResponse.json(
-        { error: 'Product name and category are required' },
-        { status: 400 }
-      );
-    }
+		// Insert subcategories
+		if (subcategories?.length > 0) {
+			const subcategoryRecords = subcategories.map(category_id => ({
+				product_id: product.id,
+				category_id
+			}));
 
-    // Insert new product
-    const { data, error } = await supabase
-      .from('products')
-      .insert([productData])
-      .select();
+			const { error: subcategoryError } = await supabase
+				.from("product_subcategories")
+				.insert(subcategoryRecords);
 
-    if (error) throw error;
+			if (subcategoryError) return errorResponse(subcategoryError.message);
+		}
 
-    return NextResponse.json({
-      success: true,
-      product: data[0],
-      message: 'Product created successfully',
-    });
-  } catch (error) {
-    console.error('Create product API error:', error);
-    return NextResponse.json(
-      { error: error.message || 'Failed to create product' },
-      { status: 500 }
-    );
-  }
+		// Insert variants
+		if (variants?.length > 0) {
+			const variantRecords = variants.map(variant => ({
+				product_id: product.id,
+				// Determine and add variant_type based on is_microfiber flag
+				variant_type: is_microfiber ? 'microfiber' : 'liquid',
+				...variant,
+				stock: parseInt(variant.stock) || 0,
+				price: parseFloat(variant.price) || 0
+			}));
+
+			// When storing in JSONB, no need to insert into a separate table
+			// const { error: variantError } = await supabase
+			// 	.from("product_variants")
+			// 	.insert(variantRecords);
+
+			// if (variantError) return errorResponse(variantError.message);
+		}
+
+		return NextResponse.json(
+			{ success: true, product },
+			{ status: 201 }
+		);
+	} catch (error) {
+		return errorResponse(error.message);
+	}
+}
+
+// PUT - Update a product
+export async function PUT(request) {
+	try {
+		const {
+			id,
+			product_code,
+			name,
+			description,
+			main_category_id,
+			is_microfiber,
+			main_image_url,
+			images,
+			variants,
+			key_features,
+			taglines,
+			subcategories
+		} = await request.json();
+
+		// Update product
+		const { error: productError } = await supabase
+			.from("products")
+			.update({
+				product_code,
+				name,
+				description,
+				main_category_id,
+				is_microfiber,
+				main_image_url,
+				images: images || [],
+				variants: variants?.map(variant => ({
+					...variant,
+					stock: parseInt(variant.stock) || 0,
+					price: parseFloat(variant.price) || 0
+				})) || [],
+				key_features: key_features || [],
+				taglines: taglines || [],
+				updated_at: new Date().toISOString()
+			})
+			.eq("id", id);
+
+		if (productError) return errorResponse(productError.message);
+
+		// Update subcategories
+		if (subcategories) {
+			// Delete existing subcategories
+			await supabase
+				.from("product_subcategories")
+				.delete()
+				.eq("product_id", id);
+
+			// Insert new subcategories
+			if (subcategories.length > 0) {
+				const subcategoryRecords = subcategories.map(category_id => ({
+					product_id: id,
+					category_id
+				}));
+
+				const { error: subcategoryError } = await supabase
+					.from("product_subcategories")
+					.insert(subcategoryRecords);
+
+				if (subcategoryError) return errorResponse(subcategoryError.message);
+			}
+		}
+
+		// Update variants
+		if (variants) {
+			// When storing in JSONB, no need to delete from a separate table first
+			// await supabase
+			// 	.from("product_variants")
+			// 	.delete()
+			// 	.eq("product_id", id);
+
+			// Insert new variants (into the JSONB column of the products table)
+			const updatedVariants = variants.map(variant => ({
+				// Determine and add variant_type based on is_microfiber flag
+				variant_type: is_microfiber ? 'microfiber' : 'liquid',
+				...variant,
+				stock: parseInt(variant.stock) || 0,
+				price: parseFloat(variant.price) || 0
+			}));
+
+			// The update happens in the product update query above, saving to the variants JSONB column
+
+			// if (variants.length > 0) {
+			// 	const variantRecords = variants.map(variant => ({
+			// 		product_id: id,
+			// 		variant_type: is_microfiber ? 'microfiber' : 'liquid',
+			// 		...variant
+			// 	}));
+
+			// 	const { error: variantError } = await supabase
+			// 		.from("product_variants")
+			// 		.insert(variantRecords);
+
+			// 	if (variantError) return errorResponse(variantError.message);
+			// }
+		}
+
+		return NextResponse.json({ success: true });
+	} catch (error) {
+		return errorResponse(error.message);
+	}
+}
+
+// DELETE - Delete a product
+export async function DELETE(request) {
+	try {
+		const { searchParams } = new URL(request.url);
+		const id = searchParams.get("id");
+		if (!id) return errorResponse("ID is required", 400);
+
+		const { error } = await supabase
+			.from("products")
+			.delete()
+			.eq("id", id);
+
+		if (error) return errorResponse(error.message);
+
+		return NextResponse.json({ success: true });
+	} catch (error) {
+		return errorResponse(error.message);
+	}
 }

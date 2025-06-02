@@ -2,7 +2,7 @@
 
 import { useState, useEffect, use } from "react";
 import { useRouter } from "next/navigation";
-import { supabase } from "@/lib/supabaseClient";
+import { ProductService } from "@/lib/service/productService";
 import ProductGrid from "@/components/shop/ProductGrid";
 import FilterSidebar from "@/components/shop/FilterSidebar";
 
@@ -25,12 +25,13 @@ export default function CategoryPage({ params }) {
 	const [initialLoading, setInitialLoading] = useState(true);
 	const [productsLoading, setProductsLoading] = useState(false);
 	const [totalCount, setTotalCount] = useState(0);
+	const [error, setError] = useState(null);
 	const [categories] = useState([
+		"All Products",
 		"Car Interior",
 		"Car Exterior",
-		"Microfiber Cloths",
+		"Microfiber Cloth",
 		"Kits & Combos",
-		"All Products",
 	]);
 
 	// Effect hook that runs when component mounts or when category changes
@@ -42,52 +43,120 @@ export default function CategoryPage({ params }) {
 		}
 	}, [category]);
 
-	// Function to fetch products filtered by category
+	// Function to map URL category to database category
+	const mapUrlCategoryToDb = (urlCategory) => {
+		const categoryMap = {
+			"car-interior": "car interior",
+			"car-exterior": "car exterior",
+			"microfiber-cloth": "microfiber cloth",
+			"kits-combos": "kits & combos",
+			all: null, // null means fetch all categories
+		};
+		return categoryMap[urlCategory] || urlCategory;
+	};
+
+	// Function to fetch products using ProductService
 	const fetchProducts = async (isProductsOnly = false) => {
 		if (isProductsOnly) {
 			setProductsLoading(true);
 		}
 
 		try {
-			let query = supabase.from("products").select("*", { count: "exact" });
+			setError(null);
 
-			// Map URL category to database category
-			if (category !== "all") {
-				let dbCategory;
-				switch (category) {
-					case "car-interior":
-						dbCategory = "Car Interior";
-						break;
-					case "car-exterior":
-						dbCategory = "Car Exterior";
-						break;
-					case "microfiber-cloths":
-						dbCategory = "Microfiber Cloths";
-						break;
-					case "kits-combos":
-						dbCategory = "Kits & Combos";
-						break;
-					default:
-						dbCategory = category;
-				}
-				query = query.eq("category", dbCategory);
+			// Map category for API call
+			const dbCategory = mapUrlCategoryToDb(category);
+
+			// Prepare options for ProductService
+			const options = {};
+
+			// Only add category filter if it's not "all" - this will fetch all products
+			if (dbCategory && category !== "all") {
+				options.category = dbCategory;
 			}
 
-			const { data, error, count } = await query;
-			if (error) {
-				console.error("Error fetching products:", error);
-				return;
-			}
+			// Use ProductService to fetch products
+			const response = await ProductService.getProducts(options);
 
-			setProducts(data || []);
-			setTotalCount(count || 0);
+			if (response.success) {
+				// Format products for display using ProductService utility
+				const formattedProducts = response.products.map((product) =>
+					ProductService.formatProductForDisplay(product),
+				);
+
+				setProducts(formattedProducts);
+				setTotalCount(response.count || formattedProducts.length);
+			} else {
+				throw new Error(response.error || "Failed to fetch products");
+			}
 		} catch (error) {
 			console.error("Error fetching products:", error);
+			setError(error.message);
+			setProducts([]);
+			setTotalCount(0);
 		} finally {
 			setInitialLoading(false);
 			setProductsLoading(false);
 		}
 	};
+
+	// Function to search products using ProductService
+	const handleSearch = async (searchTerm) => {
+		if (!searchTerm.trim()) {
+			// If search is empty, fetch all products for current category
+			await fetchProducts(true);
+			return;
+		}
+
+		setProductsLoading(true);
+		try {
+			setError(null);
+
+			// Use ProductService search function
+			const response = await ProductService.searchProducts(searchTerm);
+
+			if (response.success) {
+				// Filter by current category if not "all"
+				let filteredProducts = response.products;
+				const dbCategory = mapUrlCategoryToDb(category);
+
+				if (dbCategory && category !== "all") {
+					filteredProducts = response.products.filter(
+						(product) =>
+							product.category.toLowerCase() === dbCategory.toLowerCase(),
+					);
+				}
+
+				// Format products for display
+				const formattedProducts = filteredProducts.map((product) =>
+					ProductService.formatProductForDisplay(product),
+				);
+
+				setProducts(formattedProducts);
+				setTotalCount(formattedProducts.length);
+			} else {
+				throw new Error("Search failed");
+			}
+		} catch (error) {
+			console.error("Error searching products:", error);
+			setError(error.message);
+		} finally {
+			setProductsLoading(false);
+		}
+	};
+
+	// Debounced search effect
+	useEffect(() => {
+		const timeoutId = setTimeout(() => {
+			if (search) {
+				handleSearch(search);
+			} else {
+				fetchProducts(true);
+			}
+		}, 500);
+
+		return () => clearTimeout(timeoutId);
+	}, [search]);
 
 	// Function to reset all filters to their default values
 	const clearFilters = () => {
@@ -99,77 +168,104 @@ export default function CategoryPage({ params }) {
 		setMaxPrice("");
 		setSelectedRating(0);
 		setInStockOnly(false);
+		// Refetch products after clearing filters
+		fetchProducts(true);
 	};
 
 	// Function to navigate to a different category
 	const handleCategoryChange = (newCategory) => {
 		let categorySlug;
 		switch (newCategory) {
+			case "All Products":
+				categorySlug = "all";
+				break;
 			case "Car Interior":
 				categorySlug = "car-interior";
 				break;
 			case "Car Exterior":
 				categorySlug = "car-exterior";
 				break;
-			case "Microfiber Cloths":
-				categorySlug = "microfiber-cloths";
+			case "Microfiber Cloth":
+				categorySlug = "microfiber-cloth";
 				break;
 			case "Kits & Combos":
 				categorySlug = "kits-combos";
-				break;
-			case "All Products":
-				categorySlug = "all";
 				break;
 			default:
 				categorySlug = newCategory.toLowerCase().replace(/\s+/g, "-");
 		}
 
+		// Clear search when changing categories
+		setSearch("");
 		router.push(`/shop/${categorySlug}`);
 	};
 
-	// Filter products by multiple criteria
-	const filteredProducts = products
-		.filter((product) =>
-			product.name.toLowerCase().includes(search.toLowerCase()),
-		)
-		.filter((product) => {
-			const prices = product.variants?.map((v) => v.price) || [];
-			const min = prices.length > 0 ? Math.min(...prices) : 0;
-			return (
-				(!minPrice || min >= Number.parseFloat(minPrice)) &&
-				(!maxPrice || min <= Number.parseFloat(maxPrice))
-			);
-		})
-		.filter((product) => {
-			if (selectedSize.length === 0) return true;
-			const sizes = product.variants?.map((v) => v.size.toLowerCase()) || [];
-			return selectedSize.some((size) => sizes.includes(size.toLowerCase()));
-		})
-		.filter((product) => {
-			if (selectedColor.length === 0) return true;
-			const color = product.color || "";
-			return selectedColor.some((c) =>
-				color.toLowerCase().includes(c.toLowerCase()),
-			);
-		})
-		.filter((product) => {
-			if (selectedRating === 0) return true;
-			const rating = product.rating || 5;
-			return rating >= selectedRating;
-		})
-		.filter((product) => {
-			if (!inStockOnly) return true;
-			return product.variants?.some((v) => v.stock > 0) || false;
-		})
-		.sort((a, b) => {
-			const getMinPrice = (p) => {
-				const prices = p.variants?.map((v) => v.price) || [];
-				return prices.length > 0 ? Math.min(...prices) : 0;
-			};
-			return sort === "asc"
-				? getMinPrice(a) - getMinPrice(b)
-				: getMinPrice(b) - getMinPrice(a);
-		});
+	// Client-side filtering for additional filters (price, size, color, etc.)
+	const getFilteredProducts = () => {
+		return products
+			.filter((product) => {
+				// Price filtering
+				if (minPrice || maxPrice) {
+					const prices = product.variants?.map((v) => v.price) || [];
+					const min = prices.length > 0 ? Math.min(...prices) : 0;
+					if (minPrice && min < Number.parseFloat(minPrice)) return false;
+					if (maxPrice && min > Number.parseFloat(maxPrice)) return false;
+				}
+				return true;
+			})
+			.filter((product) => {
+				// Size filtering (for quantity-based variants)
+				if (selectedSize.length === 0) return true;
+				const variants = product.variants || [];
+				return selectedSize.some((size) =>
+					variants.some((variant) => variant.value === size),
+				);
+			})
+			.filter((product) => {
+				// Color filtering
+				if (selectedColor.length === 0) return true;
+				const variants = product.variants || [];
+				return selectedColor.some((color) =>
+					variants.some(
+						(variant) =>
+							variant.color &&
+							variant.color.toLowerCase().includes(color.toLowerCase()),
+					),
+				);
+			})
+			.filter((product) => {
+				// Rating filtering
+				if (selectedRating === 0) return true;
+				const rating = product.rating || 5;
+				return rating >= selectedRating;
+			})
+			.filter((product) => {
+				// Stock filtering
+				if (!inStockOnly) return true;
+				return product.variants?.some((v) => v.stock > 0) || false;
+			})
+			.sort((a, b) => {
+				// Sorting
+				const getMinPrice = (p) => {
+					const prices = p.variants?.map((v) => v.price) || [];
+					return prices.length > 0 ? Math.min(...prices) : 0;
+				};
+
+				switch (sort) {
+					case "asc":
+						return getMinPrice(a) - getMinPrice(b);
+					case "desc":
+						return getMinPrice(b) - getMinPrice(a);
+					case "newest":
+						return new Date(b.created_at) - new Date(a.created_at);
+					case "rating":
+						return (b.rating || 0) - (a.rating || 0);
+					case "popularity":
+					default:
+						return 0; // Keep original order for popularity
+				}
+			});
+	};
 
 	// Get display name for current category
 	const getCategoryDisplayName = () => {
@@ -178,8 +274,8 @@ export default function CategoryPage({ params }) {
 				return "Car Interior";
 			case "car-exterior":
 				return "Car Exterior";
-			case "microfiber-cloths":
-				return "Microfiber Cloths";
+			case "microfiber-cloth":
+				return "Microfiber Cloth";
 			case "kits-combos":
 				return "Kits & Combos";
 			case "all":
@@ -199,6 +295,28 @@ export default function CategoryPage({ params }) {
 			</div>
 		);
 	}
+
+	// Show error state
+	if (error && !productsLoading) {
+		return (
+			<div className="max-w-7xl mx-auto px-4 py-8">
+				<div className="text-center">
+					<div className="text-red-600 text-lg mb-4">
+						Error loading products
+					</div>
+					<div className="text-gray-600 mb-4">{error}</div>
+					<button
+						onClick={() => fetchProducts(true)}
+						className="bg-purple-600 text-white px-4 py-2 rounded hover:bg-purple-700"
+					>
+						Try Again
+					</button>
+				</div>
+			</div>
+		);
+	}
+
+	const filteredProducts = getFilteredProducts();
 
 	return (
 		<div className="max-w-7xl mx-auto px-4 py-8">
@@ -241,6 +359,9 @@ export default function CategoryPage({ params }) {
 						products={filteredProducts}
 						loading={productsLoading}
 						totalCount={totalCount}
+						error={error}
+						sort={sort}
+						onSortChange={setSort}
 					/>
 				</main>
 			</div>

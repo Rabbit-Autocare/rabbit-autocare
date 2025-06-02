@@ -1,35 +1,106 @@
 'use client';
+import Image from 'next/image';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { usePathname } from 'next/navigation';
 
 export default function AdminSidebar() {
-  const router = useRouter();
+  const pathname = usePathname();
 
   const navItems = [
-    { name: 'Dashboard', path: '/admin' },
-    { name: 'Users', path: '/admin/users' },
-    { name: 'Products', path: '/admin/products' },
-    { name: 'Add-Combo', path: '/admin/combo' },
-    { name: 'Combos', path: '/admin/combos' },
-    { name: 'Coupons', path: '/admin/coupons' },
+    {
+      name: 'Dashboard',
+      path: '/admin',
+      icon: (
+        <Image
+          src='/assets/adminsvgs/home.svg'
+          alt='home'
+          width={20}
+          height={20}
+        />
+      ),
+    },
+    {
+      name: 'Orders',
+      path: '/admin/orders',
+      icon: (
+        <Image
+          src='/assets/adminsvgs/orders.svg'
+          alt='orders'
+          width={20}
+          height={20}
+        />
+      ),
+    },
+    {
+      name: 'Products',
+      path: '/admin/products',
+      icon: (
+        <Image
+          src='/assets/adminsvgs/products.svg'
+          alt='products'
+          width={20}
+          height={20}
+        />
+      ),
+    },
+    {
+      name: 'Kits & Combos',
+      path: '/admin/kits&combos',
+      icon: (
+        <Image
+          src='/assets/adminsvgs/kits&combos.svg'
+          alt='kits&combos'
+          width={20}
+          height={20}
+        />
+      ),
+    },
+    {
+      name: 'Customers',
+      path: '/admin/customers',
+      icon: (
+        <Image
+          src='/assets/adminsvgs/customers.svg'
+          alt='customers'
+          width={20}
+          height={20}
+        />
+      ),
+    },
+    {
+      name: 'Coupons',
+      path: '/admin/coupons',
+      icon: (
+        <Image
+          src='/assets/adminsvgs/coupons.svg'
+          alt='coupons'
+          width={20}
+          height={20}
+        />
+      ),
+    },
   ];
 
   return (
-    <div className='w-64 bg-gray-800 text-white h-auto min-h-screen p-6'>
-      <h2 className='text-xl font-semibold'>Admin Dashboard</h2>
-      <div className='mt-6 space-y-2'>
-        {navItems.map((item) => (
-          <Link
-            key={item.path}
-            href={item.path}
-            className={`block p-2 rounded hover:bg-gray-700 ${
-              router.pathname === item.path ? 'bg-gray-700' : ''
-            }`}
-          >
-            {item.name}
-          </Link>
-        ))}
-      </div>
-    </div>
+    <aside className='w-64 text-black min-h-screen p-6'>
+      <h2 className='text-md font-medium mb-5 pt-2'>Admin Panel</h2>
+      <nav className='space-y-1'>
+        {navItems.map((item) => {
+          const isActive = pathname === item.path;
+          return (
+            <Link
+              key={item.path}
+              href={item.path}
+              className={`flex items-center gap-3 px-4 py-2 text-sm rounded-md transition-colors ${
+                isActive ? 'bg-[#E8DEF8]' : 'hover:bg-gray-100'
+              }`}
+            >
+              {item.icon}
+              {item.name}
+            </Link>
+          );
+        })}
+      </nav>
+    </aside>
   );
 }

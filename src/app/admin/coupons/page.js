@@ -121,14 +121,15 @@ export default function CouponsPage() {
   return (
     <AdminLayout>
       <div className='p-6 max-w-6xl mx-auto'>
-        <div className='flex justify-between items-center mb-6'>
-          <h1 className='text-2xl font-bold'>Coupons</h1>
+        {/* Header */}
+        <div className='flex justify-between items-center mb-4'>
+          <h1 className='text-2xl font-semibold text-gray-900'>Coupons</h1>
           <button
             onClick={() => {
               resetForm();
               setShowModal(true);
             }}
-            className='bg-white border border-gray-300 px-4 py-2 rounded hover:bg-gray-50 text-sm'
+            className='bg-gray-100 text-xs text-gray-800 px-4 py-2 rounded-md hover:bg-[#601E8D] hover:text-white'
           >
             Create coupon
           </button>
@@ -146,74 +147,87 @@ export default function CouponsPage() {
           activeCount={activeCount}
         />
 
-        <div className='bg-white shadow rounded-md overflow-hidden'>
+        {/* Table */}
+        <div className='bg-white rounded-lg border border-[#E0DEE3] overflow-x-auto'>
           {loading && !coupons.length ? (
-            <p className='text-center py-4'>Loading coupons...</p>
+            <p className='text-center py-4 text-gray-500 text-sm'>
+              Loading coupons...
+            </p>
           ) : !coupons.length ? (
-            <p className='text-center py-4'>No coupons found.</p>
+            <p className='text-center py-4 text-gray-500 text-sm'>
+              No coupons found.
+            </p>
           ) : (
-            <div className='overflow-x-auto'>
-              <table className='w-full'>
-                <thead className='bg-gray-50 border-b'>
-                  <tr className='text-left text-xs font-medium text-gray-500 uppercase tracking-wider'>
-                    <th className='px-6 py-3'>Coupon</th>
-                    <th className='px-6 py-3'>Discount</th>
-                    <th className='px-6 py-3'>Minimum order value</th>
-                    <th className='px-6 py-3'>Usage</th>
-                    <th className='px-6 py-3'>Expiry date</th>
-                    <th className='px-6 py-3'>Status</th>
-                    <th className='px-6 py-3'>Actions</th>
+            <table className='w-full text-sm'>
+              <thead className='text-black border-b border-[#E0DEE3]'>
+                <tr>
+                  <th className='px-5 py-4 text-left font-medium'>Coupon</th>
+                  <th className='px-5 py-4 text-left font-medium'>Discount</th>
+                  <th className='px-5 py-4 text-left font-medium'>
+                    Minimum order value
+                  </th>
+                  <th className='px-5 py-4 text-left font-medium'>Usage</th>
+                  <th className='px-5 py-4 text-left font-medium'>
+                    Expiry date
+                  </th>
+                  <th className='px-5 py-4 text-left font-medium'>Status</th>
+                  <th className='pr-7 py-4 text-center font-medium'>Actions</th>
+                </tr>
+              </thead>
+              <tbody className='divide-y divide-gray-100'>
+                {coupons.map((coupon) => (
+                  <tr
+                    key={coupon.id}
+                    className={
+                      isExpired(coupon) && !coupon.is_permanent
+                        ? 'bg-red-50'
+                        : 'bg-white hover:bg-gray-50'
+                    }
+                  >
+                    <td className='px-5 py-4 font-medium text-gray-900'>
+                      {coupon.code}
+                    </td>
+                    <td className='px-5 py-4 text-gray-700'>
+                      {coupon.discount_percent}%
+                    </td>
+                    <td className='px-5 py-4 text-gray-700'>
+                      ₹{coupon.min_order_amount}
+                    </td>
+                    <td className='px-5 py-4 text-gray-700'>
+                      {coupon.usage_count || 0}
+                    </td>
+                    <td className='px-5 py-4 text-gray-700'>
+                      {coupon.is_permanent ? (
+                        <span>Permanent</span>
+                      ) : (
+                        formatDate(coupon.expiry_date)
+                      )}
+                    </td>
+                    <td className='px-5 py-4'>
+                      <span
+                        className={`px-5 py-2 rounded-md text-xs font-medium ${
+                          coupon.is_active
+                            ? 'bg-gray-100 text-gray-800'
+                            : 'bg-gray-50 text-gray-500'
+                        }`}
+                      >
+                        {coupon.is_active ? 'Active' : 'Inactive'}
+                      </span>
+                    </td>
+                    <td className='pr-7 py-4 flex justify-center'>
+                      <Image
+                        src='/assets/adminsvgs/delete.svg'
+                        alt='Delete'
+                        width={20}
+                        height={20}
+                        onClick={() => handleDelete(coupon.id)}
+                        className='cursor-pointer hover:opacity-70'
+                      />
+                    </td>
                   </tr>
-                </thead>
-                <tbody className='divide-y divide-gray-200 bg-white'>
-                  {coupons.map((coupon) => (
-                    <tr
-                      key={coupon.id}
-                      className={
-                        isExpired(coupon) && !coupon.is_permanent
-                          ? 'bg-red-50'
-                          : ''
-                      }
-                    >
-                      <td className='px-6 py-4 font-medium text-gray-900'>
-                        {coupon.code}
-                      </td>
-                      <td className='px-6 py-4'>{coupon.discount_percent}%</td>
-                      <td className='px-6 py-4'>₹{coupon.min_order_amount}</td>
-                      <td className='px-6 py-4'>{coupon.usage_count || 0}</td>
-                      <td className='px-6 py-4'>
-                        {coupon.is_permanent ? (
-                          <span className='text-green-600'>Permanent</span>
-                        ) : (
-                          formatDate(coupon.expiry_date)
-                        )}
-                      </td>
-                      <td className='px-6 py-4'>
-                        <span
-                          className={`px-2 py-1 rounded text-xs ${
-                            coupon.is_active
-                              ? 'bg-green-100 text-green-800'
-                              : 'bg-gray-100 text-gray-800'
-                          }`}
-                        >
-                          {coupon.is_active ? 'Active' : 'Inactive'}
-                        </span>
-                      </td>
-                      <td className='px-6 py-4'>
-                        <Image
-                          src='/assets/delete.svg'
-                          alt='Delete'
-                          width={18}
-                          height={18}
-                          onClick={() => handleDelete(coupon.id)}
-                          className='cursor-pointer hover:text-red-600'
-                        />
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                ))}
+              </tbody>
+            </table>
           )}
         </div>
       </div>

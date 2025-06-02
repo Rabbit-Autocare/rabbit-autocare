@@ -1,4 +1,4 @@
-@import "tailwindcss";
+@import 'tailwindcss';
 /* @import "tw-animate-css"; */
 
 @custom-variant dark (&:is(.dark *));
@@ -44,67 +44,67 @@
 :root {
   --radius: 0.625rem;
 
-  --background: #FFFFFF; /* white */
+  --background: #ffffff; /* white */
   --foreground: #333333; /* dark grey */
 
-  --card: #FBFBFB; /* cards bg */
+  --card: #fbfbfb; /* cards bg */
   --card-foreground: #333333; /* dark grey */
 
-  --popover: #FFFFFF; /* white */
+  --popover: #ffffff; /* white */
   --popover-foreground: #333333; /* dark grey */
 
-  --primary: #601E8D; /* primary (purple) */
-  --primary-foreground: #FFFFFF; /* white */
+  --primary: #601e8d; /* primary (purple) */
+  --primary-foreground: #ffffff; /* white */
 
-  --secondary: #E9E9E9; /* cards bg 2 (light grey) */
+  --secondary: #e9e9e9; /* cards bg 2 (light grey) */
   --secondary-foreground: #333333; /* dark grey */
 
   --muted: #646464; /* light text (medium grey) */
-  --muted-foreground: #DFDFDF; /* stroke (light grey) */
+  --muted-foreground: #dfdfdf; /* stroke (light grey) */
 
-  --accent: #DFD2E8; /* primary light (pale purple) */
+  --accent: #dfd2e8; /* primary light (pale purple) */
   --accent-foreground: #333333; /* dark grey */
 
-  --destructive: #EF4444; /* a standard red */
+  --destructive: #ef4444; /* a standard red */
 
-  --border: #DFDFDF; /* stroke */
-  --input: #F6F6F6; /* input fields */
-  --ring: #B1B1B1; /* primary stroke */
+  --border: #dfdfdf; /* stroke */
+  --input: #f6f6f6; /* input fields */
+  --ring: #b1b1b1; /* primary stroke */
 
-  --rating: #FFD000; /* rating (yellow) */
-  --chips-bg: #F4F4F4; /* chips bg (very light grey) */
-  --day-mode-icon-bg: #FFFFFF; /* day-mode icon bg (white) */
+  --rating: #ffd000; /* rating (yellow) */
+  --chips-bg: #f4f4f4; /* chips bg (very light grey) */
+  --day-mode-icon-bg: #ffffff; /* day-mode icon bg (white) */
 }
 
 .dark {
   --background: #101010; /* black */
-  --foreground: #FFFFFF; /* white */
+  --foreground: #ffffff; /* white */
 
   --card: #333333; /* dark grey */
-  --card-foreground: #FFFFFF; /* white */
+  --card-foreground: #ffffff; /* white */
 
   --popover: #333333; /* dark grey */
-  --popover-foreground: #FFFFFF; /* white */
+  --popover-foreground: #ffffff; /* white */
 
-  --primary: #DFD2E8; /* primary light (pale purple - inverted for contrast) */
+  --primary: #dfd2e8; /* primary light (pale purple - inverted for contrast) */
   --primary-foreground: #333333; /* dark grey (inverted for contrast) */
 
   --secondary: #646464; /* light text (medium grey - inverted for contrast) */
-  --secondary-foreground: #FFFFFF; /* white (inverted for contrast) */
+  --secondary-foreground: #ffffff; /* white (inverted for contrast) */
 
   --muted: #333333; /* dark grey (inverted for contrast) */
-  --muted-foreground: #DFDFDF; /* stroke (inverted for contrast) */
+  --muted-foreground: #dfdfdf; /* stroke (inverted for contrast) */
 
-  --accent: #601E8D; /* primary (purple - inverted for contrast) */
-  --accent-foreground: #FFFFFF; /* white (inverted for contrast) */
+  --accent: #601e8d; /* primary (purple - inverted for contrast) */
+  --accent-foreground: #ffffff; /* white (inverted for contrast) */
 
-  --destructive: #DC2626; /* a darker red */
+  --destructive: #dc2626; /* a darker red */
 
   --border: #646464; /* light text (inverted for contrast) */
   --input: #646464; /* light text (inverted for contrast) */
-  --ring: #DFDFDF; /* stroke (inverted for contrast) */
+  --ring: #dfdfdf; /* stroke (inverted for contrast) */
 
-  --rating: #FFD000; /* rating (yellow) */
+  --rating: #ffd000; /* rating (yellow) */
   --chips-bg: #333333; /* dark grey (inverted for contrast) */
   --day-mode-icon-bg: #333333; /* day-mode icon bg (dark grey) */
 }

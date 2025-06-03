@@ -1,91 +1,128 @@
-import { NextResponse } from "next/server";
-import { createServerComponentClient } from "@supabase/auth-helpers-nextjs";
-import { cookies } from "next/headers";
+import { NextResponse } from 'next/server';
+import { supabase } from '@/lib/supabaseClient';
 
-// GET all combos for combo page
+// Utility to handle errors consistently
+function errorResponse(message, status = 500) {
+  console.error(`API Error (combos): ${message}`);
+  return NextResponse.json({ error: message }, { status });
+}
+
 export async function GET(request) {
-	try {
-		const supabase = createServerComponentClient({ cookies });
-		const { searchParams } = new URL(request.url);
+  try {
+    const { searchParams } = new URL(request.url);
+    const id = searchParams.get('id');
 
-		// Optional query parameters
-		const limit = searchParams.get("limit")
-			? Number.parseInt(searchParams.get("limit"))
-			: null;
-		const offset = searchParams.get("offset")
-			? Number.parseInt(searchParams.get("offset"))
-			: 0;
+    if (id) {
+      // Get a specific combo with its related products
+      const { data: combo, error: comboError } = await supabase
+        .from('combos')
+        .select('*')
+        .eq('id', id)
+        .single();
 
-		console.log("Fetching all combos with limit:", limit, "offset:", offset);
+      if (comboError) return errorResponse(comboError.message);
 
-		// Build query
-		let query = supabase
-			.from("combos")
-			.select("*")
-			.order("created_at", { ascending: false });
+      const { data: comboProducts, error: productsError } = await supabase
+        .from('combo_products')
+        .select(
+          `
+		  product_id, 
+		  variant_id, 
+		  quantity,
+		  products:products(*)
+		`
+        )
+        .eq('combo_id', id);
 
-		// Add pagination if specified
-		if (limit) {
-			query = query.range(offset, offset + limit - 1);
-		}
+      if (productsError) return errorResponse(productsError.message);
 
-		const { data: combos, error } = await query;
+      return NextResponse.json({
+        combo,
+        products: comboProducts,
+      });
+    }
 
-		if (error) {
-			console.error("Supabase error fetching all combos:", error);
-			return NextResponse.json(
-				{ error: "Failed to fetch combos" },
-				{ status: 500 },
-			);
-		}
+    // Get all combos
+    const { data: combos, error } = await supabase
+      .from('combos')
+      .select('*')
+      .order('created_at', { ascending: false });
 
-		console.log(`Fetched ${combos?.length || 0} combos`);
+    if (error) return errorResponse(error.message);
 
-		// Transform the data to ensure consistent format
-		const transformedCombos = (combos || []).map((combo) => ({
-			id: combo.id,
-			name: combo.name,
-			description: combo.description,
-			original_price: Number.parseFloat(combo.original_price || 0),
-			discounted_price: Number.parseFloat(combo.price || 0),
-			price: Number.parseFloat(combo.price || 0),
-			image_url: combo.image_url,
-			products: combo.products || [],
-			discount_percent: combo.discount_percent
-				? Number.parseFloat(combo.discount_percent)
-				: null,
-			created_at: combo.created_at,
-			// Calculate savings
-			savings:
-				combo.original_price && combo.price
-					? Number.parseFloat(combo.original_price) -
-						Number.parseFloat(combo.price)
-					: 0,
-			// Calculate savings percentage
-			savings_percent:
-				combo.original_price &&
-				combo.price &&
-				combo.original_price > combo.price
-					? Math.round(
-							((Number.parseFloat(combo.original_price) -
-								Number.parseFloat(combo.price)) /
-								Number.parseFloat(combo.original_price)) *
-								100,
-						)
-					: 0,
-		}));
+    return NextResponse.json({ combos });
+  } catch (error) {
+    return errorResponse(error.message);
+  }
+}
 
-		return NextResponse.json({
-			combos: transformedCombos,
-			total: combos?.length || 0,
-			offset,
-			limit,
-		});
-	} catch (error) {
-		console.error("Error fetching all combos:", error);
-		return NextResponse.json(
-			{ error: "Failed to fetch combos" },
-			{ status: 500 },
-		);
-	}
+export async function POST(request) {
+  try {
+    const {
+      name,
+      description,
+      image_url,
+      original_price,
+      price,
+      discount_percent,
+      products,
+    } = await request.json();
+
+    if (!name) return errorResponse('Name is required', 400);
+    if (!Array.isArray(products) || products.length === 0)
+      return errorResponse('At least one product must be selected', 400);
+
+    // Begin transaction with combo creation
+    const { data: combo, error: comboError } = await supabase
+      .from('combos')
+      .insert([
+        {
+          name,
+          description,
+          image_url,
+          original_price: parseFloat(original_price) || 0,
+          price: parseFloat(price) || 0,
+          discount_percent: parseFloat(discount_percent) || 0,
+        },
+      ])
+      .select()
+      .single();
+
+    if (comboError) return errorResponse(comboError.message);
+
+    // Add products to the combo
+    const comboProductEntries = products.map((product) => ({
+      combo_id: combo.id,
+      product_id: product.id,
+      variant_id: product.variant_id || null,
+      quantity: product.quantity || 1,
+    }));
+
+    const { error: productError } = await supabase
+      .from('combo_products')
+      .insert(comboProductEntries);
+
+    if (productError) return errorResponse(productError.message);
+
+    return NextResponse.json({ success: true, combo });
+  } catch (error) {
+    return errorResponse(error.message);
+  }
+}
+
+export async function DELETE(request) {
+  try {
+    const { searchParams } = new URL(request.url);
+    const id = searchParams.get('id');
+
+    if (!id) return errorResponse('ID is required', 400);
+
+    const { error } = await supabase.from('combos').delete().eq('id', id);
+
+    if (error) return errorResponse(error.message);
+
+    return NextResponse.json({ success: true });
+  } catch (error) {
+    return errorResponse(error.message);
+  }
 }

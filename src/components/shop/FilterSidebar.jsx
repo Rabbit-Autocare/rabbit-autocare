@@ -1,281 +1,425 @@
-"use client";
-import { Star } from "lucide-react";
+"use client"
+
+import { useEffect } from "react"
+import { Star } from "lucide-react"
 
 const FilterSidebar = ({
-	search,
-	setSearch,
-	sort,
-	setSort,
-	selectedSize,
-	setSelectedSize,
-	minPrice,
-	setMinPrice,
-	maxPrice,
-	setMaxPrice,
-	category,
-	categories,
-	onCategoryChange,
-	onClearFilters,
-	selectedRating,
-	setSelectedRating,
-	inStockOnly,
-	setInStockOnly,
-	selectedColor,
-	setSelectedColor,
+  selectedSize,
+  setSelectedSize,
+  minPrice,
+  setMinPrice,
+  maxPrice,
+  setMaxPrice,
+  priceRange,
+  setPriceRange,
+  category,
+  selectedRating,
+  setSelectedRating,
+  inStockOnly,
+  setInStockOnly,
+  selectedColor,
+  setSelectedColor,
+  selectedGsm,
+  setSelectedGsm,
+  selectedQuantity,
+  setSelectedQuantity,
+  onClearFilters,
+  onApplyFilters,
+  onCategoryChange,
+  products = [],
 }) => {
-	// Function to handle size filter checkbox changes
-	const handleSizeChange = (size) => {
-		setSelectedSize((prev) =>
-			prev.includes(size) ? prev.filter((s) => s !== size) : [...prev, size],
-		);
-	};
+  // Define filter options based on actual product data
+  const CATEGORIES = [
+    { value: "all", label: "All Products" },
+    { value: "microfiber-cloth", label: "Microfibers" },
+    { value: "car-interior", label: "Car Interior" },
+    { value: "car-exterior", label: "Car Exterior" },
+    { value: "kits-combos", label: "Kits & Combos" },
+  ]
 
-	// Function to handle color filter checkbox changes
-	const handleColorChange = (color) => {
-		setSelectedColor((prev) =>
-			prev.includes(color) ? prev.filter((c) => c !== color) : [...prev, color],
-		);
-	};
+  // Extract unique filter options from ALL products (static)
+  const extractFilterOptions = () => {
+    const sizes = new Set()
+    const colors = new Set()
+    const gsmValues = new Set()
+    const quantities = new Set()
+    let minProductPrice = Number.POSITIVE_INFINITY
+    let maxProductPrice = 0
 
-	// Function to handle rating filter changes
-	const handleRatingChange = (rating) => {
-		setSelectedRating(rating);
-	};
+    // Always use all products to maintain static filter options
+    products.forEach((product) => {
+      // Extract filter options from variants
+      if (product.variants && Array.isArray(product.variants)) {
+        product.variants.forEach((variant) => {
+          // Handle size (could be size or size_cm)
+          if (variant.size) sizes.add(variant.size)
+          if (variant.size_cm) sizes.add(variant.size_cm)
 
-	const colors = ["White", "Black", "Blue", "Purple", "Green", "Red"];
-	const sizes = ["100ml", "150ml", "250ml", "500ml"];
-	const ratings = [5, 4, 3, 2, 1];
+          // Handle color
+          if (variant.color) colors.add(variant.color)
 
-	// Function to check if category should show certain filters
-	const shouldShowQuantityFilter = () => {
-		return (
-			category === "car-interior" ||
-			category === "car-exterior" ||
-			category === "kits-combos" ||
-			category === "all"
-		);
-	};
+          // Handle GSM for microfiber products
+          if (variant.gsm) gsmValues.add(variant.gsm)
 
-	const shouldShowSizeAndColorFilter = () => {
-		return (
-			category === "microfiber-cloth" ||
-			category === "kits-combos" ||
-			category === "all"
-		);
-	};
+          // Handle quantity for non-microfiber products
+          if (variant.quantity) quantities.add(variant.quantity)
 
-	// Function to check if category is selected
-	const isCategorySelected = (cat) => {
-		if (cat === "All Products" && category === "all") return true;
-		if (cat === "Car Interior" && category === "car-interior") return true;
-		if (cat === "Car Exterior" && category === "car-exterior") return true;
-		if (cat === "Microfiber Cloth" && category === "microfiber-cloth")
-			return true;
-		if (cat === "Kits & Combos" && category === "kits-combos") return true;
-		return false;
-	};
+          // Track price range
+          if (variant.price) {
+            minProductPrice = Math.min(minProductPrice, Number.parseFloat(variant.price))
+            maxProductPrice = Math.max(maxProductPrice, Number.parseFloat(variant.price))
+          }
+        })
+      }
 
-	return (
-		<aside className="w-full md:w-64 bg-white p-4 rounded-lg h-fit self-start">
-			<div className="flex items-center justify-between mb-4">
-				<h2 className="font-bold text-sm uppercase">Filter</h2>
-				<button
-					onClick={onClearFilters}
-					className="text-xs text-gray-500 hover:text-gray-700"
-				>
-					Clear all
-				</button>
-			</div>
+      // Also check product-level properties
+      if (product.size) sizes.add(product.size)
+      if (product.color) colors.add(product.color)
+      if (product.gsm) gsmValues.add(product.gsm)
+      if (product.quantity) quantities.add(product.quantity)
+      if (product.price) {
+        minProductPrice = Math.min(minProductPrice, Number.parseFloat(product.price))
+        maxProductPrice = Math.max(maxProductPrice, Number.parseFloat(product.price))
+      }
+    })
 
-			{/* Category Section */}
-			<div className="mb-6">
-				<h3 className="font-bold text-sm uppercase mb-3">Category</h3>
-				<div className="space-y-2">
-					{categories.map((cat) => (
-						<label
-							key={cat}
-							className="flex items-center text-sm cursor-pointer select-none"
-						>
-							<input
-								type="radio"
-								name="category"
-								checked={isCategorySelected(cat)}
-								onChange={() => onCategoryChange(cat)}
-								className="mr-2 h-4 w-4 text-purple-600 focus:ring-purple-500 border-gray-300"
-							/>
-							<span className="text-gray-700">{cat}</span>
-						</label>
-					))}
-				</div>
-			</div>
+    return {
+      sizes: Array.from(sizes).sort(),
+      colors: Array.from(colors).sort(),
+      gsmValues: Array.from(gsmValues).sort((a, b) => Number(a) - Number(b)),
+      quantities: Array.from(quantities).sort((a, b) => {
+        // Extract numeric part for sorting
+        const numA = Number.parseInt(a.match(/\d+/)?.[0] || "0")
+        const numB = Number.parseInt(b.match(/\d+/)?.[0] || "0")
+        return numA - numB
+      }),
+      minPrice: minProductPrice === Number.POSITIVE_INFINITY ? 0 : minProductPrice,
+      maxPrice: maxProductPrice || 1000,
+    }
+  }
 
-			{/* Rating Section */}
-			<div className="mb-6">
-				<h3 className="font-bold text-sm uppercase mb-3">Rating</h3>
-				<div className="space-y-2">
-					{ratings.map((rating) => (
-						<label
-							key={rating}
-							className="flex items-center text-sm cursor-pointer select-none"
-						>
-							<input
-								type="radio"
-								name="rating"
-								checked={selectedRating === rating}
-								onChange={() => handleRatingChange(rating)}
-								className="mr-2 h-4 w-4 text-purple-600 focus:ring-purple-500 border-gray-300"
-							/>
-							<div className="flex items-center">
-								{[...Array(rating)].map((_, i) => (
-									<Star
-										key={i}
-										size={14}
-										className="text-yellow-400 fill-yellow-400"
-									/>
-								))}
-								{[...Array(5 - rating)].map((_, i) => (
-									<Star key={i} size={14} className="text-gray-300" />
-								))}
-								<span className="ml-1 text-xs text-gray-500">{`& Up`}</span>
-							</div>
-						</label>
-					))}
-				</div>
-			</div>
+  const filterOptions = extractFilterOptions()
 
-			{/* Availability Section */}
-			<div className="mb-6">
-				<h3 className="font-bold text-sm uppercase mb-3">Availability</h3>
-				<label className="flex items-center text-sm cursor-pointer select-none">
-					<input
-						type="checkbox"
-						checked={inStockOnly}
-						onChange={() => setInStockOnly(!inStockOnly)}
-						className="mr-2 h-4 w-4 text-purple-600 focus:ring-purple-500 border-gray-300 rounded"
-					/>
-					<span className="text-gray-700">In Stock Only</span>
-				</label>
-			</div>
+  // Update price range when filter options change
+  useEffect(() => {
+    if (filterOptions.maxPrice > 0 && priceRange[1] === 1000) {
+      setPriceRange([filterOptions.minPrice, filterOptions.maxPrice])
+      if (!minPrice) setMinPrice(filterOptions.minPrice.toString())
+      if (!maxPrice) setMaxPrice(filterOptions.maxPrice.toString())
+    }
+  }, [filterOptions.maxPrice, filterOptions.minPrice])
 
-			{/* Price Section */}
-			<div className="mb-6">
-				<h3 className="font-bold text-sm uppercase mb-3">Price</h3>
-				<div className="flex items-center space-x-2">
-					<input
-						type="number"
-						placeholder="0"
-						value={minPrice}
-						onChange={(e) => setMinPrice(e.target.value)}
-						className="w-full border border-gray-300 rounded p-2 text-sm focus:ring-purple-500 focus:border-purple-500"
-					/>
-					<span className="text-gray-400">-</span>
-					<input
-						type="number"
-						placeholder="0"
-						value={maxPrice}
-						onChange={(e) => setMaxPrice(e.target.value)}
-						className="w-full border border-gray-300 rounded p-2 text-sm focus:ring-purple-500 focus:border-purple-500"
-					/>
-				</div>
-			</div>
+  // Handle price range change - only allow max price to change
+  const handlePriceRangeChange = (e) => {
+    const value = Number.parseInt(e.target.value)
+    const newRange = [filterOptions.minPrice, value]
+    setPriceRange(newRange)
+    setMinPrice(filterOptions.minPrice.toString())
+    setMaxPrice(value.toString())
+  }
 
-			{/* Quantity/Size Section - Only for Car Interior, Car Exterior, and Kits & Combos */}
-			{shouldShowQuantityFilter() && (
-				<div className="mb-6">
-					<h3 className="font-bold text-sm uppercase mb-3">Quantity</h3>
-					<div className="space-y-2">
-						{sizes.map((size) => (
-							<label
-								key={size}
-								className="flex items-center text-sm cursor-pointer select-none"
-							>
-								<input
-									type="checkbox"
-									checked={selectedSize.includes(size)}
-									onChange={() => handleSizeChange(size)}
-									className="mr-2 h-4 w-4 text-purple-600 focus:ring-purple-500 border-gray-300 rounded"
-								/>
-								<span className="text-gray-700">{size}</span>
-							</label>
-						))}
-					</div>
-				</div>
-			)}
+  // Determine which filters to show based on category
+  const getFilterVisibility = () => {
+    switch (category) {
+      case "microfiber-cloth":
+      case "microfiber":
+        return {
+          showMicrofiberFilters: true,
+          showCarCareFilters: false,
+          showAllFilters: false,
+        }
+      case "car-interior":
+      case "car-exterior":
+        return {
+          showMicrofiberFilters: false,
+          showCarCareFilters: true,
+          showAllFilters: false,
+        }
+      case "kits-combos":
+        return {
+          showMicrofiberFilters: true,
+          showCarCareFilters: true,
+          showAllFilters: true,
+        }
+      case "all":
+      default:
+        return {
+          showMicrofiberFilters: true,
+          showCarCareFilters: true,
+          showAllFilters: true,
+        }
+    }
+  }
 
-			{/* Size Section - Only for Microfiber and Kits & Combos */}
-			{shouldShowSizeAndColorFilter() && (
-				<div className="mb-6">
-					<h3 className="font-bold text-sm uppercase mb-3">Size</h3>
-					<div className="space-y-2">
-						<label className="flex items-center text-sm cursor-pointer select-none">
-							<input
-								type="checkbox"
-								className="mr-2 h-4 w-4 text-purple-600 focus:ring-purple-500 border-gray-300 rounded"
-							/>
-							<span className="text-gray-700">Small (10-30 cm)</span>
-						</label>
-						<label className="flex items-center text-sm cursor-pointer select-none">
-							<input
-								type="checkbox"
-								className="mr-2 h-4 w-4 text-purple-600 focus:ring-purple-500 border-gray-300 rounded"
-							/>
-							<span className="text-gray-700">Medium (30-50 cm)</span>
-						</label>
-						<label className="flex items-center text-sm cursor-pointer select-none">
-							<input
-								type="checkbox"
-								className="mr-2 h-4 w-4 text-purple-600 focus:ring-purple-500 border-gray-300 rounded"
-							/>
-							<span className="text-gray-700">Large (50-70 cm)</span>
-						</label>
-						<label className="flex items-center text-sm cursor-pointer select-none">
-							<input
-								type="checkbox"
-								className="mr-2 h-4 w-4 text-purple-600 focus:ring-purple-500 border-gray-300 rounded"
-							/>
-							<span className="text-gray-700">XL (80-90 cm)</span>
-						</label>
-					</div>
-				</div>
-			)}
+  const { showMicrofiberFilters, showCarCareFilters } = getFilterVisibility()
 
-			{/* Color Section - Only for Microfiber and Kits & Combos */}
-			{shouldShowSizeAndColorFilter() && (
-				<div className="mb-6">
-					<h3 className="font-bold text-sm uppercase mb-3">Color</h3>
-					<div className="space-y-2">
-						{colors.map((color) => (
-							<label
-								key={color}
-								className="flex items-center text-sm cursor-pointer select-none"
-							>
-								<input
-									type="checkbox"
-									checked={selectedColor.includes(color)}
-									onChange={() => handleColorChange(color)}
-									className="mr-2 h-4 w-4 text-purple-600 focus:ring-purple-500 border-gray-300 rounded"
-								/>
-								<div className="flex items-center">
-									<span
-										className={`w-4 h-4 rounded-full mr-2 inline-block border border-gray-200`}
-										style={{ backgroundColor: color.toLowerCase() }}
-									></span>
-									<span className="text-gray-700">{color}</span>
-								</div>
-							</label>
-						))}
-					</div>
-				</div>
-			)}
+  return (
+    <div className="bg-white rounded-lg border border-gray-200 p-4 h-fit">
+      <div className="flex items-center justify-between mb-4">
+        <h2 className="text-sm font-medium text-gray-900">FILTER</h2>
+        <button onClick={onClearFilters} className="text-xs text-blue-600 hover:text-blue-800">
+          Clear all
+        </button>
+      </div>
 
-			<button
-				onClick={onClearFilters}
-				className="w-full bg-black text-white py-2 px-4 rounded font-medium text-sm"
-			>
-				Apply
-			</button>
-		</aside>
-	);
-};
+      <div className="space-y-4">
+        {/* Categories */}
+        <div>
+          <h3 className="text-xs font-medium text-gray-900 mb-2 uppercase">CATEGORY</h3>
+          <div className="space-y-1">
+            {CATEGORIES.map((cat) => (
+              <label key={cat.value} className="flex items-center">
+                <input
+                  type="radio"
+                  name="category"
+                  checked={category === cat.value}
+                  onChange={() => onCategoryChange(cat.value)}
+                  className="h-3 w-3 text-blue-600 focus:ring-blue-500 border-gray-300"
+                />
+                <span className="ml-2 text-xs text-gray-700">{cat.label}</span>
+              </label>
+            ))}
+          </div>
+        </div>
 
-export default FilterSidebar;
+        {/* Rating */}
+        <div>
+          <h3 className="text-xs font-medium text-gray-900 mb-2 uppercase">RATING</h3>
+          <div className="space-y-1">
+            {[5, 4, 3, 2, 1].map((rating) => (
+              <label key={rating} className="flex items-center">
+                <input
+                  type="radio"
+                  name="rating"
+                  checked={selectedRating === rating}
+                  onChange={() => setSelectedRating(rating)}
+                  className="h-3 w-3 text-blue-600 focus:ring-blue-500 border-gray-300"
+                />
+                <div className="ml-2 flex items-center">
+                  {[...Array(5)].map((_, i) => (
+                    <Star
+                      key={i}
+                      className={`h-3 w-3 ${i < rating ? "fill-yellow-400 text-yellow-400" : "text-gray-300"}`}
+                    />
+                  ))}
+                  <span className="ml-1 text-xs text-gray-700">& up</span>
+                </div>
+              </label>
+            ))}
+          </div>
+        </div>
+
+        {/* Availability */}
+        <div>
+          <h3 className="text-xs font-medium text-gray-900 mb-2 uppercase">AVAILABILITY</h3>
+          <label className="flex items-center">
+            <input
+              type="checkbox"
+              checked={inStockOnly}
+              onChange={(e) => setInStockOnly(e.target.checked)}
+              className="h-3 w-3 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+            />
+            <span className="ml-2 text-xs text-gray-700">In Stock Only</span>
+          </label>
+        </div>
+
+        {/* Price Range */}
+        <div>
+          <h3 className="text-xs font-medium text-gray-900 mb-2 uppercase">PRICE</h3>
+          <div className="space-y-2">
+            {/* Price display above slider */}
+            <div className="text-xs text-gray-600">
+              ₹{filterOptions.minPrice} to ₹{priceRange[1]}
+            </div>
+            {/* Custom slider that only moves from max side */}
+            <div className="relative">
+              <input
+                type="range"
+                min={filterOptions.minPrice}
+                max={filterOptions.maxPrice}
+                value={priceRange[1]}
+                onChange={handlePriceRangeChange}
+                className="w-full h-1 bg-gray-200 rounded-lg appearance-none cursor-pointer slider-blue"
+                style={{
+                  background: `linear-gradient(to right, #3b82f6 0%, #3b82f6 ${
+                    ((priceRange[1] - filterOptions.minPrice) / (filterOptions.maxPrice - filterOptions.minPrice)) * 100
+                  }%, #e5e7eb ${
+                    ((priceRange[1] - filterOptions.minPrice) / (filterOptions.maxPrice - filterOptions.minPrice)) * 100
+                  }%, #e5e7eb 100%)`,
+                }}
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* Size (for microfiber products) */}
+        {showMicrofiberFilters && filterOptions.sizes.length > 0 && (
+          <div>
+            <h3 className="text-xs font-medium text-gray-900 mb-2 uppercase">SIZE</h3>
+            <div className="space-y-1">
+              {filterOptions.sizes.map((size) => (
+                <label key={size} className="flex items-center">
+                  <input
+                    type="checkbox"
+                    checked={selectedSize.includes(size)}
+                    onChange={(e) => {
+                      if (e.target.checked) {
+                        setSelectedSize([...selectedSize, size])
+                      } else {
+                        setSelectedSize(selectedSize.filter((s) => s !== size))
+                      }
+                    }}
+                    className="h-3 w-3 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                  />
+                  <span className="ml-2 text-xs text-gray-700">{size}</span>
+                </label>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Color */}
+        {filterOptions.colors.length > 0 && (
+          <div>
+            <h3 className="text-xs font-medium text-gray-900 mb-2 uppercase">COLOR</h3>
+            <div className="space-y-1">
+              {filterOptions.colors.map((color) => (
+                <label key={color} className="flex items-center cursor-pointer">
+                  <div className="flex items-center">
+                    <input
+                      type="checkbox"
+                      checked={selectedColor.includes(color)}
+                      onChange={(e) => {
+                        if (e.target.checked) {
+                          setSelectedColor([...selectedColor, color])
+                        } else {
+                          setSelectedColor(selectedColor.filter((c) => c !== color))
+                        }
+                      }}
+                      className="sr-only"
+                    />
+                    <div
+                      className={`w-3 h-3 rounded-full border mr-2 ${
+                        selectedColor.includes(color) ? "border-gray-800 border-2" : "border-gray-300"
+                      }`}
+                      style={{
+                        backgroundColor:
+                          color.toLowerCase() === "white"
+                            ? "#ffffff"
+                            : color.toLowerCase() === "black"
+                              ? "#000000"
+                              : color.toLowerCase() === "blue"
+                                ? "#3b82f6"
+                                : color.toLowerCase() === "purple"
+                                  ? "#8b5cf6"
+                                  : color.toLowerCase() === "green"
+                                    ? "#10b981"
+                                    : color.toLowerCase() === "red"
+                                      ? "#ef4444"
+                                      : color.toLowerCase() === "yellow"
+                                        ? "#f59e0b"
+                                        : color.toLowerCase() === "orange"
+                                          ? "#f97316"
+                                          : color.toLowerCase() === "pink"
+                                            ? "#ec4899"
+                                            : color.toLowerCase() === "gray" || color.toLowerCase() === "grey"
+                                              ? "#6b7280"
+                                              : "#9ca3af",
+                      }}
+                    />
+                    <span className="text-xs text-gray-700 capitalize">{color}</span>
+                  </div>
+                </label>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* GSM (for microfiber products) */}
+        {showMicrofiberFilters && filterOptions.gsmValues.length > 0 && (
+          <div>
+            <h3 className="text-xs font-medium text-gray-900 mb-2 uppercase">GSM</h3>
+            <div className="space-y-1">
+              {filterOptions.gsmValues.map((gsm) => (
+                <label key={gsm} className="flex items-center">
+                  <input
+                    type="checkbox"
+                    checked={selectedGsm.includes(gsm)}
+                    onChange={(e) => {
+                      if (e.target.checked) {
+                        setSelectedGsm([...selectedGsm, gsm])
+                      } else {
+                        setSelectedGsm(selectedGsm.filter((g) => g !== gsm))
+                      }
+                    }}
+                    className="h-3 w-3 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                  />
+                  <span className="ml-2 text-xs text-gray-700">{gsm} GSM</span>
+                </label>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Quantity (for non-microfiber products) */}
+        {showCarCareFilters && filterOptions.quantities.length > 0 && (
+          <div>
+            <h3 className="text-xs font-medium text-gray-900 mb-2 uppercase">QUANTITY</h3>
+            <div className="space-y-1">
+              {filterOptions.quantities.map((quantity) => (
+                <label key={quantity} className="flex items-center">
+                  <input
+                    type="checkbox"
+                    checked={selectedQuantity.includes(quantity)}
+                    onChange={(e) => {
+                      if (e.target.checked) {
+                        setSelectedQuantity([...selectedQuantity, quantity])
+                      } else {
+                        setSelectedQuantity(selectedQuantity.filter((q) => q !== quantity))
+                      }
+                    }}
+                    className="h-3 w-3 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                  />
+                  <span className="ml-2 text-xs text-gray-700">{quantity}</span>
+                </label>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Apply Filters Button */}
+        <button
+          onClick={onApplyFilters}
+          className="w-full bg-black text-white py-2 px-4 rounded text-xs font-medium hover:bg-gray-800 transition-colors mt-4"
+        >
+          Apply
+        </button>
+      </div>
+
+      <style jsx>{`
+        .slider-blue::-webkit-slider-thumb {
+          appearance: none;
+          height: 16px;
+          width: 16px;
+          border-radius: 50%;
+          background: #3b82f6;
+          cursor: pointer;
+          border: 2px solid #ffffff;
+          box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+        }
+
+        .slider-blue::-moz-range-thumb {
+          height: 16px;
+          width: 16px;
+          border-radius: 50%;
+          background: #3b82f6;
+          cursor: pointer;
+          border: 2px solid #ffffff;
+          box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+        }
+      `}</style>
+    </div>
+  )
+}
+
+export default FilterSidebar

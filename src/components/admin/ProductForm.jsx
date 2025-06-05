@@ -12,10 +12,10 @@ export default function EnhancedProductForm({ product = null, onSuccess, onCance
 	const [form, setForm] = useState({
 		product_code: "",
 		name: "",
-		main_category_id: "",
+		category_name: "",
 		description: "",
 		is_microfiber: false,
-		subcategories: [],
+		subcategory_names: [],
 		variants: [],
 		main_image_url: "",
 		images: [],
@@ -76,39 +76,30 @@ export default function EnhancedProductForm({ product = null, onSuccess, onCance
 	const populateEditForm = () => {
 		if (!product) return;
 
-		// Find and set the selected main category
-		const mainCategory = allCategories.find(c => c.id === product.main_category_id);
+		const mainCategory = allCategories.find(c => c.name === product.category_name);
 		if (mainCategory) {
 			setSelectedCategory(mainCategory);
 		}
 
-		// Get subcategory IDs from the fetched product data
-		// The API returns subcategories nested within a 'category' object
-		const subcategoryIds = product.product_subcategories?.map(sc => parseInt(sc.category?.id)).filter(Boolean) || [];
-
-		// Map fetched variants to form state structure
 		const productVariants = product.variants?.map(variant => {
-			// Ensure core fields are present and correctly typed
-			const baseVariant = {
-				stock: parseInt(variant.stock) || 0,
-				price: parseFloat(variant.price) || 0,
-			};
-
-			// Map specific fields based on product's microfiber status
 			if (product.is_microfiber) {
 				return {
-					...baseVariant,
-					// Microfiber specific fields with defaults, ensuring correct mapping from fetched variant
-					gsm_value: variant.gsm_value || '',
-					size_id: variant.size_id?.toString() || '', // Ensure size_id is string for select
-					color_id: variant.color_id?.toString() || '', // Ensure color_id is string for select
+					id: variant.id || null,
+					gsm: variant.gsm || '',
+					size: variant.size_cm || variant.size || '',
+					color: variant.color || '',
+					stock: parseInt(variant.stock) || 0,
+					price: parseFloat(variant.price) || 0,
+					compareAtPrice: parseFloat(variant.compare_at_price || variant.compareAtPrice) || null
 				};
-			} else { // Assume liquid if not microfiber
+			} else {
 				return {
-					...baseVariant,
-					// Liquid specific fields with defaults, ensuring correct mapping from fetched variant
+					id: variant.id || null,
 					quantity: variant.quantity || '',
-					unit: variant.unit || 'ml', // Default to ml if unit is missing
+					unit: variant.unit || 'ml',
+					stock: parseInt(variant.stock) || 0,
+					price: parseFloat(variant.price) || 0,
+					compareAtPrice: parseFloat(variant.compare_at_price || variant.compareAtPrice) || null
 				};
 			}
 		}) || [];
@@ -116,11 +107,11 @@ export default function EnhancedProductForm({ product = null, onSuccess, onCance
 		setForm({
 			product_code: product.product_code || "",
 			name: product.name || "",
-			main_category_id: product.main_category_id?.toString() || "",
+			category_name: product.category_name || "",
 			description: product.description || "",
 			is_microfiber: product.is_microfiber || false,
-			subcategories: subcategoryIds, // Use integer IDs
-			variants: productVariants, // Use mapped variants
+			subcategory_names: product.subcategory_names || [],
+			variants: productVariants,
 			main_image_url: product.main_image_url || "",
 			images: product.images || [],
 			key_features: product.key_features || [],
@@ -135,41 +126,33 @@ export default function EnhancedProductForm({ product = null, onSuccess, onCance
 			[name]: type === "checkbox" ? checked : value
 		}));
 
-		if (name === "main_category_id") {
-			const category = allCategories.find((c) => c.id.toString() === value);
+		if (name === "category_name") {
+			const category = allCategories.find((c) => c.name === value);
 			setSelectedCategory(category);
 			setForm((prev) => ({
 				...prev,
 				is_microfiber: category?.is_microfiber || false,
-				variants: []
+				variants: [] // Clear variants when category changes
 			}));
 		}
 	};
 
-	const handleSubcategoryChange = (categoryIdString) => {
-		const categoryId = parseInt(categoryIdString);
+	const handleSubcategoryChange = (categoryName) => {
 		setForm(prev => ({
 			...prev,
-			subcategories: prev.subcategories.includes(categoryId)
-				? prev.subcategories.filter(id => id !== categoryId)
-				: [...prev.subcategories, categoryId]
+			subcategory_names: prev.subcategory_names.includes(categoryName)
+				? prev.subcategory_names.filter(name => name !== categoryName)
+				: [...prev.subcategory_names, categoryName]
 		}));
 	};
 
 	const handleVariantChange = (index, field, value) => {
 		const newVariants = [...form.variants];
-		if (form.is_microfiber) {
-			newVariants[index] = {
-				...newVariants[index],
-				[field]: value,
-			};
-		} else {
-			// Handle liquid product sizes
-			newVariants[index] = {
-				...newVariants[index],
-				[field]: value,
-			};
-		}
+		// Update the field with the direct value
+		newVariants[index] = {
+			...newVariants[index],
+			[field]: value,
+		};
 		setForm({ ...form, variants: newVariants });
 	};
 
@@ -177,19 +160,20 @@ export default function EnhancedProductForm({ product = null, onSuccess, onCance
 		const newVariants = [...form.variants];
 		if (form.is_microfiber) {
 			newVariants.push({
-				gsm_value: "",
-				color_id: "",
-				size_id: "",
+				gsm: "",
+				size: "",
+				color: "",
 				stock: 0,
 				price: 0,
+				compareAtPrice: null
 			});
 		} else {
-			// Add new liquid product size
 			newVariants.push({
 				quantity: "",
-				unit: "ml", // Default unit
-				price: 0,
+				unit: "ml",
 				stock: 0,
+				price: 0,
+				compareAtPrice: null
 			});
 		}
 		setForm({ ...form, variants: newVariants });
@@ -239,7 +223,7 @@ export default function EnhancedProductForm({ product = null, onSuccess, onCance
 			alert("Product name is required");
 			return;
 		}
-		if (!form.main_category_id) {
+		if (!form.category_name) {
 			alert("Please select a category");
 			return;
 		}
@@ -251,84 +235,78 @@ export default function EnhancedProductForm({ product = null, onSuccess, onCance
 		// Validate variants
 		for (let i = 0; i < form.variants.length; i++) {
 			const variant = form.variants[i];
-			// Validate based on whether the product is microfiber
 			if (form.is_microfiber) {
-				// Microfiber validation
-				if (!variant.gsm_value || !variant.size_id || !variant.color_id) {
+				if (!variant.gsm || !variant.size || !variant.color) {
 					alert(`Variant ${i + 1}: Please fill all required fields (GSM, size, color)`);
 					return;
 				}
-				// Check if stock and price are valid numbers
-				if (variant.stock === null || variant.stock === undefined || isNaN(variant.stock) || variant.stock < 0) {
-					alert(`Variant ${i + 1}: Stock must be a non-negative number.`);
+			} else {
+				if (!variant.quantity) {
+					alert(`Variant ${i + 1}: Please fill quantity`);
 					return;
 				}
-				if (variant.price === null || variant.price === undefined || isNaN(variant.price) || variant.price < 0) {
-					alert(`Variant ${i + 1}: Price must be a non-negative number.`);
-					return;
-				}
-			} else { // Assume liquid validation
-				// Liquid validation
-				if (!variant.quantity || !variant.unit) {
-					alert(`Variant ${i + 1}: Please fill quantity and unit`);
-					return;
-				}
-				// Check if quantity, stock, and price are valid numbers
-				if (variant.quantity === null || variant.quantity === undefined || isNaN(variant.quantity) || variant.quantity < 0) {
-					alert(`Variant ${i + 1}: Quantity must be a non-negative number.`);
-					return;
-				}
-				if (variant.stock === null || variant.stock === undefined || isNaN(variant.stock) || variant.stock < 0) {
-					alert(`Variant ${i + 1}: Stock must be a non-negative number.`);
-					return;
-				}
-				if (variant.price === null || variant.price === undefined || isNaN(variant.price) || variant.price < 0) {
-					alert(`Variant ${i + 1}: Price must be a non-negative number.`);
-					return;
-				}
+			}
+			if (isNaN(variant.stock) || variant.stock < 0) {
+				alert(`Variant ${i + 1}: Stock must be a non-negative number.`);
+				return;
+			}
+			if (isNaN(variant.price) || variant.price < 0) {
+				alert(`Variant ${i + 1}: Price must be a non-negative number.`);
+				return;
 			}
 		}
 
 		setSaving(true);
 		try {
+			// Create a clean payload with only necessary fields
 			const payload = {
-				...form,
-				main_category_id: parseInt(form.main_category_id),
-				subcategories: form.subcategories.map(id => parseInt(id)),
+				product_code: form.product_code,
+				name: form.name,
+				category_name: form.category_name,
+				description: form.description,
+				is_microfiber: form.is_microfiber,
+				subcategory_names: form.subcategory_names,
+				main_image_url: form.main_image_url,
+				images: form.images,
+				key_features: form.key_features,
+				taglines: form.taglines,
 				variants: form.variants.map(variant => {
-					const baseVariant = {
-						stock: parseInt(variant.stock) || 0,
-						price: parseFloat(variant.price) || 0,
-					};
+					// For microfiber products
 					if (form.is_microfiber) {
 						return {
-							...baseVariant,
-							gsm_value: parseFloat(variant.gsm_value) || 0,
-							color_id: parseInt(variant.color_id) || null,
-							size_id: parseInt(variant.size_id) || null,
-						};
-					} else {
-						return {
-							...baseVariant,
-							quantity: parseFloat(variant.quantity) || 0,
-							unit: variant.unit || '',
+							gsm: variant.gsm,
+							size: variant.size,
+							color: variant.color,
+							stock: parseInt(variant.stock),
+							price: parseFloat(variant.price),
+							compareAtPrice: variant.compareAtPrice ? parseFloat(variant.compareAtPrice) : null
 						};
 					}
+					// For non-microfiber products
+					return {
+						quantity: variant.quantity,
+						unit: variant.unit,
+						stock: parseInt(variant.stock),
+						price: parseFloat(variant.price),
+						compareAtPrice: variant.compareAtPrice ? parseFloat(variant.compareAtPrice) : null
+					};
 				})
 			};
 
+			console.log("Submitting payload:", payload); // Debug log
+
 			if (isEditing) {
 				await ProductService.updateProduct(product.id, payload);
-				alert("Product updated successfully!");
 			} else {
 				await ProductService.createProduct(payload);
-				alert("Product created successfully!");
 			}
 
-			onSuccess?.();
-		} catch (err) {
-			console.error("Error saving product:", err);
-			alert("Error saving product: " + err.message);
+			if (onSuccess) {
+				onSuccess();
+			}
+		} catch (error) {
+			console.error("Error saving product:", error);
+			alert("Error saving product: " + error.message);
 		} finally {
 			setSaving(false);
 		}
@@ -499,15 +477,15 @@ export default function EnhancedProductForm({ product = null, onSuccess, onCance
 							Main Category *
 						</label>
 						<select
-							name="main_category_id"
-							value={form.main_category_id}
+							name="category_name"
+							value={form.category_name}
 							onChange={handleInput}
 							required
 							className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
 						>
 							<option value="">Select a category</option>
 							{allCategories.map((category) => (
-								<option key={category.id} value={category.id}>
+								<option key={category.name} value={category.name}>
 									{category.name} {category.is_microfiber ? "(Microfiber)" : "(Liquid)"}
 								</option>
 							))}
@@ -521,13 +499,13 @@ export default function EnhancedProductForm({ product = null, onSuccess, onCance
 						</label>
 						<div className="max-h-32 overflow-y-auto border border-gray-300 rounded-lg p-2">
 							{allCategories
-								.filter(c => c.id.toString() !== form.main_category_id)
+								.filter(c => c.name !== form.category_name)
 								.map((category) => (
-									<label key={category.id} className="flex items-center space-x-2 p-1 hover:bg-gray-50 rounded">
+									<label key={category.name} className="flex items-center space-x-2 p-1 hover:bg-gray-50 rounded">
 										<input
 											type="checkbox"
-											checked={form.subcategories.includes(category.id)}
-											onChange={() => handleSubcategoryChange(category.id.toString())}
+											checked={form.subcategory_names.includes(category.name)}
+											onChange={() => handleSubcategoryChange(category.name)}
 											className="rounded text-blue-600 focus:ring-blue-500"
 										/>
 										<span className="text-sm">
@@ -822,8 +800,8 @@ export default function EnhancedProductForm({ product = null, onSuccess, onCance
 											<input
 												type="number"
 												step="0.1"
-												value={variant.gsm_value || ''}
-												onChange={(e) => handleVariantChange(index, "gsm_value", e.target.value)}
+												value={variant.gsm || ''}
+												onChange={(e) => handleVariantChange(index, "gsm", e.target.value)}
 												required
 												className="w-full px-2 py-1 text-sm border rounded focus:ring-1 focus:ring-blue-500"
 												placeholder="300"
@@ -836,14 +814,14 @@ export default function EnhancedProductForm({ product = null, onSuccess, onCance
 												Size *
 											</label>
 											<select
-												value={variant.size_id || ''}
-												onChange={(e) => handleVariantChange(index, "size_id", e.target.value)}
+												value={variant.size || ''}
+												onChange={(e) => handleVariantChange(index, "size", e.target.value)}
 												required
 												className="w-full px-2 py-1 text-sm border rounded focus:ring-1 focus:ring-blue-500"
 											>
 												<option value="">Select size</option>
 												{allSizes.map((size) => (
-													<option key={size.id} value={size.id}>
+													<option key={size.id} value={size.size_cm}>
 														{size.size_cm}
 													</option>
 												))}
@@ -856,15 +834,15 @@ export default function EnhancedProductForm({ product = null, onSuccess, onCance
 												Color *
 											</label>
 											<select
-												value={variant.color_id || ''}
-												onChange={(e) => handleVariantChange(index, "color_id", e.target.value)}
+												value={variant.color || ''}
+												onChange={(e) => handleVariantChange(index, "color", e.target.value)}
 												required
 												className="w-full px-2 py-1 text-sm border rounded focus:ring-1 focus:ring-blue-500"
 											>
 												<option value="">Select color</option>
 												{allColors.map((color) => (
-													<option key={color.id} value={color.id}>
-														{color.name}
+													<option key={color.id} value={color.color}>
+														{color.color}
 													</option>
 												))}
 											</select>

@@ -9,7 +9,7 @@ function errorResponse(message, status = 500) {
 
 export async function GET() {
   try {
-    const { data, error } = await supabase.from("colors").select("*").order("name")
+    const { data, error } = await supabase.from("colors").select("*").order("color")
 
     if (error) {
       console.error("Supabase error:", error)
@@ -28,7 +28,7 @@ export async function POST(request) {
     const { name } = await request.json()
     if (!name) return errorResponse("Name is required", 400)
 
-    const { data, error } = await supabase.from("colors").insert([{ name }]).select()
+    const { data, error } = await supabase.from("colors").insert([{ color: name }]).select()
     if (error) return errorResponse(error.message)
 
     return NextResponse.json({ data: data[0] }, { status: 201 })
@@ -43,7 +43,7 @@ export async function PUT(request) {
     if (!id) return errorResponse("ID is required", 400)
     if (!name) return errorResponse("Name is required", 400)
 
-    const { data, error } = await supabase.from("colors").update({ name }).eq("id", id).select()
+    const { data, error } = await supabase.from("colors").update({ color: name }).eq("id", id).select()
     if (error) return errorResponse(error.message)
 
     return NextResponse.json({ data: data[0] })

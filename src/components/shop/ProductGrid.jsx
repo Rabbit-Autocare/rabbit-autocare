@@ -1,107 +1,163 @@
-import ProductCard from "./ProductCard";
+"use client"
 
-const ProductGrid = ({
-	products,
-	loading,
-	totalCount,
-	error,
-	sort,
-	onSortChange,
-}) => {
-	const handleSortChange = (e) => {
-		if (onSortChange) {
-			onSortChange(e.target.value);
-		}
-	};
+import ProductCard from "./ProductCard"
 
-	return (
-		<div className="space-y-4">
-			{/* Header - always visible, never changes */}
-			<div className="flex justify-between items-center">
-				<p className="text-sm text-gray-600">
-					{loading ? (
-						<span className="opacity-50">Loading...</span>
-					) : error ? (
-						<span className="text-red-500">Error loading products</span>
-					) : (
-						`Showing ${products.length} out of ${totalCount || products.length} results`
-					)}
-				</p>
-				<div className="flex items-center">
-					<span className="text-sm mr-2">Sort By:</span>
-					<select
-						className="border border-gray-300 rounded text-sm py-1 px-2 focus:ring-purple-500 focus:border-purple-500"
-						disabled={loading}
-						value={sort || "popularity"}
-						onChange={handleSortChange}
-					>
-						<option value="popularity">Popularity</option>
-						<option value="asc">Price: Low to High</option>
-						<option value="desc">Price: High to Low</option>
-						<option value="newest">Newest First</option>
-						<option value="rating">Highest Rated</option>
-					</select>
-				</div>
-			</div>
+const ProductGrid = ({ products, loading, error, hasActiveFilters, onClearFilters }) => {
+  // Loading state
+  if (loading) {
+    return (
+      <div className="product-grid">
+        {[...Array(6)].map((_, index) => (
+          <div
+            key={index}
+            className="bg-white rounded border animate-pulse"
+            style={{ width: "300px", height: "480px" }}
+          >
+            <div className="w-full h-48 bg-gray-200 rounded-t"></div>
+            <div className="p-4 space-y-3">
+              <div className="h-4 bg-gray-200 rounded w-3/4"></div>
+              <div className="h-3 bg-gray-200 rounded w-1/2"></div>
+              <div className="h-3 bg-gray-200 rounded w-full"></div>
+              <div className="h-3 bg-gray-200 rounded w-2/3"></div>
+              <div className="h-8 bg-gray-200 rounded w-full mt-4"></div>
+            </div>
+          </div>
+        ))}
+        <style jsx>{`
+          .product-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, 300px);
+            gap: 1.5rem;
+            justify-content: center;
+            justify-items: center;
+          }
+          @media (min-width: 1024px) {
+            .product-grid {
+              justify-content: flex-start;
+              justify-items: flex-start;
+            }
+          }
+        `}</style>
+      </div>
+    )
+  }
 
-			{/* Product grid - fixed height container to prevent layout shift */}
-			<div className="min-h-[800px]">
-				{loading ? (
-					// Loading state - same grid structure as actual products
-					<div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-						{[...Array(6)].map((_, index) => (
-							<div
-								key={index}
-								className="bg-white rounded overflow-hidden animate-pulse shadow-sm"
-							>
-								<div className="h-64 bg-gray-200"></div>
-								<div className="p-3 space-y-2">
-									<div className="h-4 bg-gray-200 rounded w-3/4"></div>
-									<div className="h-3 bg-gray-200 rounded w-1/2"></div>
-									<div className="h-3 bg-gray-200 rounded w-full"></div>
-									<div className="h-4 bg-gray-200 rounded w-1/4"></div>
-									<div className="h-8 bg-gray-200 rounded w-full"></div>
-								</div>
-							</div>
-						))}
-					</div>
-				) : error ? (
-					// Error state
-					<div className="text-center py-12">
-						<div className="text-red-500 text-lg mb-2">
-							Failed to load products
-						</div>
-						<div className="text-gray-400 text-sm">{error}</div>
-					</div>
-				) : products.length === 0 ? (
-					// No products state
-					<div className="text-center py-12">
-						<div className="text-gray-500 text-lg">No products found</div>
-						<div className="text-gray-400 text-sm mt-2">
-							Try adjusting your filters or search terms
-						</div>
-					</div>
-				) : (
-					// Actual products
-					<div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-						{products.map((product) => (
-							<ProductCard key={product.id} product={product} />
-						))}
-					</div>
-				)}
-			</div>
+  // Error state
+  if (error) {
+    return (
+      <div className="text-center py-12">
+        <div className="text-red-500 text-lg font-medium mb-2">Error Loading Products</div>
+        <p className="text-gray-600 mb-4">{error}</p>
+        <button
+          onClick={() => window.location.reload()}
+          className="bg-blue-600 text-white px-6 py-2 rounded hover:bg-blue-700 transition-colors"
+        >
+          Retry
+        </button>
+      </div>
+    )
+  }
 
-			{/* Additional product info for debugging (remove in production) */}
-			{!loading && !error && products.length > 0 && (
-				<div className="text-xs text-gray-400 mt-4">
-					Total products loaded: {products.length} | Products with stock:{" "}
-					{products.filter((p) => p.totalStock > 0).length} | Available
-					variants:{" "}
-					{products.reduce((acc, p) => acc + (p.availableVariants || 0), 0)}
-				</div>
-			)}
-		</div>
-	);
-};
+  // No products found
+  if (!products || products.length === 0) {
+    return (
+      <div className="text-center py-12">
+        <div className="text-gray-500 text-lg font-medium mb-2">
+          {hasActiveFilters ? "No Products Match Your Filters" : "No Products Found"}
+        </div>
+        <p className="text-gray-600 mb-4">
+          {hasActiveFilters
+            ? "Try adjusting your filters to see more results"
+            : "Check back later for new products"
+          }
+        </p>
+        {hasActiveFilters && onClearFilters && (
+          <button
+            onClick={onClearFilters}
+            className="bg-blue-600 text-white px-6 py-2 rounded hover:bg-blue-700 transition-colors"
+          >
+            Clear All Filters
+          </button>
+        )}
+      </div>
+    )
+  }
 
-export default ProductGrid;
+  // Validate products array and filter out invalid entries
+  const validProducts = products.filter(product => {
+    if (!product) {
+      console.warn("Invalid product found (null/undefined):", product)
+      return false
+    }
+
+    if (!product.id && !product._id) {
+      console.warn("Product missing ID:", product)
+      return false
+    }
+
+    if (!product.name) {
+      console.warn("Product missing name:", product)
+      return false
+    }
+
+    return true
+  })
+
+  // Log for debugging
+  console.log("ProductGrid rendering:", {
+    totalProducts: products.length,
+    validProducts: validProducts.length,
+    sampleProduct: validProducts[0]
+  })
+
+  return (
+    <div className="w-full">
+      {/* Results summary */}
+      {/* <div className="mb-4 text-sm text-gray-600">
+        Showing {validProducts.length} product{validProducts.length !== 1 ? 's' : ''}
+        {hasActiveFilters && " (filtered)"}
+      </div> */}
+
+      {/* Products grid */}
+      <div className="product-grid">
+        {validProducts.map((product, index) => {
+          // Use product.id or product._id as key, fallback to index
+          const productKey = product.id || product._id || `product-${index}`
+
+          return (
+            <ProductCard
+              key={productKey}
+              product={product}
+              index={index}
+            />
+          )
+        })}
+      </div>
+
+      {/* Show message if some products were filtered out */}
+      {products.length > validProducts.length && (
+        <div className="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded text-sm text-yellow-800">
+          Note: {products.length - validProducts.length} product(s) could not be displayed due to missing data.
+        </div>
+      )}
+
+      <style jsx>{`
+        .product-grid {
+          display: grid;
+          grid-template-columns: repeat(auto-fit, 300px);
+          gap: 1.5rem;
+          justify-content: center;
+          justify-items: center;
+        }
+        @media (min-width: 1024px) {
+          .product-grid {
+            justify-content: flex-start;
+            justify-items: flex-start;
+          }
+        }
+      `}</style>
+    </div>
+  )
+}
+
+export default ProductGrid

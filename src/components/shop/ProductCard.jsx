@@ -1,173 +1,154 @@
 "use client"
-
 import { useState } from "react"
 import Image from "next/image"
 import { useRouter } from "next/navigation"
-import { Heart, ShoppingCart } from 'lucide-react'
+import { Star, Heart, Sparkles } from "lucide-react"
 
-export default function ProductCard({ product }) {
+export default function ProductCard({ product, index }) {
   const router = useRouter()
   const [hasImageError, setHasImageError] = useState(false)
-  const [isAddingToCart, setIsAddingToCart] = useState(false)
-  const [isAddingToWishlist, setIsAddingToWishlist] = useState(false)
-  const [isInWishlist, setIsInWishlist] = useState(false)
+  const [isWishlisted, setIsWishlisted] = useState(false)
+
+  // Validate product data
+  if (!product) {
+    console.error("ProductCard received null/undefined product")
+    return null
+  }
 
   const handleImageError = () => {
+    console.log("Image error for product:", product.name)
     setHasImageError(true)
   }
 
-  // Calculate min and max prices from variants
-  const prices = product.variants?.map((v) => v.price) || []
-  const minPrice = prices.length > 0 ? Math.min(...prices) : 0
+  // Calculate max price from variants with better error handling
+  const calculateMaxPrice = () => {
+    try {
+      // Check if variants exist and is an array
+      if (product.variants && Array.isArray(product.variants) && product.variants.length > 0) {
+        const prices = product.variants
+          .map(variant => variant?.price)
+          .filter(price => price !== null && price !== undefined && !isNaN(price))
 
-  // Get the first image URL from product images array
-  const rawImageUrl = product.image && product.image.length > 0 ? product.image[0] : null
+        if (prices.length > 0) {
+          return Math.max(...prices)
+        }
+      }
 
-  // Validate and sanitize the image URL
-  const getValidImageUrl = (url) => {
-    if (!url) return null
+      // Fallback to product.price or other price fields
+      return product.price || product.maxPrice || product.basePrice || 0
+    } catch (error) {
+      console.error("Error calculating max price for product:", product.name, error)
+      return 0
+    }
+  }
+
+  const maxPrice = calculateMaxPrice()
+
+  // Get the main image with improved error handling
+  const getImageUrl = (url) => {
+    if (!url) return "/placeholder.svg?height=200&width=200"
 
     try {
-      // If it's already a valid absolute URL, return it
+      // If it's already a full URL, return it
       new URL(url)
       return url
     } catch {
-      // If it's a relative URL or invalid, try to make it absolute
+      // Handle relative URLs or file names
       if (typeof url === "string" && url.trim()) {
-        // If it's a path to Supabase storage
         if (!url.startsWith("http") && !url.startsWith("/")) {
-          return `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/product-images/${url}`
+          // Construct full URL for Supabase storage
+          const baseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+          if (baseUrl) {
+            return `${baseUrl}/storage/v1/object/public/product-images/${url}`
+          }
         }
-        // If it starts with /, treat as absolute path
         if (url.startsWith("/")) {
           return url
         }
       }
-      return null
+      return "/placeholder.svg?height=200&width=200"
     }
   }
 
-  const imageUrl = getValidImageUrl(rawImageUrl)
+  // Try multiple image sources
+  const getMainImage = () => {
+    const imageSources = [
+      product.main_image_url,
+      product.mainImage,
+      product.image,
+      product.images?.[0],
+      product.imageUrl
+    ].filter(Boolean)
 
-  // Get the number of ratings (placeholder for now)
-  const ratingCount = product.reviews?.length || Math.floor(Math.random() * 20) + 1
-
-  // Handle product click to navigate to detail page
-  const handleProductClick = () => {
-    // Navigate to product detail page - using the correct route
-    router.push(`/products/${product.id}`)
+    return imageSources.length > 0 ? getImageUrl(imageSources[0]) : "/placeholder.svg?height=200&width=200"
   }
 
-  // Handle add to cart functionality
-  const handleAddToCart = async (e) => {
-    e.preventDefault() // Prevent default behavior
-    e.stopPropagation() // Prevent event bubbling to avoid navigation
+  const imageUrl = getMainImage()
 
-    if (!product.variants || product.variants.length === 0) {
-      alert("This product has no available variants")
+  // Generate rating with better defaults
+  const rating = product.averageRating || product.rating || 4.0
+  const ratingCount = product.reviews?.length || product.reviewCount || Math.floor(Math.random() * 50) + 10
+
+  // Get product ID for navigation
+  const productId = product.id || product._id || product.productId
+
+  const handleViewProduct = () => {
+    if (!productId) {
+      console.error("Cannot navigate: Product ID is missing", product)
       return
     }
-
-    // If multiple variants, redirect to product detail page to select
-    if (product.variants.length > 1) {
-      router.push(`/products/${product.id}`)
-      return
-    }
-
-    // If only one variant, add it directly to cart
-    const variant = product.variants[0]
-    if (variant.stock <= 0) {
-      alert("This item is out of stock")
-      return
-    }
-
-    setIsAddingToCart(true)
-    try {
-      const response = await fetch("/api/cart/add", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          productId: product.id,
-          variantId: variant.id || 0,
-          quantity: 1,
-          price: variant.price,
-          variant: variant.value,
-          productName: product.name,
-          productImage: imageUrl,
-        }),
-      })
-
-      const data = await response.json()
-
-      if (response.ok && data.success) {
-        // Show success message
-        alert("Product added to cart successfully!")
-      } else {
-        throw new Error(data.error || "Failed to add to cart")
-      }
-    } catch (error) {
-      console.error("Error adding to cart:", error)
-      alert("Failed to add to cart. Please try again.")
-    } finally {
-      setIsAddingToCart(false)
-    }
+    router.push(`/shop/product/${productId}`)
   }
 
-  // Handle wishlist functionality
-  const handleWishlistToggle = async (e) => {
-    e.preventDefault() // Prevent default behavior
-    e.stopPropagation() // Prevent event bubbling to avoid navigation
-
-    setIsAddingToWishlist(true)
-    try {
-      const endpoint = isInWishlist ? "/api/wishlist/remove" : "/api/wishlist/add"
-      const response = await fetch(endpoint, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          productId: product.id,
-        }),
-      })
-
-      const data = await response.json()
-
-      if (response.ok && data.success) {
-        setIsInWishlist(!isInWishlist)
-        const message = isInWishlist ? "Removed from wishlist" : "Added to wishlist"
-        alert(message)
-      } else {
-        throw new Error(data.error || "Failed to update wishlist")
-      }
-    } catch (error) {
-      console.error("Error updating wishlist:", error)
-      alert("Failed to update wishlist. Please try again.")
-    } finally {
-      setIsAddingToWishlist(false)
-    }
+  const handleWishlistToggle = (e) => {
+    e.stopPropagation()
+    setIsWishlisted(!isWishlisted)
+    // TODO: Implement actual wishlist functionality
+    console.log(`${isWishlisted ? 'Removed from' : 'Added to'} wishlist:`, product.name)
   }
+
+  // Format product name with fallback
+  const productName = product.name || product.title || `Product ${index + 1}`
+
+  // Format description with fallback
+  const description = product.description || product.shortDescription ||
+    "High quality car care product designed for optimal performance and lasting results."
 
   return (
-    <div className="bg-white rounded overflow-hidden relative group shadow-sm hover:shadow-md transition-shadow duration-200">
-      {/* Product Image with click handler */}
-      <div className="relative h-64 w-full bg-gray-100 cursor-pointer" onClick={handleProductClick}>
+    <div
+      className="bg-white overflow-hidden hover:shadow-sm transition-shadow duration-300 flex flex-col cursor-pointer relative border border-gray-200 rounded-sm "
+      style={{ width: "300px", height: "470px" }}
+      onClick={handleViewProduct}
+    >
+      {/* Wishlist Button */}
+      <button
+        onClick={handleWishlistToggle}
+        className="absolute top-3 right-3 z-10 p-2 rounded-full bg-white/90 hover:bg-white transition-colors shadow-sm border border-gray-100"
+        aria-label={isWishlisted ? "Remove from wishlist" : "Add to wishlist"}
+      >
+        <Heart
+          size={16}
+          className={`${isWishlisted ? "text-red-500 fill-current" : "text-gray-500"} transition-colors`}
+        />
+      </button>
+
+      {/* Product Image - Full width */}
+      <div className="relative h-56 w-full bg-gray-50 flex-shrink-0">
         {imageUrl && !hasImageError ? (
           <Image
-            src={imageUrl || "/placeholder.svg"}
-            alt={product.name}
+            src={imageUrl}
+            alt={productName}
             fill
-            className="object-contain p-4 hover:scale-105 transition-transform duration-200"
+            className="object-cover"
             onError={handleImageError}
             unoptimized={!imageUrl.startsWith("http")}
+            sizes="300px"
           />
         ) : (
-          <div className="flex items-center justify-center h-full bg-gray-100">
+          <div className="flex items-center justify-center h-full bg-gray-50">
             <div className="text-center">
               <svg
-                className="w-16 h-16 text-gray-400 mx-auto mb-2"
+                className="w-12 h-12 text-gray-300 mx-auto mb-2"
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"
@@ -175,77 +156,67 @@ export default function ProductCard({ product }) {
                 <path
                   strokeLinecap="round"
                   strokeLinejoin="round"
-                  strokeWidth={2}
+                  strokeWidth={1.5}
                   d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 002 2v12a2 2 0 002 2z"
                 />
               </svg>
-              <span className="text-gray-500 text-sm">No Image</span>
+              <span className="text-gray-400 text-xs">No Image</span>
             </div>
           </div>
         )}
-
-        {/* Wishlist button - positioned inside the image container */}
-        <button
-          className={`absolute top-2 right-2 z-10 w-8 h-8 flex items-center justify-center rounded-full shadow-sm transition-all duration-200 ${
-            isInWishlist ? "bg-red-500 text-white" : "bg-white text-gray-600 hover:text-red-500 hover:bg-red-50"
-          }`}
-          onClick={handleWishlistToggle}
-          disabled={isAddingToWishlist}
-        >
-          <Heart size={16} className={`transition-all duration-200 ${isInWishlist ? "fill-current" : ""}`} />
-        </button>
       </div>
 
-      {/* Product Details */}
-      <div className="p-3">
-        {/* Product Name with click handler */}
-        <h3
-          className="text-base font-medium text-gray-800 mb-1 cursor-pointer hover:text-blue-600 transition-colors duration-200"
-          onClick={handleProductClick}
-        >
-          {product.name}
+      {/* Product Details - Compact layout matching reference */}
+      <div className="px-4 py-3 flex flex-col flex-grow">
+        {/* Product Name - Larger, bolder */}
+        <h3 className="text-lg font-semibold text-gray-900 mb-2 line-clamp-2 leading-tight">
+          {productName}
         </h3>
 
-        {/* Star Ratings */}
-        <div className="flex items-center mb-1">
+        {/* Rating - Matching reference style */}
+        <div className="flex items-center mb-2">
           <div className="flex items-center">
             {[1, 2, 3, 4, 5].map((star) => (
-              <svg key={star} className="w-3 h-3 text-yellow-400 fill-current" viewBox="0 0 20 20">
-                <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-              </svg>
+              <Star
+                key={star}
+                size={16}
+                className={`${star <= Math.floor(rating) ? "text-yellow-400 fill-current" : "text-gray-200"}`}
+              />
             ))}
-            <span className="ml-1 text-xs text-gray-500">{`| ${ratingCount} Rating${
-              ratingCount !== 1 ? "s" : ""
-            }`}</span>
+            <span className="ml-2 text-sm text-gray-500">| {ratingCount} Ratings</span>
           </div>
         </div>
 
-        {/* Product Description */}
-        <p className="text-xs text-gray-600 mb-2 line-clamp-2" onClick={handleProductClick}>
-          {product.description || "High quality car care product"}
+        {/* Description - Single line only */}
+        <p className="text-sm text-gray-600 mb-4 line-clamp-1 leading-relaxed">
+          {description}
         </p>
 
-        <hr className="border-gray-200 mb-2" />
+        {/* Price and Button - Fixed at Bottom */}
+        <div className="mt-auto">
+          <hr className="border-gray-700 mb-4" />
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-baseline">
+              <span className="text-xl font-bold text-gray-900">₹{maxPrice || 0}</span>
+              {product.originalPrice && product.originalPrice > maxPrice && (
+                <span className="ml-2 text-sm text-gray-400 line-through">₹{product.originalPrice}</span>
+              )}
+            </div>
+          </div>
 
-        {/* Price */}
-        <div className="flex items-center justify-between mb-2">
-          <p className="text-base font-bold text-gray-800">₹{minPrice}</p>
-          {product.variants && product.variants.length > 0 && (
-            <span className="text-xs text-gray-500">
-              {product.variants.some((v) => v.stock > 0) ? "In Stock" : "Out of Stock"}
-            </span>
-          )}
+          {/* Add to Shine List Button */}
+          <button
+            className="w-full bg-white border border-gray-800 text-gray-700 py-2.5 px-4 rounded-sm text-sm font-medium hover:bg-gray-50 hover:border-gray-300 transition-all duration-200 disabled:bg-gray-100 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+            onClick={(e) => {
+              e.stopPropagation()
+              handleViewProduct()
+            }}
+            disabled={!productId}
+          >
+            <span>Add to Shine List</span>
+            <Sparkles size={16} className="text-gray-500" />
+          </button>
         </div>
-
-        {/* Add to Cart Button - with onClick that doesn't propagate */}
-        <button
-          className="w-full bg-blue-600 border border-blue-600 text-white py-1.5 px-4 rounded text-sm hover:bg-blue-700 transition-colors duration-300 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
-          onClick={handleAddToCart}
-          disabled={isAddingToCart || !product.variants?.some((v) => v.stock > 0)}
-        >
-          <ShoppingCart size={14} />
-          {isAddingToCart ? "Adding..." : "Add to Cart"}
-        </button>
       </div>
     </div>
   )

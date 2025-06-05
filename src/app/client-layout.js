@@ -51,7 +51,7 @@ export default function ClientLayout({ children }) {
 		return <div>Loading session...</div>;
 	}
 
-	console.log("Current user:", user); // Now you can see the user in console
+
 
 	return (
 		<ThemeProvider

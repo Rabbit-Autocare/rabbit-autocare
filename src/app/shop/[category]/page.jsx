@@ -6,8 +6,7 @@ import { ProductService } from "@/lib/service/productService"
 import { KitsCombosService } from "@/lib/service/kitsCombosService"
 import FilterSidebar from "@/components/shop/FilterSidebar"
 import ProductGrid from "@/components/shop/ProductGrid"
-import MobileFilterModal from "@/components/shop/MobileFilterModal"
-import { Filter, ArrowUpDown } from "lucide-react"
+import { Filter, ArrowUpDown, X } from "lucide-react"
 
 export default function ShopPage() {
   const params = useParams()
@@ -25,10 +24,8 @@ export default function ShopPage() {
   // Mobile states
   const [isMobile, setIsMobile] = useState(false)
   const [showMobileFilter, setShowMobileFilter] = useState(false)
-  const [showMobileSort, setShowMobileSort] = useState(false)
 
-  // State for search and sort
-  const [search, setSearch] = useState(searchParams.get("search") || "")
+  // State for sort
   const [sort, setSort] = useState(searchParams.get("sort") || "popularity")
 
   // State for filters - Fixed initialization
@@ -57,9 +54,6 @@ export default function ShopPage() {
     return quantityParam ? quantityParam.split(",").filter(Boolean) : []
   })
 
-  // Debounced search to avoid too frequent API calls
-  const [debouncedSearch, setDebouncedSearch] = useState(search)
-
   // Check if mobile/tablet
   useEffect(() => {
     const checkMobile = () => {
@@ -71,19 +65,17 @@ export default function ShopPage() {
     return () => window.removeEventListener("resize", checkMobile)
   }, [])
 
+  // Close mobile filter when screen size changes
   useEffect(() => {
-    const timer = setTimeout(() => {
-      setDebouncedSearch(search)
-    }, 500)
-
-    return () => clearTimeout(timer)
-  }, [search])
+    if (!isMobile && showMobileFilter) {
+      setShowMobileFilter(false)
+    }
+  }, [isMobile, showMobileFilter])
 
   // Update URL with current filters
   const updateUrlParams = useCallback(() => {
     const params = new URLSearchParams()
 
-    if (debouncedSearch) params.set("search", debouncedSearch)
     if (sort !== "popularity") params.set("sort", sort)
     if (selectedSize.length > 0) params.set("size", selectedSize.join(","))
     if (minPrice) params.set("minPrice", minPrice)
@@ -98,7 +90,6 @@ export default function ShopPage() {
     router.replace(newUrl, { scroll: false })
   }, [
     category,
-    debouncedSearch,
     sort,
     selectedSize,
     minPrice,
@@ -206,14 +197,6 @@ export default function ShopPage() {
           // Skip if product is null
           if (!product) return false
 
-          // Search filter
-          if (debouncedSearch) {
-            const searchTerm = debouncedSearch.toLowerCase()
-            const nameMatch = product.name?.toLowerCase().includes(searchTerm)
-            const descMatch = product.description?.toLowerCase().includes(searchTerm)
-            if (!nameMatch && !descMatch) return false
-          }
-
           // Rating filter
           if (selectedRating > 0) {
             const productRating = product.averageRating || 0
@@ -273,7 +256,6 @@ export default function ShopPage() {
     }
   }, [
     category,
-    debouncedSearch,
     sort,
     selectedSize,
     minPrice,
@@ -312,14 +294,12 @@ export default function ShopPage() {
     setPriceRange([0, 1000])
     setMinPrice("")
     setMaxPrice("")
-    setSearch("")
   }, [category])
 
   // Handler functions
   const handleSortChange = (newSort) => {
     console.log("Sort changed to:", newSort)
     setSort(newSort)
-    setShowMobileSort(false)
   }
 
   const handleCategoryChange = (newCategory) => {
@@ -338,7 +318,6 @@ export default function ShopPage() {
     setPriceRange([0, 1000])
     setMinPrice("")
     setMaxPrice("")
-    setSearch("")
   }
 
   const handleApplyFilters = () => {
@@ -373,9 +352,20 @@ export default function ShopPage() {
       selectedRating > 0 ||
       inStockOnly ||
       priceRange[0] > 0 ||
-      priceRange[1] < 1000 ||
-      search.trim() !== ""
+      priceRange[1] < 1000
     )
+  }
+
+  const getActiveFiltersCount = () => {
+    return [
+      selectedSize.length > 0,
+      selectedColor.length > 0,
+      selectedGsm.length > 0,
+      selectedQuantity.length > 0,
+      selectedRating > 0,
+      inStockOnly,
+      priceRange[0] > 0 || priceRange[1] < 1000
+    ].filter(Boolean).length
   }
 
   const sortOptions = [
@@ -392,28 +382,52 @@ export default function ShopPage() {
       <div className="container mx-auto px-4 py-6 max-w-[1300px]">
         {/* Page Header */}
         <div className="mb-6">
-          <h1 className="text-2xl font-bold text-gray-900 mb-1">{getCategoryDisplayName()}</h1>
-          <p className="text-sm text-gray-600 mb-4">{loading ? "Loading..." : `${totalCount} products found`}</p>
+          <div className="flex items-center justify-between mb-4">
+            <p className="text-sm text-gray-600">{loading ? "Loading..." : `${totalCount} products found`}</p>
 
-          {/* Search and Sort Controls - Desktop Only */}
-          {!isMobile && (
-            <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between mb-4">
-              <div className="flex-1 max-w-md w-full">
-                <input
-                  type="text"
-                  placeholder="Search products..."
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                  className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                />
+            {/* Mobile Filter/Sort Buttons */}
+            {isMobile && (
+              <div className="flex gap-2">
+                <div className="flex items-center gap-2">
+                  {/* <label className="text-sm text-gray-700">Sort:</label> */}
+                  <select
+                    value={sort}
+                    onChange={(e) => handleSortChange(e.target.value)}
+                    className="flex items-center gap-2 bg-white border border-gray-300 rounded-lg px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  >
+                    {sortOptions.map((option) => (
+                      <option key={option.value} value={option.value}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <button
+                  onClick={() => {
+                    console.log('Filter button clicked, current state:', showMobileFilter);
+                    setShowMobileFilter(true);
+                  }}
+                  className="flex items-center gap-2 bg-black text-white rounded-lg px-3 py-2 text-sm font-medium hover:bg-gray-800 transition-colors relative"
+                >
+                  <Filter size={16} />
+                  Filter
+                  {hasActiveFilters() && (
+                    <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center font-medium">
+                      {getActiveFiltersCount()}
+                    </span>
+                  )}
+                </button>
               </div>
+            )}
 
+            {/* Desktop Sort Controls */}
+            {!isMobile && (
               <div className="flex items-center gap-2">
                 <label className="text-sm text-gray-700">Sort by:</label>
                 <select
                   value={sort}
                   onChange={(e) => handleSortChange(e.target.value)}
-                  className="border border-gray-300 rounded px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white"
+                  className="flex items-center gap-2 bg-white border border-gray-300 rounded-lg px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 >
                   {sortOptions.map((option) => (
                     <option key={option.value} value={option.value}>
@@ -422,21 +436,8 @@ export default function ShopPage() {
                   ))}
                 </select>
               </div>
-            </div>
-          )}
-
-          {/* Search for Mobile/Tablet */}
-          {isMobile && (
-            <div className="mb-4">
-              <input
-                type="text"
-                placeholder="Search products..."
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-              />
-            </div>
-          )}
+            )}
+          </div>
         </div>
 
         <div className="flex flex-col lg:flex-row gap-6">
@@ -472,7 +473,7 @@ export default function ShopPage() {
           )}
 
           {/* Products Grid Container */}
-          <div className={`flex-1 ${isMobile ? "pb-20" : ""}`}>
+          <div className="flex-1">
             {error ? (
               <div className="text-center py-12">
                 <div className="text-red-500 text-lg font-medium mb-2">Error Loading Products</div>
@@ -496,107 +497,69 @@ export default function ShopPage() {
           </div>
         </div>
 
-        {/* Mobile Bottom Sticky Filter/Sort Bar */}
+        {/* Mobile Side Filter Panel */}
         {isMobile && (
-          <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 p-4 z-50 shadow-lg">
-            <div className="flex gap-3 max-w-[1240px] mx-auto">
-              {/* Sort Button */}
-              <button
-                onClick={() => setShowMobileSort(true)}
-                className="flex-1 flex items-center justify-center gap-2 bg-white border border-gray-300 rounded-lg px-4 py-3 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
-              >
-                <ArrowUpDown size={16} />
-                Sort
-              </button>
+          <>
+            {/* Backdrop */}
+            <div
+              className={`fixed inset-0 bg-black transition-opacity duration-300 z-[9998] ${
+                showMobileFilter ? 'opacity-50' : 'opacity-0 pointer-events-none'
+              }`}
+              onClick={() => setShowMobileFilter(false)}
+            />
 
-              {/* Filter Button */}
-              <button
-                onClick={() => setShowMobileFilter(true)}
-                className="flex-1 flex items-center justify-center gap-2 bg-black text-white rounded-lg px-4 py-3 text-sm font-medium hover:bg-gray-800 transition-colors relative"
-              >
-                <Filter size={16} />
-                Filter
-                {hasActiveFilters() && (
-                  <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
-                    {[
-                      selectedSize.length > 0,
-                      selectedColor.length > 0,
-                      selectedGsm.length > 0,
-                      selectedQuantity.length > 0,
-                      selectedRating > 0,
-                      inStockOnly,
-                      priceRange[0] > 0 || priceRange[1] < 1000,
-                      search.trim() !== ""
-                    ].filter(Boolean).length}
-                  </span>
-                )}
-              </button>
-            </div>
-          </div>
-        )}
-
-        {/* Mobile Sort Modal */}
-        {showMobileSort && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-end z-50">
-            <div className="bg-white w-full rounded-t-xl p-4 max-h-[70vh] overflow-y-auto">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-lg font-semibold">Sort By</h3>
+            {/* Side Filter Panel */}
+            <div className={`
+              fixed top-0 left-0 h-full w-96 max-w-[90vw] bg-white z-[9999]
+              transform transition-transform duration-300 ease-in-out
+              ${showMobileFilter ? 'translate-x-0' : '-translate-x-full'}
+              flex flex-col
+            `}>
+              {/* Header */}
+              <div className="flex items-center justify-between p-5 border-b border-gray-200 bg-white flex-shrink-0">
+                <h3 className="text-xl font-semibold text-gray-900">Filters</h3>
                 <button
-                  onClick={() => setShowMobileSort(false)}
-                  className="text-gray-500 hover:text-gray-700"
+                  onClick={() => setShowMobileFilter(false)}
+                  className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+                  aria-label="Close filters"
                 >
-                  ✕
+                  <X size={24} />
                 </button>
               </div>
 
-              <div className="space-y-1">
-                {sortOptions.map((option) => (
-                  <button
-                    key={option.value}
-                    onClick={() => handleSortChange(option.value)}
-                    className={`w-full text-left px-4 py-3 rounded-lg text-sm transition-colors ${
-                      sort === option.value
-                        ? 'bg-blue-50 text-blue-600 font-medium'
-                        : 'text-gray-700 hover:bg-gray-50'
-                    }`}
-                  >
-                    {option.label}
-                  </button>
-                ))}
+              {/* Filter Content - Scrollable */}
+              <div className="flex-1 overflow-y-auto p-5">
+                <FilterSidebar
+                  selectedSize={selectedSize}
+                  setSelectedSize={setSelectedSize}
+                  minPrice={minPrice}
+                  setMinPrice={setMinPrice}
+                  maxPrice={maxPrice}
+                  setMaxPrice={setMaxPrice}
+                  priceRange={priceRange}
+                  setPriceRange={setPriceRange}
+                  category={category}
+                  selectedRating={selectedRating}
+                  setSelectedRating={setSelectedRating}
+                  inStockOnly={inStockOnly}
+                  setInStockOnly={setInStockOnly}
+                  selectedColor={selectedColor}
+                  setSelectedColor={setSelectedColor}
+                  selectedGsm={selectedGsm}
+                  setSelectedGsm={setSelectedGsm}
+                  selectedQuantity={selectedQuantity}
+                  setSelectedQuantity={setSelectedQuantity}
+                  onClearFilters={handleClearFilters}
+                  onApplyFilters={() => {
+                    handleApplyFilters();
+                  }}
+                  onCategoryChange={handleCategoryChange}
+                  products={allProducts}
+                  isMobile={true}
+                />
               </div>
             </div>
-          </div>
-        )}
-
-        {/* Mobile Filter Modal */}
-        {showMobileFilter && (
-          <MobileFilterModal
-            selectedSize={selectedSize}
-            setSelectedSize={setSelectedSize}
-            minPrice={minPrice}
-            setMinPrice={setMinPrice}
-            maxPrice={maxPrice}
-            setMaxPrice={setMaxPrice}
-            priceRange={priceRange}
-            setPriceRange={setPriceRange}
-            category={category}
-            selectedRating={selectedRating}
-            setSelectedRating={setSelectedRating}
-            inStockOnly={inStockOnly}
-            setInStockOnly={setInStockOnly}
-            selectedColor={selectedColor}
-            setSelectedColor={setSelectedColor}
-            selectedGsm={selectedGsm}
-            setSelectedGsm={setSelectedGsm}
-            selectedQuantity={selectedQuantity}
-            setSelectedQuantity={setSelectedQuantity}
-            onClose={() => setShowMobileFilter(false)}
-            onClearFilters={handleClearFilters}
-            onApplyFilters={handleApplyFilters}
-            onCategoryChange={handleCategoryChange}
-            products={allProducts}
-            hasActiveFilters={hasActiveFilters()}
-          />
+          </>
         )}
       </div>
     </div>

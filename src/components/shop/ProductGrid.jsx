@@ -113,10 +113,10 @@ const ProductGrid = ({ products, loading, error, hasActiveFilters, onClearFilter
   return (
     <div className="w-full">
       {/* Results summary */}
-      <div className="mb-4 text-sm text-gray-600">
+      {/* <div className="mb-4 text-sm text-gray-600">
         Showing {validProducts.length} product{validProducts.length !== 1 ? 's' : ''}
         {hasActiveFilters && " (filtered)"}
-      </div>
+      </div> */}
 
       {/* Products grid */}
       <div className="product-grid">

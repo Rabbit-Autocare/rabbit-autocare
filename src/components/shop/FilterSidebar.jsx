@@ -111,12 +111,16 @@ const FilterSidebar = ({
 
   // Handle price range change - only allow max price to change
   const handlePriceRangeChange = (e) => {
-    const value = Number.parseInt(e.target.value)
-    const newRange = [filterOptions.minPrice, value]
+  const value = Number.parseInt(e.target.value)
+  const newRange = [filterOptions.minPrice, value]
+
+  // Use requestAnimationFrame for smoother updates
+  requestAnimationFrame(() => {
     setPriceRange(newRange)
     setMinPrice(filterOptions.minPrice.toString())
     setMaxPrice(value.toString())
-  }
+  })
+}
 
   // Determine which filters to show based on category
   const getFilterVisibility = () => {
@@ -156,8 +160,8 @@ const FilterSidebar = ({
   return (
     <div className="bg-white rounded-lg border border-gray-200 p-4 h-fit">
       <div className="flex items-center justify-between mb-4">
-        <h2 className="text-sm font-medium text-gray-900">FILTER</h2>
-        <button onClick={onClearFilters} className="text-xs text-blue-600 hover:text-blue-800">
+        <h2 className=" text-sm font-medium text-gray-900">FILTER</h2>
+        <button onClick={onClearFilters} className="text-xs border border-black text-gray-600 px-2 py-1 rounded-full hover:bg-gray-100 transition-colors">
           Clear all
         </button>
       </div>
@@ -165,18 +169,19 @@ const FilterSidebar = ({
       <div className="space-y-4">
         {/* Categories */}
         <div>
-          <h3 className="text-xs font-medium text-gray-900 mb-2 uppercase">CATEGORY</h3>
+          <h3 className=" text-lg md:text-xs font-medium text-gray-900 mb-2 uppercase">CATEGORY</h3>
           <div className="space-y-1">
             {CATEGORIES.map((cat) => (
-              <label key={cat.value} className="flex items-center">
-                <input
-                  type="radio"
-                  name="category"
-                  checked={category === cat.value}
-                  onChange={() => onCategoryChange(cat.value)}
-                  className="h-3 w-3 text-blue-600 focus:ring-blue-500 border-gray-300"
-                />
-                <span className="ml-2 text-xs text-gray-700">{cat.label}</span>
+              <label key={cat.value} className=" ml-2 flex items-center">
+               <input
+  type="radio"
+  name="category"
+  checked={category === cat.value}
+  onChange={() => onCategoryChange(cat.value)}
+  className="h-5 w-5 md:h-3 md:w-3 border-gray-300 focus:ring-purple-500"
+  style={{ accentColor: '#601e8d' }}
+/>
+                <span className="ml-2 text-lg md:text-xs text-gray-700">{cat.label}</span>
               </label>
             ))}
           </div>
@@ -184,25 +189,26 @@ const FilterSidebar = ({
 
         {/* Rating */}
         <div>
-          <h3 className="text-xs font-medium text-gray-900 mb-2 uppercase">RATING</h3>
+          <h3 className="text-lg md:text-xs font-medium text-gray-900 mb-2 uppercase">RATING</h3>
           <div className="space-y-1">
             {[5, 4, 3, 2, 1].map((rating) => (
-              <label key={rating} className="flex items-center">
+              <label key={rating} className="ml-2 flex items-center">
                 <input
                   type="radio"
                   name="rating"
                   checked={selectedRating === rating}
                   onChange={() => setSelectedRating(rating)}
-                  className="h-3 w-3 text-blue-600 focus:ring-blue-500 border-gray-300"
+                   className="h-5 w-5 md:h-3 md:w-3 border-gray-300 focus:ring-purple-500"
+  style={{ accentColor: '#601e8d' }}
                 />
                 <div className="ml-2 flex items-center">
                   {[...Array(5)].map((_, i) => (
                     <Star
                       key={i}
-                      className={`h-3 w-3 ${i < rating ? "fill-yellow-400 text-yellow-400" : "text-gray-300"}`}
+                      className={`h-5 w-5 md:h-3 md:w-3 ${i < rating ? "fill-yellow-400 text-yellow-400" : "text-gray-300"}`}
                     />
                   ))}
-                  <span className="ml-1 text-xs text-gray-700">& up</span>
+                  <span className="ml-1 text-lg md:text-xs text-gray-700">& up</span>
                 </div>
               </label>
             ))}
@@ -211,24 +217,25 @@ const FilterSidebar = ({
 
         {/* Availability */}
         <div>
-          <h3 className="text-xs font-medium text-gray-900 mb-2 uppercase">AVAILABILITY</h3>
-          <label className="flex items-center">
+          <h3 className="text-lg md:text-xs font-medium text-gray-900 mb-2 uppercase">AVAILABILITY</h3>
+          <label className=" ml-2 flex items-center">
             <input
               type="checkbox"
               checked={inStockOnly}
               onChange={(e) => setInStockOnly(e.target.checked)}
-              className="h-3 w-3 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                className="h-5 w-5 md:h-3 md:w-3 border-gray-300 focus:ring-purple-500"
+  style={{ accentColor: '#601e8d' }}
             />
-            <span className="ml-2 text-xs text-gray-700">In Stock Only</span>
+            <span className="ml-2 text-lg md:text-xs text-gray-700">In Stock Only</span>
           </label>
         </div>
 
         {/* Price Range */}
         <div>
-          <h3 className="text-xs font-medium text-gray-900 mb-2 uppercase">PRICE</h3>
+          <h3 className="text-sm md:text-xs font-medium text-gray-900 mb-2 uppercase">PRICE</h3>
           <div className="space-y-2">
             {/* Price display above slider */}
-            <div className="text-xs text-gray-600">
+            <div className="text-sm md:text-xs text-gray-600">
               ₹{filterOptions.minPrice} to ₹{priceRange[1]}
             </div>
             {/* Custom slider that only moves from max side */}
@@ -238,10 +245,13 @@ const FilterSidebar = ({
                 min={filterOptions.minPrice}
                 max={filterOptions.maxPrice}
                 value={priceRange[1]}
+                onInput={handlePriceRangeChange}
                 onChange={handlePriceRangeChange}
-                className="w-full h-1 bg-gray-200 rounded-lg appearance-none cursor-pointer slider-blue"
+                onTouchStart={(e) => e.stopPropagation()}
+                onMouseDown={(e) => e.stopPropagation()}
+                className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer slider-purple"
                 style={{
-                  background: `linear-gradient(to right, #3b82f6 0%, #3b82f6 ${
+                  background: `linear-gradient(to right, #601e8d 0%, #601e8d ${
                     ((priceRange[1] - filterOptions.minPrice) / (filterOptions.maxPrice - filterOptions.minPrice)) * 100
                   }%, #e5e7eb ${
                     ((priceRange[1] - filterOptions.minPrice) / (filterOptions.maxPrice - filterOptions.minPrice)) * 100
@@ -255,10 +265,10 @@ const FilterSidebar = ({
         {/* Size (for microfiber products) */}
         {showMicrofiberFilters && filterOptions.sizes.length > 0 && (
           <div>
-            <h3 className="text-xs font-medium text-gray-900 mb-2 uppercase">SIZE</h3>
+            <h3 className="text-lg md:text-xs font-medium text-gray-900 mb-2 uppercase">SIZE</h3>
             <div className="space-y-1">
               {filterOptions.sizes.map((size) => (
-                <label key={size} className="flex items-center">
+                <label key={size} className=" ml-2 flex items-center">
                   <input
                     type="checkbox"
                     checked={selectedSize.includes(size)}
@@ -269,9 +279,10 @@ const FilterSidebar = ({
                         setSelectedSize(selectedSize.filter((s) => s !== size))
                       }
                     }}
-                    className="h-3 w-3 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                      className="h-5 w-5 md:h-3 md:w-3 border-gray-300 focus:ring-purple-500"
+  style={{ accentColor: '#601e8d' }}
                   />
-                  <span className="ml-2 text-xs text-gray-700">{size}</span>
+                  <span className="ml-2 text-lg md:text-xs text-gray-700">{size}</span>
                 </label>
               ))}
             </div>
@@ -281,11 +292,11 @@ const FilterSidebar = ({
         {/* Color */}
         {filterOptions.colors.length > 0 && (
           <div>
-            <h3 className="text-xs font-medium text-gray-900 mb-2 uppercase">COLOR</h3>
+            <h3 className="text-lg md:text-xs font-medium text-gray-900 mb-2 uppercase">COLOR</h3>
             <div className="space-y-1">
               {filterOptions.colors.map((color) => (
                 <label key={color} className="flex items-center cursor-pointer">
-                  <div className="flex items-center">
+                  <div className="ml-2 flex items-center">
                     <input
                       type="checkbox"
                       checked={selectedColor.includes(color)}
@@ -299,8 +310,8 @@ const FilterSidebar = ({
                       className="sr-only"
                     />
                     <div
-                      className={`w-3 h-3 rounded-full border mr-2 ${
-                        selectedColor.includes(color) ? "border-gray-800 border-2" : "border-gray-300"
+                      className={`w-5 h-5 rounded-full border mr-2 ${
+                        selectedColor.includes(color) ? "border-purple-800 border-2" : "border-gray-300"
                       }`}
                       style={{
                         backgroundColor:
@@ -327,7 +338,7 @@ const FilterSidebar = ({
                                               : "#9ca3af",
                       }}
                     />
-                    <span className="text-xs text-gray-700 capitalize">{color}</span>
+                    <span className="text-lg md:text-xs text-gray-700 capitalize">{color}</span>
                   </div>
                 </label>
               ))}
@@ -338,10 +349,10 @@ const FilterSidebar = ({
         {/* GSM (for microfiber products) */}
         {showMicrofiberFilters && filterOptions.gsmValues.length > 0 && (
           <div>
-            <h3 className="text-xs font-medium text-gray-900 mb-2 uppercase">GSM</h3>
+            <h3 className="text-lg md:text-xs font-medium text-gray-900 mb-2 uppercase">GSM</h3>
             <div className="space-y-1">
               {filterOptions.gsmValues.map((gsm) => (
-                <label key={gsm} className="flex items-center">
+                <label key={gsm} className="ml-2 flex items-center">
                   <input
                     type="checkbox"
                     checked={selectedGsm.includes(gsm)}
@@ -352,9 +363,10 @@ const FilterSidebar = ({
                         setSelectedGsm(selectedGsm.filter((g) => g !== gsm))
                       }
                     }}
-                    className="h-3 w-3 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                     className="h-5 w-5 md:h-3 md:w-3 border-gray-300 focus:ring-purple-500"
+  style={{ accentColor: '#601e8d' }}
                   />
-                  <span className="ml-2 text-xs text-gray-700">{gsm} GSM</span>
+                  <span className="ml-2 text-lg md:text-xs text-gray-700">{gsm} GSM</span>
                 </label>
               ))}
             </div>
@@ -364,10 +376,10 @@ const FilterSidebar = ({
         {/* Quantity (for non-microfiber products) */}
         {showCarCareFilters && filterOptions.quantities.length > 0 && (
           <div>
-            <h3 className="text-xs font-medium text-gray-900 mb-2 uppercase">QUANTITY</h3>
+            <h3 className="text-lg md:text-xs font-medium text-gray-900 mb-2 uppercase">QUANTITY</h3>
             <div className="space-y-1">
               {filterOptions.quantities.map((quantity) => (
-                <label key={quantity} className="flex items-center">
+                <label key={quantity} className="ml-2 flex items-center">
                   <input
                     type="checkbox"
                     checked={selectedQuantity.includes(quantity)}
@@ -378,9 +390,10 @@ const FilterSidebar = ({
                         setSelectedQuantity(selectedQuantity.filter((q) => q !== quantity))
                       }
                     }}
-                    className="h-3 w-3 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                      className="h-5 w-5 md:h-3 md:w-3 border-gray-300 focus:ring-purple-500"
+  style={{ accentColor: '#601e8d' }}
                   />
-                  <span className="ml-2 text-xs text-gray-700">{quantity}</span>
+                  <span className="ml-2 text-lg md:text-xs text-gray-700">{quantity}</span>
                 </label>
               ))}
             </div>
@@ -395,27 +408,84 @@ const FilterSidebar = ({
           Apply
         </button>
       </div>
-
-      <style jsx>{`
-        .slider-blue::-webkit-slider-thumb {
+<style jsx>{`
+        .slider-purple {
+          -webkit-appearance: none;
           appearance: none;
-          height: 16px;
-          width: 16px;
-          border-radius: 50%;
-          background: #3b82f6;
-          cursor: pointer;
-          border: 2px solid #ffffff;
-          box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+          outline: none;
+          transition: all 0.2s ease-in-out;
+          touch-action: pan-x;
+          user-select: none;
         }
 
-        .slider-blue::-moz-range-thumb {
-          height: 16px;
-          width: 16px;
+        .slider-purple::-webkit-slider-thumb {
+          -webkit-appearance: none;
+          appearance: none;
+          height: 20px;
+          width: 20px;
           border-radius: 50%;
-          background: #3b82f6;
+          background: #601e8d;
           cursor: pointer;
-          border: 2px solid #ffffff;
-          box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+          border: 3px solid #ffffff;
+          box-shadow: 0 2px 6px rgba(96, 30, 141, 0.3);
+          transition: all 0.15s ease-in-out;
+          touch-action: pan-x;
+        }
+
+        .slider-purple::-webkit-slider-thumb:hover {
+          transform: scale(1.1);
+          box-shadow: 0 3px 8px rgba(96, 30, 141, 0.4);
+        }
+
+        .slider-purple::-webkit-slider-thumb:active {
+          transform: scale(1.05);
+        }
+
+        .slider-purple::-moz-range-thumb {
+          height: 20px;
+          width: 20px;
+          border-radius: 50%;
+          background: #601e8d;
+          cursor: pointer;
+          border: 3px solid #ffffff;
+          box-shadow: 0 2px 6px rgba(96, 30, 141, 0.3);
+          transition: all 0.15s ease-in-out;
+          -moz-appearance: none;
+        }
+
+        .slider-purple::-moz-range-thumb:hover {
+          transform: scale(1.1);
+          box-shadow: 0 3px 8px rgba(96, 30, 141, 0.4);
+        }
+
+        .slider-purple::-moz-range-track {
+          height: 8px;
+          border-radius: 4px;
+          background: transparent;
+        }
+
+        .slider-purple::-ms-thumb {
+          height: 20px;
+          width: 20px;
+          border-radius: 50%;
+          background: #601e8d;
+          cursor: pointer;
+          border: 3px solid #ffffff;
+          box-shadow: 0 2px 6px rgba(96, 30, 141, 0.3);
+        }
+
+        .custom-radio {
+          accent-color: #601e8d;
+        }
+
+        .custom-radio:checked {
+          background-color: #601e8d;
+          border-color: #601e8d;
+        }
+
+        .custom-radio:focus {
+          ring-color: #601e8d;
+          border-color: #601e8d;
         }
       `}</style>
     </div>

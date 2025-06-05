@@ -117,7 +117,7 @@ export default function ProductCard({ product, index }) {
   return (
     <div
       className="bg-white overflow-hidden hover:shadow-sm transition-shadow duration-300 flex flex-col cursor-pointer relative border border-gray-200 rounded-sm "
-      style={{ width: "300px", height: "460px" }}
+      style={{ width: "300px", height: "470px" }}
       onClick={handleViewProduct}
     >
       {/* Wishlist Button */}
@@ -191,9 +191,10 @@ export default function ProductCard({ product, index }) {
         <p className="text-sm text-gray-600 mb-4 line-clamp-1 leading-relaxed">
           {description}
         </p>
-<hr className="border-gray-700 mb-4" />
+
         {/* Price and Button - Fixed at Bottom */}
         <div className="mt-auto">
+          <hr className="border-gray-700 mb-4" />
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-baseline">
               <span className="text-xl font-bold text-gray-900">₹{maxPrice || 0}</span>

@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import dynamic from 'next/dynamic';
 import { supabase } from '@/lib/supabaseClient';
 import '../../../app/globals.css';
@@ -8,6 +8,7 @@ import AdminLayout from '@/components/layouts/AdminLayout';
 import { Search, Trash2, Plus } from 'lucide-react';
 import { KitsCombosService } from '@/lib/service/kitsCombosService';
 import { ProductService } from '@/lib/service/productService';
+import Image from 'next/image';
 
 // Dynamically import the shared form
 const KitsCombosForm = dynamic(() =>
@@ -32,29 +33,31 @@ export default function KitsAndCombosPage() {
     discounted_price: 0,
     discount_percentage: 0,
   });
+  const [error, setError] = useState(null);
 
   const itemLabel = activeTab === 'kits' ? 'Kit' : 'Combo';
+
+  const fetchItems = useCallback(async () => {
+    try {
+      setLoading(true);
+      const { data, error } = await supabase
+        .from('kits_combos')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      setItems(data);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
   useEffect(() => {
     fetchItems();
     fetchProducts();
-  }, [activeTab]);
-
-  const fetchItems = async () => {
-    setLoading(true);
-    try {
-      const response =
-        activeTab === 'kits'
-          ? await KitsCombosService.getKits()
-          : await KitsCombosService.getCombos();
-      setItems(response[activeTab] || []);
-    } catch (err) {
-      console.error('Failed to fetch:', err);
-      setItems([]);
-    } finally {
-      setLoading(false);
-    }
-  };
+  }, [fetchItems]);
 
   const fetchProducts = async () => {
     try {
@@ -325,14 +328,14 @@ export default function KitsAndCombosPage() {
                     {filteredItems.map((item) => (
                       <tr key={item.id} className='hover:bg-gray-50'>
                         <td className='px-5 py-4'>
-                          <img
-                            src={getImageUrl(item.image_url)}
-                            alt={item.name}
-                            className='w-10 h-10 object-cover rounded'
-                            onError={(e) =>
-                              (e.target.src = '/placeholder-image.png')
-                            }
-                          />
+                          <div className="w-16 h-16 relative">
+                            <Image
+                              src={item.image_url || "/placeholder.svg"}
+                              alt={item.name}
+                              fill
+                              className="object-cover rounded"
+                            />
+                          </div>
                         </td>
                         <td className='px-5 py-4 font-medium text-gray-800'>
                           {item.name}

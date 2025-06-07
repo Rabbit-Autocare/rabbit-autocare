@@ -2,6 +2,7 @@
 import { useEffect, useState } from "react";
 import { ProductService } from "@/lib/service/productService";
 import { Plus, Trash2, Package, Palette, Ruler, Hash, DollarSign, Archive, Tag, X, Image as ImageIcon } from "lucide-react";
+import Image from 'next/image';
 
 export default function EnhancedProductForm({ product = null, onSuccess, onCancel }) {
 	const [loading, setLoading] = useState(false);
@@ -88,10 +89,10 @@ export default function EnhancedProductForm({ product = null, onSuccess, onCance
 					gsm: variant.gsm || '',
 					size: variant.size_cm || variant.size || '',
 					color: variant.color || '',
-					stock: parseInt(variant.stock) || 0,
-					price: parseFloat(variant.price) || 0,
+				stock: parseInt(variant.stock) || 0,
+				price: parseFloat(variant.price) || 0,
 					compareAtPrice: parseFloat(variant.compare_at_price || variant.compareAtPrice) || null
-				};
+			};
 			} else {
 				return {
 					id: variant.id || null,
@@ -149,10 +150,10 @@ export default function EnhancedProductForm({ product = null, onSuccess, onCance
 	const handleVariantChange = (index, field, value) => {
 		const newVariants = [...form.variants];
 		// Update the field with the direct value
-		newVariants[index] = {
-			...newVariants[index],
-			[field]: value,
-		};
+			newVariants[index] = {
+				...newVariants[index],
+				[field]: value,
+			};
 		setForm({ ...form, variants: newVariants });
 	};
 
@@ -247,12 +248,12 @@ export default function EnhancedProductForm({ product = null, onSuccess, onCance
 				}
 			}
 			if (isNaN(variant.stock) || variant.stock < 0) {
-				alert(`Variant ${i + 1}: Stock must be a non-negative number.`);
-				return;
-			}
+					alert(`Variant ${i + 1}: Stock must be a non-negative number.`);
+					return;
+				}
 			if (isNaN(variant.price) || variant.price < 0) {
-				alert(`Variant ${i + 1}: Price must be a non-negative number.`);
-				return;
+					alert(`Variant ${i + 1}: Price must be a non-negative number.`);
+					return;
 			}
 		}
 
@@ -283,7 +284,7 @@ export default function EnhancedProductForm({ product = null, onSuccess, onCance
 						};
 					}
 					// For non-microfiber products
-					return {
+						return {
 						quantity: variant.quantity,
 						unit: variant.unit,
 						stock: parseInt(variant.stock),
@@ -560,13 +561,16 @@ export default function EnhancedProductForm({ product = null, onSuccess, onCance
 							<div className="grid grid-cols-2 md:grid-cols-4 gap-4">
 								{form.images.map((url, index) => (
 									<div key={url} className="relative group">
-										<img
-											src={url}
-											alt={`Product image ${index + 1}`}
-											className={`w-full h-32 object-cover rounded-lg ${
-												form.main_image_url === url ? 'ring-2 ring-blue-500' : ''
-											}`}
-										/>
+										<div className="relative w-full h-32">
+											<Image
+												src={url}
+												alt={`Product image ${index + 1}`}
+												fill
+												className={`object-cover rounded-lg ${
+													form.main_image_url === url ? 'ring-2 ring-blue-500' : ''
+												}`}
+											/>
+										</div>
 										<div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-50 transition-opacity rounded-lg flex items-center justify-center gap-2">
 											<button
 												type="button"

@@ -1,5 +1,5 @@
 "use client";
-import { useCart } from "@/hooks/useCart";
+import { useCart } from "@/contexts/CartContext";
 
 export default function PriceSummary() {
 	const {

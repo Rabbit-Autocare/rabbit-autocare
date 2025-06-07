@@ -23,11 +23,20 @@ export function Drawer({
 			document.addEventListener("mousedown", handleOutsideClick);
 			// Prevent body scroll when drawer is open
 			document.body.style.overflow = "hidden";
+			document.body.style.position = "fixed";
+			document.body.style.width = "100%";
+			document.body.style.top = `-${window.scrollY}px`;
 		}
 
 		return () => {
 			document.removeEventListener("mousedown", handleOutsideClick);
+			// Restore scroll position and behavior
+			const scrollY = document.body.style.top;
 			document.body.style.overflow = "unset";
+			document.body.style.position = "static";
+			document.body.style.width = "auto";
+			document.body.style.top = "auto";
+			window.scrollTo(0, parseInt(scrollY || "0") * -1);
 		};
 	}, [isOpen, onClose]);
 

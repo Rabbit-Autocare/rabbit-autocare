@@ -1,5 +1,6 @@
 'use client';
 import { useEffect, useRef, useState } from 'react';
+import Image from 'next/image';
 
 const images = [
   '/assets/images/carinterior.png',
@@ -169,11 +170,14 @@ export default function CarInterior() {
                 display: isMobile && i !== 1 ? 'none' : 'block',
               }}
             >
-              <img
-                src={images[imageIndex]}
-                alt={`Car ${imageIndex}`}
-                className="w-full h-full object-cover"
-              />
+              <div className="relative w-full h-full">
+                <Image
+                  src={images[imageIndex]}
+                  alt={titles[imageIndex]}
+                  fill
+                  className="object-cover"
+                />
+              </div>
             </div>
           );
         })}

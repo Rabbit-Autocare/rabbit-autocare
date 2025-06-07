@@ -30,7 +30,7 @@ export default function AuthCallbackPage() {
 
 				if (userError) {
 					console.error("Error fetching user data:", userError);
-					window.location.href = "/";
+					router.push("/");
 					return;
 				}
 
@@ -43,11 +43,14 @@ export default function AuthCallbackPage() {
 					return;
 				}
 
-				// Redirect based on is_admin status
+				// Set a flag in localStorage to indicate successful login
+				localStorage.setItem('isAuthenticated', 'true');
+
+				// Redirect based on is_admin status using Next.js router
 				if (userData?.is_admin === true) {
-					window.location.href = "/admin";
+					router.push("/admin");
 				} else {
-					window.location.href = "/";
+					router.push("/");
 				}
 			} catch (error) {
 				console.error("Auth callback error:", error);

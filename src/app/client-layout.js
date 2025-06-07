@@ -1,70 +1,65 @@
-// app/client-layout.js
-"use client";
+"use client"
 
-import { useEffect, useState } from "react";
-import { usePathname, useRouter } from "next/navigation";
-import { supabase } from "@/lib/supabaseClient";
-import Footer from "@/components/navigation/Footer";
-import { CartProvider } from "@/contexts/CartContext";
-import MainNavbar from "@/components/navigation/MainNavbar";
-import { ThemeProvider } from "@/contexts/ThemeContext";
+import { useEffect, useState } from "react"
+import { usePathname, useRouter } from "next/navigation"
+import { supabase } from "@/lib/supabaseClient"
+import Footer from "@/components/navigation/Footer"
+import MainNavbar from "@/components/navigation/MainNavbar"
+import { ThemeProvider } from "@/contexts/ThemeContext"
 
 export default function ClientLayout({ children }) {
-	const router = useRouter();
-	const pathname = usePathname();
-	const [user, setUser] = useState(null);
-	const [loading, setLoading] = useState(true);
+  const router = useRouter()
+  const pathname = usePathname()
+  const [user, setUser] = useState(null)
+  const [loading, setLoading] = useState(true)
+  const [mounted, setMounted] = useState(false)
 
-	useEffect(() => {
-		// Check initial session
-		const checkSession = async () => {
-			const {
-				data: { user },
-			} = await supabase.auth.getUser();
-			setUser(user);
-			setLoading(false);
-		};
+  useEffect(() => {
+    setMounted(true)
+  }, [])
 
-		checkSession();
+  useEffect(() => {
+    // Check initial session
+    const checkSession = async () => {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser()
+      setUser(user)
+      setLoading(false)
+    }
 
-		// Set up auth state listener
-		const {
-			data: { subscription },
-		} = supabase.auth.onAuthStateChange(async (event, session) => {
-			const currentUser = session?.user ?? null;
-			setUser(currentUser);
+    checkSession()
 
-			if (event === "SIGNED_OUT") {
-				router.push("/login");
-			} else if (
-				event === "SIGNED_IN" &&
-				!pathname.includes("/auth/callback")
-			) {
-				router.refresh();
-			}
-		});
+    // Set up auth state listener
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange(async (event, session) => {
+      const currentUser = session?.user ?? null
+      setUser(currentUser)
 
-		return () => subscription?.unsubscribe();
-	}, [router, pathname]);
+      if (event === "SIGNED_OUT") {
+        router.push("/login")
+      } else if (event === "SIGNED_IN" && !pathname.includes("/auth/callback")) {
+        router.refresh()
+      }
+    })
 
-	if (loading) {
-		return <div>Loading session...</div>;
-	}
+    return () => subscription?.unsubscribe()
+  }, [router, pathname])
 
+  if (loading && !mounted) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-gray-900"></div>
+      </div>
+    )
+  }
 
-
-	return (
-		<ThemeProvider
-			attribute="class"
-			defaultTheme="system"
-			enableSystem
-			disableTransitionOnChange
-		>
-			<CartProvider>
-				<MainNavbar user={user} />
-				{children}
-				<Footer />
-			</CartProvider>
-		</ThemeProvider>
-	);
+  return (
+    <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
+      <MainNavbar user={user} />
+      <main>{children}</main>
+      <Footer />
+    </ThemeProvider>
+  )
 }

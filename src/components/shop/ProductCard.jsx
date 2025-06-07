@@ -3,6 +3,7 @@ import { useState } from "react"
 import Image from "next/image"
 import { useRouter } from "next/navigation"
 import { Star, Heart, Sparkles } from "lucide-react"
+import Link from "next/link"
 
 export default function ProductCard({ product, index }) {
   const router = useRouter()
@@ -93,11 +94,12 @@ export default function ProductCard({ product, index }) {
   const productId = product.id || product._id || product.productId
 
   const handleViewProduct = () => {
-    if (!productId) {
-      console.error("Cannot navigate: Product ID is missing", product)
+    if (!product.product_code) {
+      console.error("Cannot navigate: Product code is missing", product)
       return
     }
-    router.push(`/shop/product/${productId}`)
+    console.log("Navigating to product:", product.product_code) // Debug log
+    router.push(`/products/${encodeURIComponent(product.product_code)}`)
   }
 
   const handleWishlistToggle = (e) => {
@@ -116,7 +118,7 @@ export default function ProductCard({ product, index }) {
 
   return (
     <div
-      className="bg-white overflow-hidden hover:shadow-sm transition-shadow duration-300 flex flex-col cursor-pointer relative border border-gray-200 rounded-sm "
+      className="bg-white overflow-hidden hover:shadow-sm transition-shadow duration-300 flex flex-col cursor-pointer relative border border-gray-200 rounded-sm"
       style={{ width: "300px", height: "470px" }}
       onClick={handleViewProduct}
     >
@@ -202,10 +204,10 @@ export default function ProductCard({ product, index }) {
                 <span className="ml-2 text-sm text-gray-400 line-through">₹{product.originalPrice}</span>
               )}
             </div>
-          </div>
+        </div>
 
           {/* Add to Shine List Button */}
-          <button
+        <button
             className="w-full bg-white border border-gray-800 text-gray-700 py-2.5 px-4 rounded-sm text-sm font-medium hover:bg-gray-50 hover:border-gray-300 transition-all duration-200 disabled:bg-gray-100 disabled:cursor-not-allowed flex items-center justify-center gap-2"
             onClick={(e) => {
               e.stopPropagation()
@@ -215,7 +217,7 @@ export default function ProductCard({ product, index }) {
           >
             <span>Add to Shine List</span>
             <Sparkles size={16} className="text-gray-500" />
-          </button>
+        </button>
         </div>
       </div>
     </div>

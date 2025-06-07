@@ -7,7 +7,7 @@ import { useParams, useRouter } from "next/navigation";
 import { supabase } from "../../../lib/supabaseClient";
 import Image from "next/image";
 import "../../../app/globals.css";
-import RootLayout from "../../../components/layouts/RootLayout";
+// import RootLayout from "../../../components/layouts/RootLayout";
 
 export default function ComboDetailPage() {
 	// Get combo ID from URL parameters

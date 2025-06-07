@@ -1,8 +1,9 @@
 "use client";
-import { useState, useEffect } from "react";
-import { useCart } from "@/hooks/useCart";
+import { useState, useEffect, useCallback } from "react";
+import { useCart } from "@/contexts/CartContext";
 import { Package, Plus, ShoppingCart, Percent } from "lucide-react";
 import { motion } from "framer-motion";
+import Image from "next/image";
 
 export default function FrequentlyBoughtTogether() {
 	const { cartItems } = useCart();
@@ -10,8 +11,7 @@ export default function FrequentlyBoughtTogether() {
 	const [loading, setLoading] = useState(false);
 	const [error, setError] = useState(null);
 
-	// Fetch combo products based on cart items
-	const fetchComboProducts = async () => {
+	const fetchComboProducts = useCallback(async () => {
 		if (!cartItems || cartItems.length === 0) {
 			setFrequentlyBought([]);
 			return;
@@ -69,13 +69,12 @@ export default function FrequentlyBoughtTogether() {
 		} finally {
 			setLoading(false);
 		}
-	};
+	}, [cartItems]);
 
-	// Fetch combos when cart items change
 	useEffect(() => {
 		console.log("Component: Cart items changed, fetching combos...");
 		fetchComboProducts();
-	}, [cartItems]);
+	}, [fetchComboProducts]);
 
 	const addComboToCart = async (comboItem) => {
 		try {
@@ -166,13 +165,14 @@ export default function FrequentlyBoughtTogether() {
 									className="flex-shrink-0 w-48 border rounded-lg overflow-hidden bg-white shadow-sm hover:shadow-md transition-shadow"
 								>
 									<div className="relative">
-										<img
-											src={
-												item.image_url || "/placeholder.svg?height=96&width=192"
-											}
-											alt={item.name}
-											className="w-full h-24 object-cover"
-										/>
+										<div className="relative w-full h-24">
+											<Image
+												src={item.image_url || "/placeholder.svg"}
+												alt={item.name}
+												fill
+												className="object-cover"
+											/>
+										</div>
 										{savings > 0 && (
 											<div className="absolute top-2 left-2 bg-red-500 text-white text-xs px-1.5 py-0.5 rounded flex items-center gap-1">
 												<Percent size={10} />

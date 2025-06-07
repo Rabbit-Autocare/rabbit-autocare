@@ -1,4 +1,5 @@
-// Enhanced ProductService with direct category/subcategory storage
+import { supabase } from '@/lib/supabaseClient';
+import variantService from './variantService';
 
 const API_BASE_URL = "/api/products"
 const SIZES_API = "/api/products/size"
@@ -6,265 +7,289 @@ const COLORS_API = "/api/products/colors"
 const CATEGORIES_API = "/api/products/category"
 const GETBYCATEGORY = "/api/products/by-category"
 
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001/api"
+
 export class ProductService {
   // ============= PRODUCTS =============
 
-  static async getProducts({ code, limit, sort, filters = {} } = {}) {
-    const params = new URLSearchParams()
-    if (code) params.append("code", code)
-    if (limit) params.append("limit", limit)
-    if (sort) params.append("sort", sort)
-
-    // Add filters to params
-    Object.entries(filters).forEach(([key, value]) => {
-      if (value !== undefined && value !== null && value !== "") {
-        if (Array.isArray(value)) {
-          // For array values, add each item as a separate parameter with the same key
-          value.forEach((item) => params.append(key + "[]", item))
-        } else {
-          params.append(key, value)
-        }
-      }
-    })
-
-    const url = params.toString() ? `${API_BASE_URL}?${params}` : API_BASE_URL
-
+  async getProducts({ limit = 10, offset = 0, sort = 'created_at:desc' } = {}) {
     try {
-      const res = await fetch(url)
-      if (!res.ok) {
-        const errorText = await res.text()
-        try {
-          const errorJson = JSON.parse(errorText)
-          throw new Error(errorJson.error || `API error: ${res.status}`)
-        } catch (e) {
-          throw new Error(`API error: ${errorText || res.statusText || res.status}`)
-        }
-      }
+      const [sortField, sortOrder] = sort.split(':');
 
-      const data = await res.json()
-      const products = Array.isArray(data.products)
-        ? data.products
-        : Array.isArray(data.data)
-          ? data.data
-          : Array.isArray(data)
-            ? data
-            : []
-      const total = data.total || products.length
+      const { data, error } = await supabase
+        .from('products')
+        .select(`
+          *,
+          category:categories(name),
+          subcategory:subcategories(name),
+          variants:product_variants(
+            id,
+            sku,
+            price,
+            stock_quantity,
+            is_package,
+            package_quantity,
+            attributes:product_variant_attributes(
+              variant_type:variant_types(name, display_name),
+              variant_value:variant_values(value, display_value)
+            )
+          )
+        `)
+        .eq('is_active', true)
+        .order(sortField, { ascending: sortOrder === 'asc' })
+        .range(offset, offset + limit - 1);
 
-      const transformedProducts = products.map((product) => this.transformProductData(product))
+      if (error) throw error;
+
+      // Transform the data to include formatted variants
+      const products = data.map(product => ({
+        ...product,
+        variants: product.variants.map(variant => ({
+          ...variant,
+          attributes: variant.attributes.reduce((acc, attr) => ({
+            ...acc,
+            [attr.variant_type.name]: {
+              type: attr.variant_type.display_name,
+              value: attr.variant_value.value,
+              displayValue: attr.variant_value.display_value
+            }
+          }), {})
+        }))
+      }));
 
       return {
-        success: data.success || true,
-        products: transformedProducts,
-        total: total,
-      }
+        success: true,
+        products,
+        total: products.length
+      };
     } catch (error) {
-      console.error("Error in getProducts:", error)
-      throw error
+      console.error('Error in getProducts:', error);
+      return {
+        success: false,
+        error: error.message
+      };
     }
   }
 
-  static async getProduct(id, includeRelations = false) {
+  async getProduct(productId) {
     try {
-      const params = new URLSearchParams()
-      const url = `${API_BASE_URL}/${id}${params.toString() ? `?${params}` : ""}`
-      console.log("Fetching single product from URL:", url)
+      const { data, error } = await supabase
+        .from('products')
+        .select(`
+          *,
+          category:categories(name),
+          subcategory:subcategories(name),
+          variants:product_variants(
+            id,
+            sku,
+            price,
+            stock_quantity,
+            is_package,
+            package_quantity,
+            attributes:product_variant_attributes(
+              variant_type:variant_types(name, display_name),
+              variant_value:variant_values(value, display_value)
+            )
+          )
+        `)
+        .eq('id', productId)
+        .single();
 
-      const res = await fetch(url)
-      if (!res.ok) {
-        const errorText = await res.text()
-        try {
-          const errorJson = JSON.parse(errorText)
-          throw new Error(errorJson.error || `API error: ${res.status}`)
-        } catch (e) {
-          throw new Error(`API error: ${errorText || res.statusText || res.status}`)
-        }
-      }
+      if (error) throw error;
 
-      const data = await res.json()
-      const product = data.product || data
+      // Transform the data to include formatted variants
+      const product = {
+        ...data,
+        variants: data.variants.map(variant => ({
+          ...variant,
+          attributes: variant.attributes.reduce((acc, attr) => ({
+            ...acc,
+            [attr.variant_type.name]: {
+              type: attr.variant_type.display_name,
+              value: attr.variant_value.value,
+              displayValue: attr.variant_value.display_value
+            }
+          }), {})
+        }))
+      };
 
-      return this.transformProductData(product)
+      return {
+        success: true,
+        product
+      };
     } catch (error) {
-      console.error("Error in getProduct:", error)
-      throw error
+      console.error('Error in getProduct:', error);
+      return {
+        success: false,
+        error: error.message
+      };
     }
   }
 
-  static async createProduct(data) {
+  async createProduct(productData) {
     try {
-      // Transform variants to use direct values
-      const transformedData = {
-        product_code: data.product_code,
-        name: data.name,
-        description: data.description,
-        category_name: data.category_name,
-        is_microfiber: data.is_microfiber,
-        main_image_url: data.main_image_url,
-        images: data.images || [],
-        key_features: data.key_features || [],
-        taglines: data.taglines || [],
-        subcategory_names: Array.isArray(data.subcategory_names)
-          ? data.subcategory_names
-          : data.subcategory_names
-            ? [data.subcategory_names]
-            : [],
-        variants: Array.isArray(data.variants)
-          ? data.variants.map((variant) => {
-              if (data.is_microfiber) {
-                return {
-                  gsm: variant.gsm || "",
-                  size: variant.size || "",
-                  color: variant.color || "",
-                  price: Number.parseFloat(variant.price) || 0,
-                  stock: Number.parseInt(variant.stock) || 0,
-                  compareAtPrice: variant.compareAtPrice || null,
-                }
-              } else {
-                return {
-                  quantity: variant.quantity || "",
-                  unit: variant.unit || "ml",
-                  price: Number.parseFloat(variant.price) || 0,
-                  stock: Number.parseInt(variant.stock) || 0,
-                  compareAtPrice: variant.compareAtPrice || null,
-                }
-              }
-            })
-          : [],
-      }
+      const {
+        name,
+        description,
+        category_id,
+        subcategory_id,
+        product_code,
+        has_variants,
+        variants = []
+      } = productData;
 
-      const res = await fetch(API_BASE_URL, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(transformedData),
-      })
+      // Create the product
+      const { data: product, error: productError } = await supabase
+        .from('products')
+        .insert({
+          name,
+          description,
+          category_id,
+          subcategory_id,
+          product_code,
+          has_variants,
+          is_active: true
+        })
+        .select()
+        .single();
 
-      if (!res.ok) {
-        const errorText = await res.text()
-        try {
-          const errorJson = JSON.parse(errorText)
-          throw new Error(errorJson.error || `API error: ${res.status}`)
-        } catch (e) {
-          throw new Error(`API error: ${errorText || res.statusText || res.status}`)
+      if (productError) throw productError;
+
+      // Create variants if provided
+      if (variants.length > 0) {
+        for (const variant of variants) {
+          await variantService.createProductVariant(product.id, {
+            ...variant,
+            product_code
+          });
         }
       }
 
-      const json = await res.json()
-      return this.transformProductData(json.product || json)
+      return {
+        success: true,
+        product
+      };
     } catch (error) {
-      console.error("Error in createProduct:", error)
-      throw error
+      console.error('Error in createProduct:', error);
+      return {
+        success: false,
+        error: error.message
+      };
     }
   }
 
-  static async updateProduct(id, updateData) {
+  async updateProduct(productId, productData) {
     try {
-      // Transform variants to use direct values
-      const transformedData = {
-        id,
-        ...updateData,
-        variants: Array.isArray(updateData.variants)
-          ? updateData.variants.map((variant) => {
-              if (updateData.is_microfiber) {
-                return {
-                  gsm: variant.gsm || "",
-                  size: variant.size || "",
-                  color: variant.color || "",
-                  price: Number.parseFloat(variant.price) || 0,
-                  stock: Number.parseInt(variant.stock) || 0,
-                  compareAtPrice: variant.compareAtPrice || null,
-                }
-              } else {
-                return {
-                  quantity: variant.quantity || "",
-                  unit: variant.unit || "ml",
-                  price: Number.parseFloat(variant.price) || 0,
-                  stock: Number.parseInt(variant.stock) || 0,
-                  compareAtPrice: variant.compareAtPrice || null,
-                }
-              }
-            })
-          : [],
-        subcategory_names: Array.isArray(updateData.subcategory_names)
-          ? updateData.subcategory_names
-          : updateData.subcategory_names
-            ? [updateData.subcategory_names]
-            : [],
-      }
+      const {
+        name,
+        description,
+        category_id,
+        subcategory_id,
+        product_code,
+        has_variants,
+        variants = []
+      } = productData;
 
-      const res = await fetch(API_BASE_URL, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(transformedData),
-      })
+      // Update the product
+      const { data: product, error: productError } = await supabase
+        .from('products')
+        .update({
+          name,
+          description,
+          category_id,
+          subcategory_id,
+          product_code,
+          has_variants,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', productId)
+        .select()
+        .single();
 
-      if (!res.ok) {
-        const errorText = await res.text()
-        try {
-          const errorJson = JSON.parse(errorText)
-          throw new Error(errorJson.error || `API error: ${res.status}`)
-        } catch (e) {
-          throw new Error(`API error: ${errorText || res.statusText || res.status}`)
+      if (productError) throw productError;
+
+      // Get existing variants
+      const existingVariants = await variantService.getProductVariants(productId);
+
+      // Delete variants that are no longer present
+      const variantIdsToKeep = variants.map(v => v.id).filter(Boolean);
+      for (const existingVariant of existingVariants) {
+        if (!variantIdsToKeep.includes(existingVariant.id)) {
+          await variantService.deleteProductVariant(existingVariant.id);
         }
       }
 
-      const json = await res.json()
-      return this.transformProductData(json.product || json)
+      // Update or create variants
+      for (const variant of variants) {
+        if (variant.id) {
+          await variantService.updateProductVariant(variant.id, variant);
+        } else {
+          await variantService.createProductVariant(productId, {
+            ...variant,
+            product_code
+          });
+        }
+      }
+
+      return {
+        success: true,
+        product
+      };
     } catch (error) {
-      console.error("Error in updateProduct:", error)
-      throw error
+      console.error('Error in updateProduct:', error);
+      return {
+        success: false,
+        error: error.message
+      };
     }
   }
 
-  static async deleteProduct(id) {
+  async deleteProduct(productId) {
     try {
-      const res = await fetch(`${API_BASE_URL}?id=${id}`, {
-        method: "DELETE",
-      })
+      const { error } = await supabase
+        .from('products')
+        .update({ is_active: false })
+        .eq('id', productId);
 
-      if (!res.ok) {
-        const errorText = await res.text()
-        try {
-          const errorJson = JSON.parse(errorText)
-          throw new Error(errorJson.error || `API error: ${res.status}`)
-        } catch (e) {
-          throw new Error(`API error: ${errorText || res.statusText || res.status}`)
-        }
-      }
+      if (error) throw error;
 
-      const json = await res.json()
-      return json
+      return {
+        success: true
+      };
     } catch (error) {
-      console.error("Error in deleteProduct:", error)
-      throw error
+      console.error('Error in deleteProduct:', error);
+      return {
+        success: false,
+        error: error.message
+      };
     }
   }
 
   // ============= CATEGORIES =============
 
-  static async getCategories() {
+  async getCategories() {
     try {
-      const res = await fetch(CATEGORIES_API)
+      const { data, error } = await supabase
+        .from('categories')
+        .select('*')
+        .order('name');
 
-      if (!res.ok) {
-        const errorText = await res.text()
-        try {
-          const errorJson = JSON.parse(errorText)
-          throw new Error(errorJson.error || `API error: ${res.status}`)
-        } catch (e) {
-          throw new Error(`API error: ${errorText || res.statusText || res.status}`)
-        }
-      }
+      if (error) throw error;
 
-      const json = await res.json()
-      return json
+      return {
+        success: true,
+        data
+      };
     } catch (error) {
-      console.error("Error in getCategories:", error)
-      throw error
+      console.error('Error in getCategories:', error);
+      return {
+        success: false,
+        error: error.message
+      };
     }
   }
 
-  static async createCategory(data) {
+  async createCategory(data) {
     try {
       const res = await fetch(CATEGORIES_API, {
         method: "POST",
@@ -290,7 +315,7 @@ export class ProductService {
     }
   }
 
-  static async updateCategory(id, data) {
+  async updateCategory(id, data) {
     try {
       const res = await fetch(CATEGORIES_API, {
         method: "PUT",
@@ -316,7 +341,7 @@ export class ProductService {
     }
   }
 
-  static async deleteCategory(id) {
+  async deleteCategory(id) {
     try {
       const res = await fetch(`${CATEGORIES_API}?id=${id}`, {
         method: "DELETE",
@@ -342,7 +367,7 @@ export class ProductService {
 
   // ============= SIZES =============
 
-  static async getSizes() {
+  async getSizes() {
     try {
       const res = await fetch(SIZES_API)
 
@@ -364,7 +389,7 @@ export class ProductService {
     }
   }
 
-  static async createSize(data) {
+  async createSize(data) {
     try {
       const res = await fetch(SIZES_API, {
         method: "POST",
@@ -390,7 +415,7 @@ export class ProductService {
     }
   }
 
-  static async updateSize(id, data) {
+  async updateSize(id, data) {
     try {
       const res = await fetch(SIZES_API, {
         method: "PUT",
@@ -416,7 +441,7 @@ export class ProductService {
     }
   }
 
-  static async deleteSize(id) {
+  async deleteSize(id) {
     try {
       const res = await fetch(`${SIZES_API}?id=${id}`, {
         method: "DELETE",
@@ -442,7 +467,7 @@ export class ProductService {
 
   // ============= COLORS =============
 
-  static async getColors() {
+  async getColors() {
     try {
       const res = await fetch(COLORS_API)
 
@@ -464,7 +489,7 @@ export class ProductService {
     }
   }
 
-  static async createColor(data) {
+  async createColor(data) {
     try {
       const res = await fetch(COLORS_API, {
         method: "POST",
@@ -490,7 +515,7 @@ export class ProductService {
     }
   }
 
-  static async updateColor(id, data) {
+  async updateColor(id, data) {
     try {
       const res = await fetch(COLORS_API, {
         method: "PUT",
@@ -516,7 +541,7 @@ export class ProductService {
     }
   }
 
-  static async deleteColor(id) {
+  async deleteColor(id) {
     try {
       const res = await fetch(`${COLORS_API}?id=${id}`, {
         method: "DELETE",
@@ -542,7 +567,7 @@ export class ProductService {
 
   // ============= PRODUCTS BY CATEGORY =============
 
-  static async getProductsByCategory(categoryName, { limit, sort, filters = {} } = {}) {
+  async getProductsByCategory(categoryName, { limit, sort, filters = {} } = {}) {
     try {
       if (!categoryName || categoryName === "all") {
         console.log("getProductsByCategory: Category not specified or 'all', calling getProducts.")
@@ -561,7 +586,7 @@ export class ProductService {
 
   // ============= KITS & COMBOS =============
 
-  static async getKitsAndCombos({ limit, sort, filters = {} } = {}) {
+  async getKitsAndCombos({ limit, sort, filters = {} } = {}) {
     try {
       const params = new URLSearchParams()
       if (limit) params.append("limit", limit)
@@ -608,7 +633,7 @@ export class ProductService {
 
   // ============= DATA TRANSFORMATION =============
 
-  static transformProductData(product) {
+  transformProductData(product) {
     if (!product) return null
 
     // Handle category data from direct fields
@@ -713,7 +738,7 @@ export class ProductService {
 
   // ============= UTILITY METHODS =============
 
-  static formatProductForDisplay(product) {
+  formatProductForDisplay(product) {
     if (!product) return null
 
     const transformedProduct = this.transformProductData(product)
@@ -734,7 +759,7 @@ export class ProductService {
     }
   }
 
-  static extractProducts(response) {
+  extractProducts(response) {
     if (!response) return []
     if (Array.isArray(response.products)) {
       return response.products
@@ -748,26 +773,152 @@ export class ProductService {
     return []
   }
 
-  static extractTotalCount(response) {
+  extractTotalCount(response) {
     if (response && typeof response.total === "number") {
       return response.total
     }
     return this.extractProducts(response).length
   }
 
-  static hasCategoryData(product) {
+  hasCategoryData(product) {
     return (
       product && product.category_name !== undefined && product.category_name !== null && product.category_name !== ""
     )
   }
 
-  static getLowestPrice(variants) {
+  getLowestPrice(variants) {
     if (!Array.isArray(variants) || variants.length === 0) return 0
     return Math.min(...variants.map((v) => Number.parseFloat(v.price) || 0))
   }
 
-  static getHighestPrice(variants) {
+  getHighestPrice(variants) {
     if (!Array.isArray(variants) || variants.length === 0) return 0
     return Math.max(...variants.map((v) => Number.parseFloat(v.price) || 0))
   }
+
+  async getProductById(productCode) {
+    try {
+      console.log("ProductService: Fetching product with code", productCode)
+
+      // First, let's try the most specific endpoint format
+      const url = `${API_BASE_URL}/${encodeURIComponent(productCode)}`
+      console.log("ProductService: Trying specific product URL:", url)
+
+      let res = await fetch(url)
+      let data
+
+      if (!res.ok) {
+        console.log("ProductService: Specific URL failed, trying query parameter approach")
+
+        // If specific URL fails, try query parameters
+        const queryUrl = `${API_BASE_URL}?product_code=${encodeURIComponent(productCode)}`
+        console.log("ProductService: Trying query URL:", queryUrl)
+
+        res = await fetch(queryUrl)
+
+        if (!res.ok) {
+          // Try alternative parameter names
+          const altQueryUrl = `${API_BASE_URL}?code=${encodeURIComponent(productCode)}`
+          console.log("ProductService: Trying alternative query URL:", altQueryUrl)
+
+          res = await fetch(altQueryUrl)
+
+          if (!res.ok) {
+            const errorText = await res.text()
+            console.error("ProductService: All API attempts failed. Last error:", errorText)
+            throw new Error(`Product with code ${productCode} not found in API`)
+          }
+        }
+      }
+
+      data = await res.json()
+      console.log("ProductService: Full API Response for product code", productCode, data)
+
+      // Handle different response formats and STRICTLY match product codes
+      let productData = null
+
+      if (Array.isArray(data.products) && data.products.length > 0) {
+        productData = data.products.find((p) => p.product_code === productCode)
+        console.log("ProductService: Searching in products array for", productCode)
+      } else if (Array.isArray(data.data) && data.data.length > 0) {
+        productData = data.data.find((p) => p.product_code === productCode)
+        console.log("ProductService: Searching in data array for", productCode)
+      } else if (Array.isArray(data) && data.length > 0) {
+        productData = data.find((p) => p.product_code === productCode)
+        console.log("ProductService: Searching in direct array for", productCode)
+      } else if (data.product && data.product.product_code === productCode) {
+        productData = data.product
+        console.log("ProductService: Found product in product field")
+      } else if (data.product_code === productCode) {
+        productData = data
+        console.log("ProductService: Using data directly - product code matches")
+      }
+
+      // CRITICAL: Don't use fallback products - only return exact matches
+      if (!productData) {
+        console.error("ProductService: No exact match found for product code:", productCode)
+        console.error("ProductService: Available products:", data)
+        throw new Error(`Product with code '${productCode}' not found`)
+      }
+
+      // Double-check the product code matches
+      if (productData.product_code !== productCode) {
+        console.error("ProductService: Product code verification failed!")
+        console.error("ProductService: Expected:", productCode, "Got:", productData.product_code)
+        throw new Error(`Product code mismatch: expected '${productCode}', got '${productData.product_code}'`)
+      }
+
+      console.log("ProductService: Successfully found exact match:", productData)
+      return this.transformProductData(productData)
+    } catch (error) {
+      console.error("ProductService: Error fetching product:", error)
+      throw error
+    }
+  }
+
+  // Alternative method to get all products and filter client-side (fallback option)
+  async getProductByIdClientFilter(productCode) {
+    try {
+      console.log("ProductService: Client-side filtering for product code", productCode)
+
+      // Get all products
+      const url = `${API_BASE_URL}`
+      const res = await fetch(url)
+
+      if (!res.ok) {
+        throw new Error(`API error: ${res.status}`)
+      }
+
+      const data = await res.json()
+      console.log("ProductService: Got all products, filtering for", productCode)
+
+      let allProducts = []
+      if (Array.isArray(data.products)) {
+        allProducts = data.products
+      } else if (Array.isArray(data.data)) {
+        allProducts = data.data
+      } else if (Array.isArray(data)) {
+        allProducts = data
+      }
+
+      const product = allProducts.find((p) => p.product_code === productCode)
+
+      if (!product) {
+        console.error("ProductService: Product not found in all products list")
+        console.error(
+          "ProductService: Available product codes:",
+          allProducts.map((p) => p.product_code),
+        )
+        throw new Error(`Product with code '${productCode}' not found`)
+      }
+
+      console.log("ProductService: Found product via client-side filter:", product)
+      return this.transformProductData(product)
+    } catch (error) {
+      console.error("ProductService: Client-side filter error:", error)
+      throw error
+    }
+  }
 }
+
+export default new ProductService();

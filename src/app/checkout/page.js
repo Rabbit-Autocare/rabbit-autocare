@@ -1,5 +1,5 @@
 "use client";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
 
@@ -13,9 +13,9 @@ export default function CheckoutPage() {
 	const router = useRouter();
 
 	const id = searchParams.get("id");
-	const productId = searchParams.get("id");
-	const comboId = searchParams.get("combo_id");
-	const qtyParam = parseInt(searchParams.get("qty")) || 1;
+	const productId = searchParams.get("productId");
+	const comboId = searchParams.get("comboId");
+	const qtyParam = searchParams.get("qty");
 
 	const [userId, setUserId] = useState(null);
 	const [product, setProduct] = useState(null);
@@ -46,48 +46,73 @@ export default function CheckoutPage() {
 		getUser();
 	}, []);
 
-	useEffect(() => {
-		if (userId) {
-			if (productId) fetchSingleProduct();
-			else if (comboId) fetchSingleCombo();
-			else fetchCartData();
+	const fetchSingleProduct = useCallback(async (id) => {
+		try {
+			const { data, error } = await supabase
+				.from('products')
+				.select('*')
+				.eq('id', id)
+				.single();
+
+			if (error) throw error;
+			setCartItems([{ product: data, quantity: parseInt(qtyParam) }]);
+		} catch (err) {
+			console.error('Error fetching product:', err);
+		}
+	}, [qtyParam]);
+
+	const fetchSingleCombo = useCallback(async (id) => {
+		try {
+			const { data, error } = await supabase
+				.from('kits_combos')
+				.select('*')
+				.eq('id', id)
+				.single();
+
+			if (error) throw error;
+			setCartItems([{ product: data, quantity: parseInt(qtyParam) }]);
+		} catch (err) {
+			console.error('Error fetching combo:', err);
+		}
+	}, [qtyParam]);
+
+	const fetchCartData = useCallback(async () => {
+		try {
+			const { data, error } = await supabase
+				.from('cart_items')
+				.select('*, products(*)')
+				.eq('user_id', userId);
+
+			if (error) throw error;
+			setCartItems(data);
+		} catch (err) {
+			console.error('Error fetching cart:', err);
 		}
 	}, [userId]);
+
+	useEffect(() => {
+		const processCheckout = async () => {
+			if (productId) {
+				await fetchSingleProduct(productId);
+			} else if (comboId) {
+				await fetchSingleCombo(comboId);
+			} else {
+				await fetchCartData();
+			}
+		};
+
+		processCheckout();
+	}, [comboId, productId, fetchSingleCombo, fetchSingleProduct, fetchCartData, qtyParam]);
+
+	useEffect(() => {
+		if (qtyParam) {
+			setQuantity(parseInt(qtyParam));
+		}
+	}, [qtyParam]);
 
 	const getUser = async () => {
 		const { data } = await supabase.auth.getUser();
 		if (data?.user) setUserId(data.user.id);
-	};
-
-	const fetchSingleProduct = async () => {
-		const { data } = await supabase
-			.from("products")
-			.select("*")
-			.eq("id", productId)
-			.single();
-		setProduct(data);
-	};
-
-	const fetchSingleCombo = async () => {
-		const { data } = await supabase
-			.from("combos")
-			.select("*")
-			.eq("id", comboId)
-			.single();
-		setCombo(data);
-	};
-
-	const fetchCartData = async () => {
-		const [cartRes, comboRes, productRes, comboFullRes] = await Promise.all([
-			supabase.from("cart_items").select("*").eq("user_id", userId),
-			supabase.from("combo_cart").select("*").eq("user_id", userId),
-			supabase.from("products").select("*"),
-			supabase.from("combos").select("*"),
-		]);
-		setCartItems(cartRes.data || []);
-		setComboCartItems(comboRes.data || []);
-		setProducts(productRes.data || []);
-		setCombos(comboFullRes.data || []);
 	};
 
 	const updateProductQuantity = (id, qty) => {
@@ -190,12 +215,10 @@ export default function CheckoutPage() {
 		}
 	};
 
-	// ... rest of the imports remain unchanged
-
 	useEffect(() => {
 		if (product) {
 			// Direct product order
-			setOrderProducts([{ ...product, quantity: qtyParam }]);
+			setOrderProducts([{ ...product, quantity: parseInt(qtyParam) }]);
 			setOrderCombos([]);
 		} else if (combo) {
 			// Direct combo order
@@ -230,7 +253,7 @@ export default function CheckoutPage() {
 			setOrderProducts(cartMapped);
 			setOrderCombos(comboMapped);
 		}
-	}, [product, combo, cartItems, comboCartItems, products, combos]);
+	}, [product, combo, cartItems, comboCartItems, products, combos, qtyParam]);
 
 	const subtotal = [...orderProducts, ...orderCombos].reduce(
 		(acc, item) => acc + item.price * item.quantity,

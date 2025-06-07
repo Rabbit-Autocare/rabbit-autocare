@@ -1,7 +1,7 @@
 // File: src/pages/user/coupons.js
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { supabase } from '../../lib/supabaseClient';
 import UserLayout from '@/components/layouts/UserLayout';
 import '../../app/globals.css';
@@ -15,20 +15,7 @@ export default function UserCouponsPage() {
     getUser();
   }, []);
 
-  useEffect(() => {
-    if (userId) {
-      fetchCoupons();
-    }
-  }, [userId]);
-
-  const getUser = async () => {
-    const { data } = await supabase.auth.getUser();
-    if (data?.user) {
-      setUserId(data.user.id);
-    }
-  };
-
-  const fetchCoupons = async () => {
+  const fetchCoupons = useCallback(async () => {
     setLoading(true);
 
     try {
@@ -69,6 +56,19 @@ export default function UserCouponsPage() {
       console.error('Error fetching coupons:', error);
     } finally {
       setLoading(false);
+    }
+  }, [userId]);
+
+  useEffect(() => {
+    if (userId) {
+      fetchCoupons();
+    }
+  }, [fetchCoupons, userId]);
+
+  const getUser = async () => {
+    const { data } = await supabase.auth.getUser();
+    if (data?.user) {
+      setUserId(data.user.id);
     }
   };
 

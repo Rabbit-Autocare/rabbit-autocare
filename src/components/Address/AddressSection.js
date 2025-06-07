@@ -1,209 +1,266 @@
-'use client'
-import React, { useEffect, useState } from 'react';
-import { supabase } from '../../lib/supabaseClient';
+"use client";
 
-export default function AddressSection({ userId, selectedAddressId, setSelectedAddressId }) {
+import React, { useEffect, useState, useCallback } from 'react';
+import { supabase } from '../../lib/supabaseClient';
+import AddressCard from './AddressCard';
+import AddressForm from './AddressForm';
+import ConfirmationModal from '@/components/ui/ConfirmationModal';
+
+export default function AddressSection({
+  selectedAddress,
+  setSelectedAddress,
+}) {
   const [addresses, setAddresses] = useState([]);
-  const [addressForm, setAddressForm] = useState({
-    full_name: '',
-    phone: '',
-    street: '',
+  const [addressLoading, setAddressLoading] = useState(true);
+  const [userId, setUserId] = useState(null);
+  const [selectedAddressId, setSelectedAddressId] = useState(null);
+  const [showAddForm, setShowAddForm] = useState(false);
+  const [editingId, setEditingId] = useState(null);
+  const [formData, setFormData] = useState({
+    name: '',
+    address_line1: '',
+    address_line2: '',
     city: '',
     state: '',
     postal_code: '',
-    address_type: 'home',
+    country: 'India',
+    phone: '',
+    is_default: false,
   });
-  const [addressLoading, setAddressLoading] = useState(false);
-  const [isEditing, setIsEditing] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [addressToDeleteId, setAddressToDeleteId] = useState(null);
+
+  useEffect(() => {
+    getUser();
+  }, []);
 
   useEffect(() => {
     if (userId) fetchAddresses();
-  }, [userId]);
+  }, [userId, fetchAddresses]);
 
-  const fetchAddresses = async () => {
+  const fetchAddresses = useCallback(async () => {
     setAddressLoading(true);
-    const { data } = await supabase
-      .from('addresses')
-      .select('*')
-      .eq('user_id', userId)
-      .order('created_at', { ascending: false });
-    setAddressLoading(false);
-    setAddresses(data || []);
-    if (data?.length > 0) {
-      setSelectedAddressId(data[0].id);
-    } else {
-      setIsEditing(true);
+    try {
+      const { data, error } = await supabase
+        .from('addresses')
+        .select('*')
+        .eq('user_id', userId)
+        .order('is_default', { ascending: false });
+
+      if (error) throw error;
+      setAddresses(data || []);
+      setAddressLoading(false);
+      if (data?.length > 0) {
+        setSelectedAddressId(data[0].id);
+      }
+    } catch (error) {
+      console.error('Error fetching addresses:', error);
+      setAddressLoading(false);
     }
+  }, [userId, setSelectedAddressId]);
+
+  useEffect(() => {
+    const foundAddress = addresses.find(addr => addr.id === selectedAddressId);
+    setSelectedAddress(foundAddress || null);
+  }, [selectedAddressId, addresses, setSelectedAddress]);
+
+  const getUser = async () => {
+    const { data } = await supabase.auth.getUser();
+    if (data?.user) setUserId(data.user.id);
   };
 
-  const handleInputChange = (e) => {
-    const { name, value } = e.target;
-    setAddressForm((prev) => ({ ...prev, [name]: value }));
-  };
-
-  const handleSelectAddress = (address) => {
-    setSelectedAddressId(address.id);
-    setIsEditing(false);
-  };
-
-  const resetAddressForm = () => {
-    setAddressForm({
-      full_name: '',
-      phone: '',
-      street: '',
-      city: '',
-      state: '',
-      postal_code: '',
-      address_type: 'home',
+  const handleFormChange = (e) => {
+    const { name, value, type, checked } = e.target;
+    setFormData({
+      ...formData,
+      [name]: type === 'checkbox' ? checked : value,
     });
   };
 
-  const validateAddressForm = () => {
-    const { full_name, phone, street, city, state, postal_code } = addressForm;
-    if (!full_name || !phone || !street || !city || !state || !postal_code) {
-      alert('Please fill all address fields');
-      return false;
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setAddressLoading(true);
+
+    if (formData.is_default) {
+      await supabase
+        .from('addresses')
+        .update({ is_default: false })
+        .eq('user_id', userId)
+        .eq('is_default', true);
     }
-    return true;
+
+    if (editingId) {
+      const { error } = await supabase
+        .from('addresses')
+        .update({
+          ...formData,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', editingId);
+
+      if (error) {
+        alert('Failed to update address');
+        console.error(error);
+      } else {
+        resetForm();
+        fetchAddresses();
+      }
+    } else {
+      const { error } = await supabase.from('addresses').insert({
+        ...formData,
+        user_id: userId,
+        created_at: new Date().toISOString(),
+      });
+
+      if (error) {
+        alert('Failed to add address');
+        console.error(error);
+      } else {
+        resetForm();
+        fetchAddresses();
+      }
+    }
+
+    setAddressLoading(false);
   };
 
-  const handleAddressSubmit = async (e) => {
-    e.preventDefault();
-    if (!validateAddressForm()) return;
+  const resetForm = () => {
+    setFormData({
+      name: '',
+      address_line1: '',
+      address_line2: '',
+      city: '',
+      state: '',
+      postal_code: '',
+      country: 'India',
+      phone: '',
+      is_default: false,
+    });
+    setEditingId(null);
+    setShowAddForm(false);
+  };
+
+  const handleEdit = (address) => {
+    setFormData({
+      name: address.name,
+      address_line1: address.address_line1,
+      address_line2: address.address_line2 || '',
+      city: address.city,
+      state: address.state,
+      postal_code: address.postal_code,
+      country: address.country,
+      phone: address.phone,
+      is_default: address.is_default,
+    });
+    setEditingId(address.id);
+    setShowAddForm(true);
+  };
+
+  const handleSetDefault = async (id) => {
+    setAddressLoading(true);
+
+    await supabase
+      .from('addresses')
+      .update({ is_default: false })
+      .eq('user_id', userId);
+
+    await supabase.from('addresses').update({ is_default: true }).eq('id', id);
+
+    fetchAddresses();
+  };
+
+  const handleDeleteClick = (id) => {
+    setAddressToDeleteId(id);
+    setShowDeleteModal(true);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!addressToDeleteId) return;
     setAddressLoading(true);
     try {
-      if (selectedAddressId && !isEditing) {
-        await supabase
-          .from('addresses')
-          .update({ ...addressForm })
-          .eq('id', selectedAddressId);
-      } else {
-        const { data } = await supabase
-          .from('addresses')
-          .insert([{ ...addressForm, user_id: userId }])
-          .select()
-          .single();
-        setSelectedAddressId(data.id);
-      }
+      const { error } = await supabase
+        .from('addresses')
+        .delete()
+        .eq('id', addressToDeleteId);
+
+      if (error) throw error;
       fetchAddresses();
-      setIsEditing(false);
-    } finally {
-      setAddressLoading(false);
+      setShowDeleteModal(false);
+      setAddressToDeleteId(null);
+    } catch (error) {
+      console.error('Error deleting address:', error);
+      setShowDeleteModal(false);
+      setAddressToDeleteId(null);
     }
   };
 
+  const handleCancelDelete = () => {
+    setShowDeleteModal(false);
+    setAddressToDeleteId(null);
+  };
+
+  const handleSelectAddress = useCallback((address) => {
+    setSelectedAddressId(address.id);
+  }, [setSelectedAddressId]);
+
   return (
-    <div className='bg-white p-4 shadow rounded'>
-      <h2 className='text-xl font-semibold mb-2'>Select Address</h2>
-      {addressLoading ? (
-        <p>Loading...</p>
-      ) : (
-        addresses.map((addr) => (
-          <label
-            key={addr.id}
-            className={`block p-3 border rounded mb-2 cursor-pointer ${
-              selectedAddressId === addr.id
-                ? 'border-blue-500 bg-blue-50'
-                : 'border-gray-300'
-            }`}
-          >
-            <input
-              type='radio'
-              name='address'
-              checked={selectedAddressId === addr.id}
-              onChange={() => handleSelectAddress(addr)}
-              className='mr-2'
-            />
-            <span className='font-semibold'>{addr.full_name}</span>
-            <div className='text-sm text-gray-600'>
-              {addr.street}, {addr.city}, {addr.state} - {addr.postal_code}
-            </div>
-            <div className='text-xs text-gray-500'>
-              {addr.phone} | {addr.address_type}
-            </div>
-          </label>
-        ))
-      )}
-
-      <button
-        onClick={() => {
-          resetAddressForm();
-          setIsEditing(true);
-          setSelectedAddressId(null);
-        }}
-        className='text-blue-600 underline mb-2'
-      >
-        Add New Address
-      </button>
-
-      {isEditing && (
-        <form onSubmit={handleAddressSubmit} className='space-y-2'>
-          <input
-            type='text'
-            name='full_name'
-            placeholder='Full Name'
-            value={addressForm.full_name}
-            onChange={handleInputChange}
-            className='w-full border p-2 rounded'
-          />
-          <input
-            type='tel'
-            name='phone'
-            placeholder='Phone'
-            value={addressForm.phone}
-            onChange={handleInputChange}
-            className='w-full border p-2 rounded'
-          />
-          <input
-            type='text'
-            name='street'
-            placeholder='Street'
-            value={addressForm.street}
-            onChange={handleInputChange}
-            className='w-full border p-2 rounded'
-          />
-          <input
-            type='text'
-            name='city'
-            placeholder='City'
-            value={addressForm.city}
-            onChange={handleInputChange}
-            className='w-full border p-2 rounded'
-          />
-          <input
-            type='text'
-            name='state'
-            placeholder='State'
-            value={addressForm.state}
-            onChange={handleInputChange}
-            className='w-full border p-2 rounded'
-          />
-          <input
-            type='text'
-            name='postal_code'
-            placeholder='Postal Code'
-            value={addressForm.postal_code}
-            onChange={handleInputChange}
-            className='w-full border p-2 rounded'
-          />
-          <select
-            name='address_type'
-            value={addressForm.address_type}
-            onChange={handleInputChange}
-            className='w-full border p-2 rounded'
-          >
-            <option value='home'>Home</option>
-            <option value='work'>Work</option>
-            <option value='other'>Other</option>
-          </select>
+    <div className="space-y-6">
+      <div className="flex justify-between items-center">
+        <h2 className="text-2xl font-semibold">Shipping Address</h2>
+        {!showAddForm && addresses.length > 0 && (
           <button
-            type='submit'
-            className='bg-blue-600 text-white py-2 px-4 rounded w-full'
+            onClick={() => setShowAddForm(true)}
+            className="text-blue-600 hover:text-blue-800 text-sm"
           >
-            {addressLoading ? 'Saving...' : 'Save Address'}
+            Add New
           </button>
-        </form>
+        )}
+      </div>
+
+      {showAddForm || editingId ? (
+        <AddressForm
+          userId={userId}
+          onAddressAdded={() => { setShowAddForm(false); fetchAddresses(); }}
+          onCancel={() => { setShowAddForm(false); setEditingId(null); }}
+          editingAddress={addresses.find(addr => addr.id === editingId)}
+          onAddressUpdated={() => { setEditingId(null); fetchAddresses(); }}
+        />
+      ) : addressLoading ? (
+        <p>Loading addresses...</p>
+      ) : addresses.length === 0 ? (
+        <div className="bg-white p-6 rounded-lg shadow-md text-center">
+          <p className="text-gray-600 mb-4">No addresses found. Please add one to proceed with checkout.</p>
+          <button
+            onClick={() => setShowAddForm(true)}
+            className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded transition-colors"
+          >
+            Add New Address
+          </button>
+        </div>
+      ) : (
+        <div className="space-y-4">
+          {addresses.map((address) => (
+            <AddressCard
+              key={address.id}
+              address={address}
+              isSelected={address.id === selectedAddressId}
+              onSelect={() => handleSelectAddress(address)}
+              onEdit={() => setEditingId(address.id)}
+              onDelete={() => handleDeleteClick(address.id)}
+            />
+          ))}
+        </div>
       )}
+
+      <ConfirmationModal
+        isOpen={showDeleteModal}
+        onClose={handleCancelDelete}
+        onConfirm={handleConfirmDelete}
+        title="Confirm Delete Address"
+        message="Are you sure you want to delete this address?"
+        confirmText="Delete"
+        cancelText="Cancel"
+      />
     </div>
   );
 }

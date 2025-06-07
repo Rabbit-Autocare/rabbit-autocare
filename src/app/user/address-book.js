@@ -1,5 +1,5 @@
 'use client';
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../../lib/supabaseClient';
 import UserLayout from '../../components/layouts/UserLayout';
 import '../../app/globals.css';
@@ -30,12 +30,7 @@ export default function AddressBookPage() {
     if (userId) fetchAddresses();
   }, [userId]);
 
-  const getUser = async () => {
-    const { data } = await supabase.auth.getUser();
-    if (data?.user) setUserId(data.user.id);
-  };
-
-  const fetchAddresses = async () => {
+  const fetchAddresses = useCallback(async () => {
     setLoading(true);
     const { data, error } = await supabase
       .from('addresses')
@@ -49,6 +44,15 @@ export default function AddressBookPage() {
       console.error('Error fetching addresses:', error);
     }
     setLoading(false);
+  }, [userId]);
+
+  useEffect(() => {
+    fetchAddresses();
+  }, [fetchAddresses]);
+
+  const getUser = async () => {
+    const { data } = await supabase.auth.getUser();
+    if (data?.user) setUserId(data.user.id);
   };
 
   const handleFormChange = (e) => {

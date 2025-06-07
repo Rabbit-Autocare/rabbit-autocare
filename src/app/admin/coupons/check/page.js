@@ -1,7 +1,9 @@
-import { useEffect, useState } from 'react';
-import { useRouter } from 'next/router';
+"use client";
+
+import { useEffect, useState, useCallback } from 'react';
+import { useRouter } from 'next/navigation';
 import { supabase } from '../../../../lib/supabaseClient';
-import '../../app/globals.css';
+import '../../../globals.css';
 
 export default function CheckPage() {
   const router = useRouter();
@@ -11,47 +13,50 @@ export default function CheckPage() {
   const [userEmail, setUserEmail] = useState('');
   const [shippingInfo, setShippingInfo] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
-  useEffect(() => {
-    if (id) fetchOrder();
+  const fetchOrder = useCallback(async () => {
+    if (!id) return;
+    try {
+      setLoading(true);
+      const { data, error } = await supabase
+        .from('orders')
+        .select('*')
+        .eq('id', id)
+        .single();
+
+      if (error) throw error;
+      setOrder(data);
+
+      // Fetch user email
+      const { data: userData } = await supabase
+        .from('users') // adjust if your user table is named differently
+        .select('email')
+        .eq('id', data.user_id)
+        .single();
+
+      if (userData?.email) {
+        setUserEmail(userData.email);
+      }
+
+      // Fetch full shipping address
+      const { data: addressData } = await supabase
+        .from('addresses')
+        .select('*')
+        .eq('id', data.address_id)
+        .single();
+
+      setShippingInfo(addressData);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
   }, [id]);
 
-  const fetchOrder = async () => {
-    const { data: orderData, error: orderError } = await supabase
-      .from('orders')
-      .select('*')
-      .eq('id', id)
-      .single();
-
-    if (orderError || !orderData) {
-      alert('Failed to load order');
-      router.push('/');
-      return;
-    }
-
-    setOrder(orderData);
-
-    // Fetch user email
-    const { data: userData } = await supabase
-      .from('users') // adjust if your user table is named differently
-      .select('email')
-      .eq('id', orderData.user_id)
-      .single();
-
-    if (userData?.email) {
-      setUserEmail(userData.email);
-    }
-
-    // Fetch full shipping address
-    const { data: addressData } = await supabase
-      .from('addresses')
-      .select('*')
-      .eq('id', orderData.address_id)
-      .single();
-
-    setShippingInfo(addressData);
-    setLoading(false);
-  };
+  useEffect(() => {
+    fetchOrder();
+  }, [fetchOrder]);
 
   const handleConfirm = async () => {
     try {

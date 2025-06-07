@@ -1,5 +1,5 @@
 'use client';
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { supabase } from '../../lib/supabaseClient';
 import UserLayout from '../../components/layouts/UserLayout';
 import '../../app/globals.css';
@@ -15,25 +15,39 @@ export default function OrderHistoryPage() {
     getUser();
   }, []);
 
-  useEffect(() => {
-    if (userId) fetchOrders();
+  const fetchOrders = useCallback(async () => {
+    setLoading(true);
+    try {
+      const { data, error } = await supabase
+        .from('orders')
+        .select(`
+          *,
+          order_items (
+            *,
+            product:products (*)
+          )
+        `)
+        .eq('user_id', userId)
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      setOrders(data);
+      setLoading(false);
+    } catch (error) {
+      console.error('Error fetching orders:', error);
+      setLoading(false);
+    }
   }, [userId]);
+
+  useEffect(() => {
+    if (userId) {
+      fetchOrders();
+    }
+  }, [fetchOrders, userId]);
 
   const getUser = async () => {
     const { data } = await supabase.auth.getUser();
     if (data?.user) setUserId(data.user.id);
-  };
-
-  const fetchOrders = async () => {
-    setLoading(true);
-    const { data, error } = await supabase
-      .from('orders')
-      .select('*')
-      .eq('user_id', userId)
-      .order('created_at', { ascending: false });
-
-    if (!error) setOrders(data);
-    setLoading(false);
   };
 
   const formatDate = (dateString) => {

@@ -2,7 +2,6 @@
 
 import React from 'react';
 import { ArrowLeft, Check } from 'lucide-react';
-import Image from 'next/image';
 
 const KitsCombosForm = ({
   itemLabel = 'Kit',
@@ -62,11 +61,9 @@ const KitsCombosForm = ({
                     <div className='flex items-start space-x-3'>
                       <div className='w-12 h-12 bg-gray-100 rounded flex items-center justify-center overflow-hidden'>
                         {product.main_image_url ? (
-                          <Image
+                          <img
                             src={getImageUrl(product.main_image_url)}
                             alt={product.name}
-                            width={48}
-                            height={48}
                             className='object-cover w-full h-full rounded'
                             onError={(e) => {
                               e.target.onerror = null;
@@ -219,14 +216,11 @@ const KitsCombosForm = ({
                 >
                   {previewImage ? (
                     <div className='space-y-3'>
-                      <div className="relative w-full h-32">
-                        <Image
-                          src={previewImage}
-                          alt="Preview"
-                          fill
-                          className="object-cover rounded"
-                        />
-                      </div>
+                      <img
+                        src={previewImage}
+                        alt='Preview'
+                        className='h-24 w-auto mx-auto object-contain'
+                      />
                       <label className='inline-block bg-gray-200 font-bold text-black text-sm px-5 py-2 rounded cursor-pointer hover:bg-[#601E8D] hover:text-white'>
                         Browse
                         <input

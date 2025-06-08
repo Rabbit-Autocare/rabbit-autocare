@@ -1,6 +1,6 @@
 "use client";
 import { useState, useEffect } from "react";
-import { useCart } from "@/contexts/CartContext";
+import { useCart } from "@/hooks/useCart";
 import { Check, Ticket, X, Loader2, Tag } from "lucide-react";
 
 export default function CouponSection() {

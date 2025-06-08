@@ -4,24 +4,20 @@ import { supabase } from '@/lib/supabaseClient';
 import Image from 'next/image';
 import { FiChevronLeft, FiPlus } from 'react-icons/fi';
 import { useDropzone } from 'react-dropzone';
-import { useRouter } from 'next/navigation';
-import { toast } from 'react-hot-toast';
-import VariantForm from './VariantForm';
-import productService from '@/lib/service/productService';
 
 export default function ProductForm({ product = null, onSuccess, onCancel }) {
-  const router = useRouter();
   const isEditMode = !!product;
 
   // Initialize form with product data if in edit mode, otherwise use empty values
   const [formData, setFormData] = useState({
     name: product?.name || '',
+    category: product?.category || '',
     description: product?.description || '',
-    category_id: product?.category_id || '',
-    subcategory_id: product?.subcategory_id || '',
-    product_code: product?.product_code || '',
-    has_variants: product?.has_variants ?? true,
-    variants: product?.variants || []
+    images: product?.images || [],
+    primaryImage: product?.images?.[0] || '',
+    variants: product?.variants?.length
+      ? product.variants
+      : [{ size: '', price: '', stock: '' }],
   });
 
   // Store files in state instead of uploading immediately
@@ -31,22 +27,6 @@ export default function ProductForm({ product = null, onSuccess, onCancel }) {
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState(null);
   const [uploadProgress, setUploadProgress] = useState({});
-
-  const [categories, setCategories] = useState([]);
-
-  useEffect(() => {
-    const fetchCategories = async () => {
-      try {
-        const data = await productService.getCategories();
-        setCategories(data);
-      } catch (error) {
-        console.error('Error fetching categories:', error);
-        toast.error('Failed to load categories');
-      }
-    };
-
-    fetchCategories();
-  }, []);
 
   // Setup dropzone for image uploads
   const onDrop = useCallback((acceptedFiles) => {
@@ -80,18 +60,27 @@ export default function ProductForm({ product = null, onSuccess, onCancel }) {
   }, [previewUrls]);
 
   const handleChange = (e) => {
-    const { name, value, type, checked } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [name]: type === "checkbox" ? checked : value
-    }));
+    setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
-  const handleVariantsChange = (variants) => {
-    setFormData(prev => ({
-      ...prev,
-      variants
-    }));
+  const handleVariantChange = (index, field, value) => {
+    const updatedVariants = [...formData.variants];
+    updatedVariants[index][field] = value;
+    setFormData({ ...formData, variants: updatedVariants });
+  };
+
+  const addVariant = () => {
+    setFormData({
+      ...formData,
+      variants: [...formData.variants, { size: '', price: '', stock: '' }],
+    });
+  };
+
+  const removeVariant = (index) => {
+    if (formData.variants.length <= 1) return;
+    const updated = [...formData.variants];
+    updated.splice(index, 1);
+    setFormData({ ...formData, variants: updated });
   };
 
   // Upload images only when form is submitted
@@ -150,7 +139,7 @@ export default function ProductForm({ product = null, onSuccess, onCancel }) {
     setLoading(true);
 
     // Validate required fields
-    if (!formData.name.trim() || !formData.category_id.trim()) {
+    if (!formData.name.trim() || !formData.category.trim()) {
       setMessage({
         type: 'error',
         text: 'Please fill in product name and category.',
@@ -201,11 +190,8 @@ export default function ProductForm({ product = null, onSuccess, onCancel }) {
       const productData = {
         name: formData.name.trim(),
         description: formData.description.trim(),
-        category_id: formData.category_id.trim(),
-        subcategory_id: formData.subcategory_id.trim(),
+        category: formData.category.trim(),
         images: allImages,
-        product_code: formData.product_code.trim(),
-        has_variants: formData.has_variants,
         variants: validVariants.map((variant) => ({
           size: variant.size.trim(),
           price: parseFloat(variant.price),
@@ -250,9 +236,6 @@ export default function ProductForm({ product = null, onSuccess, onCancel }) {
       if (onSuccess) {
         onSuccess(result);
       }
-
-      router.push('/admin/products');
-      router.refresh();
     } catch (error) {
       console.error(
         `Error ${isEditMode ? 'updating' : 'adding'} product:`,
@@ -331,8 +314,8 @@ export default function ProductForm({ product = null, onSuccess, onCancel }) {
             </label>
             <div className='relative'>
               <select
-                name='category_id'
-                value={formData.category_id}
+                name='category'
+                value={formData.category}
                 onChange={handleChange}
                 className='w-full p-2.5 border border-gray-300 rounded appearance-none bg-white focus:ring-1 focus:ring-gray-400 focus:border-gray-400 pr-8'
                 disabled={loading}
@@ -340,11 +323,9 @@ export default function ProductForm({ product = null, onSuccess, onCancel }) {
                 <option value='' disabled>
                   Select Category
                 </option>
-                {categories.map((category) => (
-                  <option key={category.id} value={category.id}>
-                    {category.name}
-                  </option>
-                ))}
+                <option value='Car Care'>Car Interior</option>
+                <option value='Interior Care'>Car Exterior</option>
+                <option value='Exterior Care'>Microfibres</option>
               </select>
               <div className='absolute inset-y-0 right-0 flex items-center px-2 pointer-events-none'>
                 <svg
@@ -365,33 +346,78 @@ export default function ProductForm({ product = null, onSuccess, onCancel }) {
             </div>
           </div>
 
-          {/* Product Code */}
-          <div>
-            <label className='block mb-2 text-sm font-medium text-gray-700'>
-              Product Code
-            </label>
-            <input
-              name='product_code'
-              value={formData.product_code}
-              onChange={handleChange}
-              className='w-full p-2.5 border border-gray-300 rounded focus:ring-1 focus:ring-gray-400 focus:border-gray-400'
-              placeholder='Enter product code'
-              disabled={loading}
-            />
-          </div>
+          {/* Product Variants */}
+          <div className='mb-6'>
+            <div className='flex mb-2'>
+              <div className='w-1/3 pr-2'>
+                <label className='block text-sm font-medium text-gray-700'>
+                  Variant (Quantity/Size/Color)
+                </label>
+              </div>
+              <div className='w-1/3 px-2'>
+                <label className='block text-sm font-medium text-gray-700'>
+                  Price
+                </label>
+              </div>
+              <div className='w-1/3 pl-2'>
+                <label className='block text-sm font-medium text-gray-700'>
+                  Stock
+                </label>
+              </div>
+            </div>
 
-          {/* Has Variants */}
-          <div className='flex items-center'>
-            <input
-              type='checkbox'
-              name='has_variants'
-              checked={formData.has_variants}
-              onChange={handleChange}
-              className='h-4 w-4 text-black'
-            />
-            <label className='ml-2 text-sm font-medium'>
-              This product has variants
-            </label>
+            {formData.variants.map((variant, index) => (
+              <div key={index} className='flex mb-3'>
+                <div className='w-1/3 pr-2'>
+                  <input
+                    type='text'
+                    value={variant.size}
+                    onChange={(e) =>
+                      handleVariantChange(index, 'size', e.target.value)
+                    }
+                    placeholder='Example: 500ml'
+                    className='w-full p-2.5 border border-gray-300 rounded'
+                    disabled={loading}
+                  />
+                </div>
+                <div className='w-1/3 px-2'>
+                  <input
+                    type='number'
+                    value={variant.price}
+                    onChange={(e) =>
+                      handleVariantChange(index, 'price', e.target.value)
+                    }
+                    placeholder='Example: 499'
+                    className='w-full p-2.5 border border-gray-300 rounded'
+                    step='0.01'
+                    min='0'
+                    disabled={loading}
+                  />
+                </div>
+                <div className='w-1/3 pl-2'>
+                  <input
+                    type='number'
+                    value={variant.stock}
+                    onChange={(e) =>
+                      handleVariantChange(index, 'stock', e.target.value)
+                    }
+                    placeholder='Example: 20'
+                    className='w-full p-2.5 border border-gray-300 rounded'
+                    min='0'
+                    disabled={loading}
+                  />
+                </div>
+              </div>
+            ))}
+
+            <button
+              type='button'
+              onClick={addVariant}
+              className='inline-flex items-center px-3 py-1.5 bg-gray-100 border border-gray-300 rounded text-sm font-medium text-gray-800 hover:bg-gray-200'
+            >
+              <span className='mr-1'>+</span>
+              Add Variant
+            </button>
           </div>
 
           {/* Media Upload */}
@@ -458,16 +484,6 @@ export default function ProductForm({ product = null, onSuccess, onCancel }) {
               </div>
             )}
           </div>
-
-          {/* Variant Form */}
-          {formData.has_variants && (
-            <VariantForm
-              productCode={formData.product_code}
-              variants={formData.variants}
-              onChange={handleVariantsChange}
-              isPackage={formData.category_id === 2} // Assuming 2 is the ID for microfiber category
-            />
-          )}
 
           {/* Form Actions */}
           <div className='flex justify-end gap-3 pt-4 border-t mt-6'>

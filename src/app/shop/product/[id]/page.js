@@ -2,8 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { ProductService } from "@/lib/service/productService";
-import ProductDetail from "@/components/shop/ProductDetailComponent";
-import Link from 'next/link';
+import ProductDetail from "@/components/shop/ProductDetail";
 
 export default function ProductPage({ params }) {
 	const [productId, setProductId] = useState(null);
@@ -75,20 +74,39 @@ export default function ProductPage({ params }) {
 	}, [productId]);
 
 	// Handle add to cart functionality
-	// FeaturedProductCard.jsx
-const handleAddToCart = async () => {
-  try {
-    await addToCart(product.id, selectedVariantIndex, 1);
-    // Show success message
-    console.log('Item added to cart successfully!');
-  } catch (error) {
-    console.error('Error adding to cart:', error);
-    // Handle error - maybe redirect to login if not authenticated
-    if (error.message.includes('not authenticated')) {
-      router.push('/login');
-    }
-  }
-};
+	const handleAddToCart = async (cartItem) => {
+		try {
+			// Get the first available image
+			const productImage = product?.images?.[0] || product?.image?.[0] || null;
+
+			const response = await fetch("/api/cart/add", {
+				method: "POST",
+				headers: {
+					"Content-Type": "application/json",
+				},
+				body: JSON.stringify({
+					productId: cartItem.productId,
+					variantId: cartItem.variantId,
+					quantity: cartItem.quantity,
+					price: cartItem.price,
+					variant: cartItem.size || cartItem.color || "default",
+					productName: product.name,
+					productImage: productImage,
+				}),
+			});
+
+			const data = await response.json();
+
+			if (response.ok && data.success) {
+				alert("Product added to cart successfully!");
+			} else {
+				throw new Error(data.error || "Failed to add to cart");
+			}
+		} catch (error) {
+			console.error("Error adding to cart:", error);
+			throw error;
+		}
+	};
 
 	if (loading) {
 		return (
@@ -141,13 +159,13 @@ const handleAddToCart = async () => {
 		<div className="container mx-auto px-4 py-8">
 			{/* Breadcrumb */}
 			<nav className="flex items-center space-x-2 text-sm text-gray-500 mb-6">
-				<Link href="/" className="text-gray-500 hover:text-gray-700">
+				<a href="/" className="hover:text-gray-700">
 					Home
-				</Link>
-				<span className="mx-2 text-gray-500">/</span>
-				<Link href="/shop/all/" className="text-gray-500 hover:text-gray-700">
+				</a>
+				<span>/</span>
+				<a href="/shop/all" className="hover:text-gray-700">
 					Shop
-				</Link>
+				</a>
 				<span>/</span>
 				<span className="text-gray-700">{product.name}</span>
 			</nav>

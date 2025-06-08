@@ -175,171 +175,158 @@ export async function GET(request) {
 // POST - Create a new product
 export async function POST(request) {
 	try {
-		const {
-			product_code,
-			name,
-			description,
-			category_name,
-			subcategory_names,
-			is_microfiber,
-			main_image_url,
-			images,
-			variants,
-			key_features,
-			taglines,
-		} = await request.json();
+		const data = await request.json();
+		const { variants, ...productData } = data;
 
 		// Validate required fields
-		if (!product_code || !name || !category_name) {
-			return errorResponse("Missing required fields: product_code, name, category_name", 400);
+		if (!productData.name || !productData.product_code) {
+			return NextResponse.json(
+				{ error: "Product name and code are required" },
+				{ status: 400 }
+			);
 		}
 
-		// Check if product code already exists
-		const { data: existingProduct } = await supabase
-			.from("products")
-			.select("id")
-			.eq("product_code", product_code)
-			.single();
-
-		if (existingProduct) {
-			return errorResponse("Product code already exists", 400);
+		// Validate variants
+		if (!Array.isArray(variants) || variants.length === 0) {
+			return NextResponse.json(
+				{ error: "At least one variant is required" },
+				{ status: 400 }
+			);
 		}
 
-		// Process variants with direct values and proper types
-	const processedVariants = variants.map(variant => {
-  if (is_microfiber) {
-    return {
-      gsm: variant.gsm || '',
-      size: variant.size || '',
-      color: variant.color || '',
-      stock: parseInt(variant.stock) || 0,
-      price: parseFloat(variant.price) || 0,
-      compareAtPrice: variant.compareAtPrice || null,
-      variant_type: 'microfiber'
-    };
-  } else {
-    return {
-      quantity: variant.quantity || '',
-      unit: variant.unit || 'ml',
-      stock: parseInt(variant.stock) || 0,
-      price: parseFloat(variant.price) || 0,
-      compareAtPrice: variant.compareAtPrice || null,
-      variant_type: 'liquid'
-    };
-  }
-});
+		// Validate variant data
+		for (const variant of variants) {
+			if (productData.is_microfiber) {
+				if (!variant.gsm || !variant.size || !variant.color) {
+					return NextResponse.json(
+						{ error: "GSM, size, and color are required for microfiber variants" },
+						{ status: 400 }
+					);
+				}
+			} else {
+				if (!variant.quantity || !variant.unit) {
+					return NextResponse.json(
+						{ error: "Quantity and unit are required for non-microfiber variants" },
+						{ status: 400 }
+					);
+				}
+			}
+		}
 
-
-		// Create the product
+		// Insert product
 		const { data: product, error: productError } = await supabase
 			.from("products")
-			.insert([{
-				product_code,
-				name,
-				description,
-				category_name,
-				subcategory_names: Array.isArray(subcategory_names) ? subcategory_names : [subcategory_names].filter(Boolean),
-				is_microfiber,
-				main_image_url,
-				images: images || [],
-				variants: processedVariants,
-				key_features: key_features || [],
-				taglines: taglines || []
-			}])
-			.select("*")
+			.insert([productData])
+			.select()
 			.single();
 
-		if (productError) return errorResponse(productError.message);
+		if (productError) throw productError;
 
-		return NextResponse.json(
-			{
-				success: true,
-				product: product
-			},
-			{ status: 201 }
-		);
+		// Insert variants
+		const variantsWithProductId = variants.map(variant => ({
+			...variant,
+			product_id: product.id
+		}));
+
+		const { error: variantsError } = await supabase
+			.from("product_variants")
+			.insert(variantsWithProductId);
+
+		if (variantsError) throw variantsError;
+
+		return NextResponse.json({ success: true, data: product });
 	} catch (error) {
-		console.error("POST /api/products error:", error);
-		return errorResponse(error.message || "Internal server error");
+		console.error("Error creating product:", error);
+		return NextResponse.json(
+			{ error: error.message },
+			{ status: 500 }
+		);
 	}
 }
 
 // PUT - Update a product
 export async function PUT(request) {
 	try {
-		const {
-			id,
-			product_code,
-			name,
-			description,
-			category_name,
-			subcategory_names,
-			is_microfiber,
-			main_image_url,
-			images,
-			variants,
-			key_features,
-			taglines,
-		} = await request.json();
+		const data = await request.json();
+		const { id, variants, ...productData } = data;
 
 		if (!id) {
-			return errorResponse("Product ID is required", 400);
+			return NextResponse.json(
+				{ error: "Product ID is required" },
+				{ status: 400 }
+			);
 		}
 
-		// Process variants with direct values and proper types
-	const processedVariants = variants.map(variant => {
-  if (is_microfiber) {
-    return {
-      gsm: variant.gsm || '',
-      size: variant.size || '',
-      color: variant.color || '',
-      stock: parseInt(variant.stock) || 0,
-      price: parseFloat(variant.price) || 0,
-      compareAtPrice: variant.compareAtPrice || null,
-      variant_type: 'microfiber'
-    };
-  } else {
-    return {
-      quantity: variant.quantity || '',
-      unit: variant.unit || 'ml',
-      stock: parseInt(variant.stock) || 0,
-      price: parseFloat(variant.price) || 0,
-      compareAtPrice: variant.compareAtPrice || null,
-      variant_type: 'liquid'
-    };
-  }
-});
+		// Validate required fields
+		if (!productData.name || !productData.product_code) {
+			return NextResponse.json(
+				{ error: "Product name and code are required" },
+				{ status: 400 }
+			);
+		}
 
+		// Validate variants
+		if (!Array.isArray(variants) || variants.length === 0) {
+			return NextResponse.json(
+				{ error: "At least one variant is required" },
+				{ status: 400 }
+			);
+		}
 
-		// Update the product
-		const { data: product, error: productError } = await supabase
+		// Validate variant data
+		for (const variant of variants) {
+			if (productData.is_microfiber) {
+				if (!variant.gsm || !variant.size || !variant.color) {
+					return NextResponse.json(
+						{ error: "GSM, size, and color are required for microfiber variants" },
+						{ status: 400 }
+					);
+				}
+			} else {
+				if (!variant.quantity || !variant.unit) {
+					return NextResponse.json(
+						{ error: "Quantity and unit are required for non-microfiber variants" },
+						{ status: 400 }
+					);
+				}
+			}
+		}
+
+		// Update product
+		const { error: productError } = await supabase
 			.from("products")
-			.update({
-				product_code,
-				name,
-				description,
-				category_name,
-				subcategory_names: Array.isArray(subcategory_names) ? subcategory_names : [subcategory_names].filter(Boolean),
-				is_microfiber,
-				main_image_url,
-				images: images || [],
-				variants: processedVariants,
-				key_features: key_features || [],
-				taglines: taglines || []
-			})
-			.eq("id", id)
-			.select("*")
-			.single();
+			.update(productData)
+			.eq("id", id);
 
-		if (productError) return errorResponse(productError.message);
+		if (productError) throw productError;
 
-		return NextResponse.json({
-			success: true,
-			product: product
-		});
+		// Delete existing variants
+		const { error: deleteError } = await supabase
+			.from("product_variants")
+			.delete()
+			.eq("product_id", id);
+
+		if (deleteError) throw deleteError;
+
+		// Insert new variants
+		const variantsWithProductId = variants.map(variant => ({
+			...variant,
+			product_id: id
+		}));
+
+		const { error: variantsError } = await supabase
+			.from("product_variants")
+			.insert(variantsWithProductId);
+
+		if (variantsError) throw variantsError;
+
+		return NextResponse.json({ success: true });
 	} catch (error) {
-		console.error("PUT /api/products error:", error);
-		return errorResponse(error.message || "Internal server error");
+		console.error("Error updating product:", error);
+		return NextResponse.json(
+			{ error: error.message },
+			{ status: 500 }
+		);
 	}
 }
 

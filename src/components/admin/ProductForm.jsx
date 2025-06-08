@@ -2,7 +2,6 @@
 import { useEffect, useState } from "react";
 import { ProductService } from "@/lib/service/productService";
 import { Plus, Trash2, Package, Palette, Ruler, Hash, DollarSign, Archive, Tag, X, Image as ImageIcon } from "lucide-react";
-import Image from 'next/image';
 
 export default function EnhancedProductForm({ product = null, onSuccess, onCancel }) {
 	const [loading, setLoading] = useState(false);
@@ -28,6 +27,8 @@ export default function EnhancedProductForm({ product = null, onSuccess, onCance
 	const [allSizes, setAllSizes] = useState([]);
 	const [allColors, setAllColors] = useState([]);
 	const [allCategories, setAllCategories] = useState([]);
+	const [allGsm, setAllGsm] = useState([]);
+	const [allQuantities, setAllQuantities] = useState([]);
 	const [selectedCategory, setSelectedCategory] = useState(null);
 
 	// UI states
@@ -51,15 +52,19 @@ export default function EnhancedProductForm({ product = null, onSuccess, onCance
 	const fetchMasterData = async () => {
 		setLoading(true);
 		try {
-			const [sizesRes, colorsRes, categoriesRes] = await Promise.all([
+			const [sizesRes, colorsRes, categoriesRes, gsmRes, quantitiesRes] = await Promise.all([
 				ProductService.getSizes(),
 				ProductService.getColors(),
 				ProductService.getCategories(),
+				ProductService.getGSM(),
+				ProductService.getQuantities(),
 			]);
 
 			setAllSizes(sizesRes.data || []);
 			setAllColors(colorsRes.data || []);
 			setAllCategories(categoriesRes.data || []);
+			setAllGsm(gsmRes.data || []);
+			setAllQuantities(quantitiesRes.data || []);
 
 			// Call populateEditForm after categories are loaded in edit mode
 			if (isEditing) {
@@ -89,10 +94,10 @@ export default function EnhancedProductForm({ product = null, onSuccess, onCance
 					gsm: variant.gsm || '',
 					size: variant.size_cm || variant.size || '',
 					color: variant.color || '',
-				stock: parseInt(variant.stock) || 0,
-				price: parseFloat(variant.price) || 0,
+					stock: parseInt(variant.stock) || 0,
+					price: parseFloat(variant.price) || 0,
 					compareAtPrice: parseFloat(variant.compare_at_price || variant.compareAtPrice) || null
-			};
+				};
 			} else {
 				return {
 					id: variant.id || null,
@@ -150,17 +155,23 @@ export default function EnhancedProductForm({ product = null, onSuccess, onCance
 	const handleVariantChange = (index, field, value) => {
 		const newVariants = [...form.variants];
 		// Update the field with the direct value
-			newVariants[index] = {
-				...newVariants[index],
-				[field]: value,
-			};
+		newVariants[index] = {
+			...newVariants[index],
+			[field]: value,
+		};
 		setForm({ ...form, variants: newVariants });
 	};
 
 	const addVariant = () => {
 		const newVariants = [...form.variants];
+		const generateVariantId = () => {
+			// Generate a unique ID using timestamp and random string
+			return `var_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+		};
+
 		if (form.is_microfiber) {
 			newVariants.push({
+				id: generateVariantId(),
 				gsm: "",
 				size: "",
 				color: "",
@@ -170,6 +181,7 @@ export default function EnhancedProductForm({ product = null, onSuccess, onCance
 			});
 		} else {
 			newVariants.push({
+				id: generateVariantId(),
 				quantity: "",
 				unit: "ml",
 				stock: 0,
@@ -188,6 +200,8 @@ export default function EnhancedProductForm({ product = null, onSuccess, onCance
 
 	const duplicateVariant = (index) => {
 		const variantToDuplicate = { ...form.variants[index] };
+		// Generate new ID for the duplicated variant
+		variantToDuplicate.id = `var_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 		const updated = [...form.variants];
 		updated.splice(index + 1, 0, variantToDuplicate);
 		setForm({ ...form, variants: updated });
@@ -248,12 +262,12 @@ export default function EnhancedProductForm({ product = null, onSuccess, onCance
 				}
 			}
 			if (isNaN(variant.stock) || variant.stock < 0) {
-					alert(`Variant ${i + 1}: Stock must be a non-negative number.`);
-					return;
-				}
+				alert(`Variant ${i + 1}: Stock must be a non-negative number.`);
+				return;
+			}
 			if (isNaN(variant.price) || variant.price < 0) {
-					alert(`Variant ${i + 1}: Price must be a non-negative number.`);
-					return;
+				alert(`Variant ${i + 1}: Price must be a non-negative number.`);
+				return;
 			}
 		}
 
@@ -284,7 +298,7 @@ export default function EnhancedProductForm({ product = null, onSuccess, onCance
 						};
 					}
 					// For non-microfiber products
-						return {
+					return {
 						quantity: variant.quantity,
 						unit: variant.unit,
 						stock: parseInt(variant.stock),
@@ -561,16 +575,13 @@ export default function EnhancedProductForm({ product = null, onSuccess, onCance
 							<div className="grid grid-cols-2 md:grid-cols-4 gap-4">
 								{form.images.map((url, index) => (
 									<div key={url} className="relative group">
-										<div className="relative w-full h-32">
-											<Image
-												src={url}
-												alt={`Product image ${index + 1}`}
-												fill
-												className={`object-cover rounded-lg ${
-													form.main_image_url === url ? 'ring-2 ring-blue-500' : ''
-												}`}
-											/>
-										</div>
+										<img
+											src={url}
+											alt={`Product image ${index + 1}`}
+											className={`w-full h-32 object-cover rounded-lg ${
+												form.main_image_url === url ? 'ring-2 ring-blue-500' : ''
+											}`}
+										/>
 										<div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-50 transition-opacity rounded-lg flex items-center justify-center gap-2">
 											<button
 												type="button"
@@ -801,15 +812,19 @@ export default function EnhancedProductForm({ product = null, onSuccess, onCance
 											<label className="block text-xs font-medium text-gray-600 mb-1">
 												GSM Value *
 											</label>
-											<input
-												type="number"
-												step="0.1"
+											<select
 												value={variant.gsm || ''}
 												onChange={(e) => handleVariantChange(index, "gsm", e.target.value)}
 												required
 												className="w-full px-2 py-1 text-sm border rounded focus:ring-1 focus:ring-blue-500"
-												placeholder="300"
-											/>
+											>
+												<option value="">Select GSM</option>
+												{allGsm.map((gsm) => (
+													<option key={gsm.id} value={gsm.gsm}>
+														{gsm.gsm}
+													</option>
+												))}
+											</select>
 										</div>
 
 										<div>
@@ -887,15 +902,19 @@ export default function EnhancedProductForm({ product = null, onSuccess, onCance
 											<label className="block text-xs font-medium text-gray-600 mb-1">
 												Quantity *
 											</label>
-											<input
-												type="number"
-												step="0.1"
+											<select
 												value={variant.quantity || ''}
 												onChange={(e) => handleVariantChange(index, "quantity", e.target.value)}
 												required
 												className="w-full px-2 py-1 text-sm border rounded focus:ring-1 focus:ring-blue-500"
-												placeholder="500"
-											/>
+											>
+												<option value="">Select Quantity</option>
+												{allQuantities.map((qty) => (
+													<option key={qty.id} value={qty.quantity}>
+														{qty.quantity} {qty.unit}
+													</option>
+												))}
+											</select>
 										</div>
 
 										<div>

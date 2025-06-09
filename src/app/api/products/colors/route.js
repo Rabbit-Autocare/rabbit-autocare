@@ -1,68 +1,119 @@
-import { NextResponse } from "next/server"
-import { supabase } from "@/lib/supabaseClient"
+import { createClient } from '@supabase/supabase-js';
+
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL,
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+);
 
 // Utility to handle errors consistently
 function errorResponse(message, status = 500) {
   console.error(`API Error (colors): ${message}`)
-  return NextResponse.json({ error: message }, { status })
+  return new Response(JSON.stringify({ error: message }), {
+    status: status,
+    headers: { 'Content-Type': 'application/json' },
+  });
 }
 
 export async function GET() {
   try {
-    const { data, error } = await supabase.from("colors").select("*").order("color")
+    const { data, error } = await supabase
+      .from('colors')
+      .select('*')
+      .order('color', { ascending: true });
 
-    if (error) {
-      console.error("Supabase error:", error)
-      return errorResponse(error.message)
-    }
+    if (error) throw error;
 
-    return NextResponse.json({ data })
+    return new Response(JSON.stringify({ success: true, data }), {
+      status: 200,
+      headers: { 'Content-Type': 'application/json' },
+    });
   } catch (error) {
-    console.error("Unexpected error in colors API:", error)
+    console.error('Error fetching colors:', error);
     return errorResponse(error.message || "An unexpected error occurred")
   }
 }
 
 export async function POST(request) {
   try {
-    const { name } = await request.json()
-    if (!name) return errorResponse("Name is required", 400)
+    const { color, hex_code } = await request.json();
 
-    const { data, error } = await supabase.from("colors").insert([{ color: name }]).select()
-    if (error) return errorResponse(error.message)
+    // Validate hex code
+    const hexRegex = /^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$/;
+    if (!hexRegex.test(hex_code)) {
+      return errorResponse("Invalid hex code format", 400)
+    }
 
-    return NextResponse.json({ data: data[0] }, { status: 201 })
+    const { data, error } = await supabase
+      .from('colors')
+      .insert([{ color, hex_code }])
+      .select()
+      .single();
+
+    if (error) throw error;
+
+    return new Response(JSON.stringify({ success: true, data }), {
+      status: 201,
+      headers: { 'Content-Type': 'application/json' },
+    });
   } catch (error) {
+    console.error('Error creating color:', error);
     return errorResponse(error.message || "An unexpected error occurred")
   }
 }
 
 export async function PUT(request) {
   try {
-    const { id, name } = await request.json()
-    if (!id) return errorResponse("ID is required", 400)
-    if (!name) return errorResponse("Name is required", 400)
+    const { id, color, hex_code } = await request.json();
 
-    const { data, error } = await supabase.from("colors").update({ color: name }).eq("id", id).select()
-    if (error) return errorResponse(error.message)
+    // Validate hex code if provided
+    if (hex_code) {
+      const hexRegex = /^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$/;
+      if (!hexRegex.test(hex_code)) {
+        return errorResponse("Invalid hex code format", 400)
+      }
+    }
 
-    return NextResponse.json({ data: data[0] })
+    const { data, error } = await supabase
+      .from('colors')
+      .update({ color, hex_code })
+      .eq('id', id)
+      .select()
+      .single();
+
+    if (error) throw error;
+
+    return new Response(JSON.stringify({ success: true, data }), {
+      status: 200,
+      headers: { 'Content-Type': 'application/json' },
+    });
   } catch (error) {
+    console.error('Error updating color:', error);
     return errorResponse(error.message || "An unexpected error occurred")
   }
 }
 
 export async function DELETE(request) {
   try {
-    const { searchParams } = new URL(request.url)
-    const id = searchParams.get("id")
-    if (!id) return errorResponse("ID is required", 400)
+    const { searchParams } = new URL(request.url);
+    const id = searchParams.get('id');
 
-    const { error } = await supabase.from("colors").delete().eq("id", id)
-    if (error) return errorResponse(error.message)
+    if (!id) {
+      return errorResponse("Color ID is required", 400)
+    }
 
-    return NextResponse.json({ success: true, message: "Color deleted" })
+    const { error } = await supabase
+      .from('colors')
+      .delete()
+      .eq('id', id);
+
+    if (error) throw error;
+
+    return new Response(JSON.stringify({ success: true }), {
+      status: 200,
+      headers: { 'Content-Type': 'application/json' },
+    });
   } catch (error) {
+    console.error('Error deleting color:', error);
     return errorResponse(error.message || "An unexpected error occurred")
   }
 }

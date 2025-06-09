@@ -5,6 +5,9 @@ import HeroBannerSlider from "@/components/home/HeroBannerSlider";
 import CarInterior from "@/components/home/CarInterior";
 import FeaturedProducts from "@/components/home/FeaturedProducts";
 import Shop from "@/components/home/Shop";
+import WhyChooseRabbit from "@/components/home/WhyChooseRabbit";
+import Customer from "@/components/home/Customer";
+import Testimonial from "@/components/home/Testimonial";
 
 
 export default function Home() {
@@ -15,6 +18,9 @@ export default function Home() {
 			<ThemeColorsDisplay />
       <FeaturedProducts/>
 			<Shop/>
+			<WhyChooseRabbit/>
+			<Customer/>
+			<Testimonial/>
 		</main>
 	);
 }

@@ -15,16 +15,36 @@ import {
 	Package,
 	Search,
 	Filter,
+	ChevronDown,
+	ChevronUp,
+	Pencil,
+	ChevronRight,
 } from "lucide-react";
+import React from "react";
+
+function getVariantFields(variants) {
+	// Returns an array of field names that are present (not null/empty) in at least one variant
+	const fields = ["gsm", "size", "color", "color_hex", "quantity", "unit", "price", "stock", "compare_at_price"];
+	return fields.filter(field => variants.some(v => v[field] !== undefined && v[field] !== null && v[field] !== ""));
+}
+
+function formatRupee(amount) {
+	if (amount === undefined || amount === null) return "";
+	return `₹${Number(amount).toFixed(2)}`;
+}
 
 export default function AdminProductsPage() {
 	const [products, setProducts] = useState([]);
 	const [loading, setLoading] = useState(true);
-	const [currentView, setCurrentView] = useState("list"); // 'list', 'create', 'edit', 'microdata'
-	const [selectedProduct, setSelectedProduct] = useState(null);
+	const [error, setError] = useState(null);
+	const [expandedRows, setExpandedRows] = useState({});
 	const [searchTerm, setSearchTerm] = useState("");
-	const [categoryFilter, setCategoryFilter] = useState("");
+	const [selectedCategory, setSelectedCategory] = useState("all");
+	const [showForm, setShowForm] = useState(false);
+	const [editingProduct, setEditingProduct] = useState(null);
 	const [categories, setCategories] = useState([]);
+	const [imageIndexes, setImageIndexes] = useState({}); // { [productId]: currentIndex }
+	const [currentView, setCurrentView] = useState("list"); // 'list', 'create', 'edit', 'microdata'
 
 	useEffect(() => {
 		fetchProducts();
@@ -60,253 +80,447 @@ export default function AdminProductsPage() {
 		}
 	};
 
-	const handleDeleteProduct = async (id) => {
+	const handleDelete = async (id) => {
 		if (!confirm("Are you sure you want to delete this product?")) return;
 
 		try {
 			await ProductService.deleteProduct(id);
-			alert("Product deleted successfully!");
-			fetchProducts();
+			await fetchProducts();
 		} catch (error) {
 			console.error("Error deleting product:", error);
 			alert("Error deleting product: " + error.message);
 		}
 	};
 
-	const handleProductSuccess = () => {
-		setCurrentView("list");
-		setSelectedProduct(null);
-		fetchProducts();
+	const handleEdit = (product) => {
+		setEditingProduct(product);
+		setShowForm(true);
+		setCurrentView("edit");
 	};
 
-	const handleCancel = () => {
-		setCurrentView("list");
-		setSelectedProduct(null);
+	const handleCreate = () => {
+		setEditingProduct(null);
+		setShowForm(true);
+		setCurrentView("create");
 	};
 
-	const handleMicrodataSuccess = () => {
+	const handleBack = () => {
+		setShowForm(false);
+		setEditingProduct(null);
 		setCurrentView("list");
-		fetchCategories(); // Refresh categories in case they were updated
 	};
 
-	// Filter products based on search and category
+	const handleSuccess = async () => {
+		await fetchProducts();
+		setShowForm(false);
+		setEditingProduct(null);
+		setCurrentView("list");
+	};
+
+	const toggleRow = (productId) => {
+		setExpandedRows(prev => ({
+			...prev,
+			[productId]: !prev[productId]
+		}));
+	};
+
+	const handlePrevImage = (product) => {
+		setImageIndexes(prev => ({
+			...prev,
+			[product.id]: Math.max(0, (prev[product.id] || 0) - 1)
+		}));
+	};
+
+	const handleNextImage = (product) => {
+		setImageIndexes(prev => ({
+			...prev,
+			[product.id]: Math.min((product.images?.length || 1) - 1, (prev[product.id] || 0) + 1)
+		}));
+	};
+
 	const filteredProducts = products.filter((product) => {
-		const matchesSearch =
-			product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+		const matchesSearch = product.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
 			product.product_code?.toLowerCase().includes(searchTerm.toLowerCase());
-		const matchesCategory =
-			!categoryFilter ||
-			product.main_category_id?.toString() === categoryFilter;
+		const matchesCategory = selectedCategory === "all" || product.category_name === selectedCategory;
 		return matchesSearch && matchesCategory;
 	});
 
-	const renderProductsList = () => (
-		<div className="space-y-6">
-			{/* Header Section */}
-			<div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-				<div>
-					<h1 className="text-2xl font-bold text-gray-900">
-						Products Management
-					</h1>
-					<p className="text-gray-600">
-						Manage your product catalog and microdata
-					</p>
-				</div>
+	if (currentView === "microdata") {
+		return (
+			<AdminLayout>
+				<MicrodataManagementForm onBack={handleBack} />
+			</AdminLayout>
+		);
+	}
 
-				<div className="flex gap-3">
-					<button
-						onClick={() => setCurrentView("microdata")}
-						className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 flex items-center gap-2 transition-colors"
-					>
-						<Settings size={18} />
-						Manage Microdata
-					</button>
-					<button
-						onClick={() => setCurrentView("create")}
-						className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center gap-2 transition-colors"
-					>
-						<Plus size={18} />
-						Add Product
-					</button>
-				</div>
+	if (showForm) {
+		return (
+			<AdminLayout>
+				<EnhancedProductForm
+					product={editingProduct}
+					onSuccess={handleSuccess}
+					onCancel={handleBack}
+				/>
+			</AdminLayout>
+		);
+	}
+
+	if (loading) {
+		return (
+			<div className="flex items-center justify-center min-h-screen">
+				<div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
 			</div>
-
-			{/* Search and Filter Section */}
-			<div className="bg-white p-4 rounded-lg shadow-sm border">
-				<div className="flex flex-col sm:flex-row gap-4">
-					<div className="flex-1 relative">
-						<Search
-							className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"
-							size={18}
-						/>
-						<input
-							type="text"
-							placeholder="Search products by name or code..."
-							value={searchTerm}
-							onChange={(e) => setSearchTerm(e.target.value)}
-							className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-						/>
-					</div>
-					<div className="sm:w-48 relative">
-						<Filter
-							className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"
-							size={18}
-						/>
-						<select
-							value={categoryFilter}
-							onChange={(e) => setCategoryFilter(e.target.value)}
-							className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent appearance-none"
-						>
-							<option value="">All Categories</option>
-							{categories.map((category) => (
-								<option key={category.id} value={category.id}>
-									{category.name}
-								</option>
-							))}
-						</select>
-					</div>
-				</div>
-			</div>
-
-			{/* Products Grid */}
-			{loading ? (
-				<div className="flex items-center justify-center py-12">
-					<div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-					<span className="ml-3 text-gray-600">Loading products...</span>
-				</div>
-			) : filteredProducts.length === 0 ? (
-				<div className="text-center py-12 bg-white rounded-lg shadow-sm border">
-					<Package className="mx-auto w-12 h-12 text-gray-400 mb-4" />
-					<h3 className="text-lg font-medium text-gray-900 mb-2">
-						{searchTerm || categoryFilter
-							? "No products found"
-							: "No products yet"}
-					</h3>
-					<p className="text-gray-600 mb-6">
-						{searchTerm || categoryFilter
-							? "Try adjusting your search or filter criteria."
-							: "Get started by creating your first product."}
-					</p>
-					{!searchTerm && !categoryFilter && (
-						<button
-							onClick={() => setCurrentView("create")}
-							className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center gap-2 mx-auto transition-colors"
-						>
-							<Plus size={20} />
-							Create First Product
-						</button>
-					)}
-				</div>
-			) : (
-				<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-					{filteredProducts.map((product) => (
-						<div
-							key={product.id}
-							className="bg-white rounded-lg shadow-sm border hover:shadow-md transition-shadow"
-						>
-							{/* Product Image */}
-							<div className="aspect-video bg-gray-100 rounded-t-lg flex items-center justify-center">
-								{product.main_image_url ? (
-									<Image
-										src={product.main_image_url}
-										alt={product.name}
-										width={300}
-										height={200}
-										className="w-full h-full object-cover rounded-t-lg"
-									/>
-								) : (
-									<Package className="w-12 h-12 text-gray-400" />
-								)}
-							</div>
-
-							{/* Product Info */}
-							<div className="p-4">
-								<div className="flex justify-between items-start mb-2">
-									<h3 className="font-semibold text-gray-900 truncate flex-1">
-										{product.name || "Unnamed Product"}
-									</h3>
-									<span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded-full ml-2">
-										{product.is_microfiber
-											? `${product.gsm_variants?.length || 0} GSM variants`
-											: `${product.product_sizes?.length || 0} sizes`}
-									</span>
-								</div>
-
-								{product.product_code && (
-									<p className="text-sm text-gray-600 mb-2">
-										Code: {product.product_code}
-									</p>
-								)}
-
-								{product.main_category && (
-									<p className="text-sm text-gray-600 mb-3">
-										Category: {product.main_category.name}
-									</p>
-								)}
-
-								{product.description && (
-									<p className="text-sm text-gray-700 mb-4 line-clamp-2">
-										{product.description}
-									</p>
-								)}
-
-								{/* Action Buttons */}
-								<div className="flex gap-2">
-									<button
-										onClick={() => {
-											setSelectedProduct(product);
-											setCurrentView("edit");
-										}}
-										className="flex-1 px-3 py-2 bg-blue-600 text-white text-sm rounded hover:bg-blue-700 flex items-center justify-center gap-1 transition-colors"
-									>
-										<Edit size={14} />
-										Edit
-									</button>
-									<button
-										onClick={() => handleDeleteProduct(product.id)}
-										className="px-3 py-2 bg-red-600 text-white text-sm rounded hover:bg-red-700 flex items-center justify-center transition-colors"
-									>
-										<Trash2 size={14} />
-									</button>
-								</div>
-							</div>
-						</div>
-					))}
-				</div>
-			)}
-
-			{/* Results Summary */}
-			{!loading && filteredProducts.length > 0 && (
-				<div className="text-center text-sm text-gray-600">
-					Showing {filteredProducts.length} of {products.length} products
-				</div>
-			)}
-		</div>
-	);
+		);
+	}
 
 	return (
 		<AdminLayout>
-			<div className="container mx-auto px-4 py-6">
-				{currentView === "list" && renderProductsList()}
+			<div className="p-6 max-w-full">
+				<div className="flex justify-between items-center mb-6">
+					<h1 className="text-2xl font-bold">Products</h1>
+					<div className="flex gap-2">
+						<button
+							onClick={() => setCurrentView("microdata")}
+							className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 flex items-center gap-2 transition-colors"
+						>
+							<Settings size={16} />
+							Microdata Management
+						</button>
+						<button
+							onClick={handleCreate}
+							className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center gap-2 transition-colors"
+						>
+							<Plus size={16} />
+							Add Product
+						</button>
+					</div>
+				</div>
 
-				{currentView === "create" && (
-					<EnhancedProductForm
-						onSuccess={handleProductSuccess}
-						onCancel={handleCancel}
-					/>
-				)}
+				{/* Filters */}
+				<div className="mb-6 flex flex-col sm:flex-row gap-4 items-start sm:items-center">
+					<div className="flex-1 w-full sm:w-auto">
+						<div className="relative">
+							<Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
+							<input
+								type="text"
+								placeholder="Search products..."
+								value={searchTerm}
+								onChange={(e) => setSearchTerm(e.target.value)}
+								className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+							/>
+						</div>
+					</div>
+					<select
+						value={selectedCategory}
+						onChange={(e) => setSelectedCategory(e.target.value)}
+						className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent min-w-[150px]"
+					>
+						<option value="all">All Categories</option>
+						{categories.map((category) => (
+							<option key={category.id} value={category.name}>
+								{category.name}
+							</option>
+						))}
+					</select>
+				</div>
 
-				{currentView === "edit" && selectedProduct && (
-					<EnhancedProductForm
-						product={selectedProduct}
-						onSuccess={handleProductSuccess}
-						onCancel={handleCancel}
-					/>
-				)}
+				{/* Products Table */}
+				<div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+					<div className="overflow-x-auto">
+						<table className="min-w-full divide-y divide-gray-200">
+							<thead className="bg-gray-50">
+								<tr>
+									<th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider w-80">
+										Product
+									</th>
+									<th className="px-4 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+										Category
+									</th>
+									<th className="px-4 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+										Variants
+									</th>
+									<th className="px-4 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+										Total Stock
+									</th>
+									<th className="px-4 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+										Price Range
+									</th>
+									<th className="px-4 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+										Status
+									</th>
+									<th className="px-4 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+										Actions
+									</th>
+								</tr>
+							</thead>
+							<tbody className="bg-white divide-y divide-gray-200">
+								{filteredProducts.length === 0 ? (
+									<tr>
+										<td colSpan="7" className="px-6 py-12 text-center text-gray-500">
+											<Package className="mx-auto h-12 w-12 text-gray-300 mb-4" />
+											<p className="text-lg font-medium">No products found</p>
+											<p className="text-sm">Try adjusting your search criteria</p>
+										</td>
+									</tr>
+								) : (
+									filteredProducts.map((product) => (
+										<React.Fragment key={product.id}>
+											<tr className="hover:bg-gray-50 transition-colors">
+												<td className="px-6 py-4">
+													<div className="flex items-center gap-4">
+														<button
+															onClick={() => toggleRow(product.id)}
+															className="p-1 hover:bg-gray-200 rounded transition-colors flex-shrink-0"
+														>
+															{expandedRows[product.id] ? (
+																<ChevronDown className="w-4 h-4 text-gray-600" />
+															) : (
+																<ChevronRight className="w-4 h-4 text-gray-600" />
+															)}
+														</button>
 
-				{currentView === "microdata" && (
-					<MicrodataManagementForm onClose={handleMicrodataSuccess} />
-				)}
+														{/* Product Image */}
+														<div className="relative flex-shrink-0">
+															<div className="w-16 h-16 rounded-lg overflow-hidden border border-gray-200">
+																{product.images && product.images.length > 0 ? (
+																	<>
+																		<img
+																			src={product.images[imageIndexes[product.id] || 0]}
+																			alt={product.name}
+																			className="w-full h-full object-cover"
+																		/>
+																		{product.images.length > 1 && (
+																			<div className="absolute top-0 left-0 bg-black bg-opacity-50 text-white text-xs px-1 rounded-br">
+																				{(imageIndexes[product.id] || 0) + 1}/{product.images.length}
+																			</div>
+																		)}
+																	</>
+																) : product.main_image_url ? (
+																	<img
+																		src={product.main_image_url}
+																		alt={product.name}
+																		className="w-full h-full object-cover"
+																	/>
+																) : (
+																	<div className="w-full h-full bg-gray-100 flex items-center justify-center">
+																		<Package className="w-6 h-6 text-gray-400" />
+																	</div>
+																)}
+															</div>
+															{product.images && product.images.length > 1 && (
+																<div className="absolute -bottom-1 left-1/2 transform -translate-x-1/2 flex gap-0.5">
+																	<button
+																		onClick={() => handlePrevImage(product)}
+																		className="bg-white shadow-sm border rounded p-0.5 hover:bg-gray-50 text-xs"
+																		disabled={(imageIndexes[product.id] || 0) === 0}
+																	>
+																		←
+																	</button>
+																	<button
+																		onClick={() => handleNextImage(product)}
+																		className="bg-white shadow-sm border rounded p-0.5 hover:bg-gray-50 text-xs"
+																		disabled={(imageIndexes[product.id] || 0) === (product.images.length - 1)}
+																	>
+																		→
+																	</button>
+																</div>
+															)}
+														</div>
+
+														{/* Product Info */}
+														<div className="min-w-0 flex-1">
+															<div className="font-medium text-gray-900 truncate">{product.name}</div>
+															<div className="text-sm text-gray-500">{product.product_code}</div>
+														</div>
+													</div>
+												</td>
+												<td className="px-4 py-4 text-sm text-gray-900">
+													<span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+														{product.category_name}
+													</span>
+												</td>
+												<td className="px-4 py-4 text-sm text-gray-900">
+													<span className="font-medium">{product.variants?.length || 0}</span>
+													<span className="text-gray-500 ml-1">variants</span>
+												</td>
+												<td className="px-4 py-4 text-sm text-gray-900">
+													<span className="font-medium">
+														{product.variants?.reduce((sum, v) => sum + (v.stock || 0), 0) || 0}
+													</span>
+												</td>
+												<td className="px-4 py-4 text-sm text-gray-900">
+													{product.variants?.length > 0 ? (
+														<div>
+															<div className="font-medium">
+																{formatRupee(Math.min(...product.variants.map((v) => v.price || 0)))}
+															</div>
+															{Math.min(...product.variants.map((v) => v.price || 0)) !== Math.max(...product.variants.map((v) => v.price || 0)) && (
+																<div className="text-xs text-gray-500">
+																	to {formatRupee(Math.max(...product.variants.map((v) => v.price || 0)))}
+																</div>
+															)}
+														</div>
+													) : (
+														<span className="text-gray-400">—</span>
+													)}
+												</td>
+												<td className="px-4 py-4 text-sm">
+													<span
+														className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+															product.variants?.some((v) => v.stock > 0)
+																? "bg-green-100 text-green-800"
+																: "bg-red-100 text-red-800"
+														}`}
+													>
+														{product.variants?.some((v) => v.stock > 0) ? "In Stock" : "Out of Stock"}
+													</span>
+												</td>
+												<td className="px-4 py-4 text-sm text-gray-900">
+													<div className="flex items-center gap-1">
+														<button
+															onClick={() => handleEdit(product)}
+															className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+															title="Edit product"
+														>
+															<Pencil className="w-4 h-4" />
+														</button>
+														<button
+															onClick={() => handleDelete(product.id)}
+															className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+															title="Delete product"
+														>
+															<Trash2 className="w-4 h-4" />
+														</button>
+													</div>
+												</td>
+											</tr>
+
+											{/* Expanded Row for Variants */}
+											{expandedRows[product.id] && (
+												<tr>
+													<td colSpan={7} className="px-0 py-0 bg-gray-50">
+														<div className="px-6 py-4">
+															<h4 className="text-sm font-semibold text-gray-700 mb-3">Product Variants</h4>
+															<div className="overflow-x-auto">
+																{(() => {
+																	const fields = getVariantFields(product.variants || []);
+																	if (fields.length === 0) {
+																		return (
+																			<div className="text-center py-8 text-gray-500">
+																				<Package className="mx-auto h-8 w-8 text-gray-300 mb-2" />
+																				<p>No variants found</p>
+																			</div>
+																		);
+																	}
+																	return (
+																		<table className="min-w-full text-sm border border-gray-200 rounded-lg overflow-hidden">
+																			<thead className="bg-white">
+																				<tr>
+																					{fields.includes("gsm") && <th className="px-4 py-3 text-left font-medium text-gray-700 border-b">GSM</th>}
+																					{fields.includes("size") && <th className="px-4 py-3 text-left font-medium text-gray-700 border-b">Size</th>}
+																					{fields.includes("color") && <th className="px-4 py-3 text-left font-medium text-gray-700 border-b">Color</th>}
+																					{fields.includes("quantity") && <th className="px-4 py-3 text-left font-medium text-gray-700 border-b">Quantity</th>}
+																					{fields.includes("unit") && <th className="px-4 py-3 text-left font-medium text-gray-700 border-b">Unit</th>}
+																					{fields.includes("price") && <th className="px-4 py-3 text-left font-medium text-gray-700 border-b">Price</th>}
+																					{fields.includes("stock") && <th className="px-4 py-3 text-left font-medium text-gray-700 border-b">Stock</th>}
+																					{fields.includes("compare_at_price") && <th className="px-4 py-3 text-left font-medium text-gray-700 border-b">Compare At</th>}
+																				</tr>
+																			</thead>
+																			<tbody className="bg-white">
+																				{product.variants.map((variant, index) => (
+																					<tr key={variant.id} className={index % 2 === 0 ? "bg-white" : "bg-gray-50"}>
+																						{fields.includes("gsm") && (
+																							<td className="px-4 py-3 border-b border-gray-100">
+																								{variant.gsm || "—"}
+																							</td>
+																						)}
+																						{fields.includes("size") && (
+																							<td className="px-4 py-3 border-b border-gray-100">
+																								{variant.size || "—"}
+																							</td>
+																						)}
+																						{fields.includes("color") && (
+																							<td className="px-4 py-3 border-b border-gray-100">
+																								{(variant.color || variant.color_hex) ? (
+																									<div className="flex items-center gap-2">
+																										{variant.color_hex && (
+																											<div
+																												className="w-4 h-4 rounded-full border border-gray-300 shadow-sm flex-shrink-0"
+																												style={{ backgroundColor: variant.color_hex }}
+																												title={`Hex: ${variant.color_hex}`}
+																											/>
+																										)}
+																										<div className="flex flex-col">
+																											{variant.color && (
+																												<span className="font-medium text-gray-900 text-sm">
+																													{variant.color}
+																												</span>
+																											)}
+																											{variant.color_hex && (
+																												<span className="text-xs text-gray-500 font-mono">
+																													{variant.color_hex}
+																												</span>
+																											)}
+																										</div>
+																									</div>
+																								) : (
+																									"—"
+																								)}
+																							</td>
+																						)}
+																						{fields.includes("quantity") && (
+																							<td className="px-4 py-3 border-b border-gray-100">
+																								{variant.quantity || "—"}
+																							</td>
+																						)}
+																						{fields.includes("unit") && (
+																							<td className="px-4 py-3 border-b border-gray-100">
+																								{variant.unit || "—"}
+																							</td>
+																						)}
+																						{fields.includes("price") && (
+																							<td className="px-4 py-3 border-b border-gray-100">
+																								<span className="font-semibold text-green-600">
+																									{formatRupee(variant.price)}
+																								</span>
+																							</td>
+																						)}
+																						{fields.includes("stock") && (
+																							<td className="px-4 py-3 border-b border-gray-100">
+																								<span className={`font-medium ${variant.stock > 0 ? 'text-green-600' : 'text-red-600'}`}>
+																									{variant.stock || 0}
+																								</span>
+																							</td>
+																						)}
+																						{fields.includes("compare_at_price") && (
+																							<td className="px-4 py-3 border-b border-gray-100">
+																								{variant.compare_at_price !== null && variant.compare_at_price !== undefined ? (
+																									<span className="text-gray-500 line-through">
+																										{formatRupee(variant.compare_at_price)}
+																									</span>
+																								) : (
+																									"—"
+																								)}
+																							</td>
+																						)}
+																					</tr>
+																				))}
+																			</tbody>
+																		</table>
+																	);
+																})()}
+															</div>
+														</div>
+													</td>
+												</tr>
+											)}
+										</React.Fragment>
+									))
+								)}
+							</tbody>
+						</table>
+					</div>
+				</div>
 			</div>
 		</AdminLayout>
 	);

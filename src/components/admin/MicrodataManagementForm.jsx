@@ -10,7 +10,7 @@ import ColorsManagement from "../admin/datatabs/ColorsTab"
 import GSMManagement from "../admin/datatabs/GsmTab"
 import QuantityManagement from "../admin/datatabs/QuantityTab"
 
-export default function MicrodataManagementForm({ onClose }) {
+export default function MicrodataManagementForm({ onBack }) {
   const [activeTab, setActiveTab] = useState("categories")
   const [loading, setLoading] = useState(false)
   const [saving, setSaving] = useState(false)
@@ -117,7 +117,7 @@ export default function MicrodataManagementForm({ onClose }) {
           <h2 className="text-2xl font-bold text-gray-900">Microdata Management</h2>
           <p className="text-gray-600 mt-1">Manage categories, sizes, colors, GSM, and quantities for your products</p>
         </div>
-        <button onClick={onClose} className="text-gray-400 hover:text-gray-600 p-2 transition-colors">
+        <button onClick={onBack} className="text-gray-400 hover:text-gray-600 p-2 transition-colors">
           <X size={24} />
         </button>
       </div>

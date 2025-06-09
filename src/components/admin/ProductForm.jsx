@@ -88,12 +88,19 @@ export default function EnhancedProductForm({ product = null, onSuccess, onCance
 		}
 
 		const productVariants = product.variants?.map(variant => {
+			// Prioritize existing color_hex from the product object
+			const existingHex = variant.color_hex;
+			// If not present, derive from allColors
+			const derivedHex = allColors.find(c => c.color === variant.color)?.hex_code || null;
+			const finalHex = existingHex || derivedHex;
+
 			if (product.is_microfiber) {
 				return {
 					id: variant.id || null,
 					gsm: variant.gsm || '',
 					size: variant.size_cm || variant.size || '',
 					color: variant.color || '',
+					color_hex: finalHex, // Use the determined hex
 					stock: parseInt(variant.stock) || 0,
 					price: parseFloat(variant.price) || 0,
 					compareAtPrice: parseFloat(variant.compare_at_price || variant.compareAtPrice) || null
@@ -103,6 +110,8 @@ export default function EnhancedProductForm({ product = null, onSuccess, onCance
 					id: variant.id || null,
 					quantity: variant.quantity || '',
 					unit: variant.unit || 'ml',
+					color: variant.color || '',
+					color_hex: finalHex, // Use the determined hex
 					stock: parseInt(variant.stock) || 0,
 					price: parseFloat(variant.price) || 0,
 					compareAtPrice: parseFloat(variant.compare_at_price || variant.compareAtPrice) || null
@@ -154,11 +163,21 @@ export default function EnhancedProductForm({ product = null, onSuccess, onCance
 
 	const handleVariantChange = (index, field, value) => {
 		const newVariants = [...form.variants];
-		// Update the field with the direct value
-		newVariants[index] = {
-			...newVariants[index],
-			[field]: value,
-		};
+		// If the field is color, also store the hex code
+		if (field === "color") {
+			const selectedColor = allColors.find(c => c.color === value);
+			newVariants[index] = {
+				...newVariants[index],
+				color: value,
+				color_hex: selectedColor ? selectedColor.hex_code : '',
+			};
+		} else {
+			// Update the field with the direct value
+			newVariants[index] = {
+				...newVariants[index],
+				[field]: value,
+			};
+		}
 		setForm({ ...form, variants: newVariants });
 	};
 
@@ -175,6 +194,7 @@ export default function EnhancedProductForm({ product = null, onSuccess, onCance
 				gsm: "",
 				size: "",
 				color: "",
+				color_hex: null,
 				stock: 0,
 				price: 0,
 				compareAtPrice: null
@@ -184,6 +204,8 @@ export default function EnhancedProductForm({ product = null, onSuccess, onCance
 				id: generateVariantId(),
 				quantity: "",
 				unit: "ml",
+				color: "",
+				color_hex: null,
 				stock: 0,
 				price: 0,
 				compareAtPrice: null
@@ -289,9 +311,11 @@ export default function EnhancedProductForm({ product = null, onSuccess, onCance
 					// For microfiber products
 					if (form.is_microfiber) {
 						return {
+							id: variant.id || `var_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
 							gsm: variant.gsm,
 							size: variant.size,
 							color: variant.color,
+							color_hex: variant.color_hex,
 							stock: parseInt(variant.stock),
 							price: parseFloat(variant.price),
 							compareAtPrice: variant.compareAtPrice ? parseFloat(variant.compareAtPrice) : null
@@ -299,8 +323,11 @@ export default function EnhancedProductForm({ product = null, onSuccess, onCance
 					}
 					// For non-microfiber products
 					return {
+						id: variant.id || `var_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
 						quantity: variant.quantity,
 						unit: variant.unit,
+						color: variant.color,
+						color_hex: variant.color_hex,
 						stock: parseInt(variant.stock),
 						price: parseFloat(variant.price),
 						compareAtPrice: variant.compareAtPrice ? parseFloat(variant.compareAtPrice) : null
@@ -308,7 +335,7 @@ export default function EnhancedProductForm({ product = null, onSuccess, onCance
 				})
 			};
 
-			console.log("Submitting payload:", payload); // Debug log
+			console.log("Submitting payload:", JSON.stringify(payload, null, 2)); // Debug log
 
 			if (isEditing) {
 				await ProductService.updateProduct(product.id, payload);
@@ -321,7 +348,7 @@ export default function EnhancedProductForm({ product = null, onSuccess, onCance
 			}
 		} catch (error) {
 			console.error("Error saving product:", error);
-			alert("Error saving product: " + error.message);
+			alert("Error saving product: " + (error.message || "Unknown error occurred"));
 		} finally {
 			setSaving(false);
 		}
@@ -865,6 +892,16 @@ export default function EnhancedProductForm({ product = null, onSuccess, onCance
 													</option>
 												))}
 											</select>
+											{variant.color_hex && (
+												<div className="flex items-center gap-2 mt-2">
+													<span className="text-xs text-gray-500">Selected:</span>
+													<div
+														className="w-4 h-4 rounded-full border"
+														style={{ backgroundColor: variant.color_hex }}
+													/>
+													<span className="text-sm">{variant.color}</span>
+												</div>
+											)}
 										</div>
 
 										<div>

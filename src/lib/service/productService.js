@@ -21,7 +21,6 @@ export class ProductService {
     Object.entries(filters).forEach(([key, value]) => {
       if (value !== undefined && value !== null && value !== "") {
         if (Array.isArray(value)) {
-          // For array values, add each item as a separate parameter with the same key
           value.forEach((item) => params.append(key + "[]", item))
         } else {
           params.append(key, value)
@@ -115,47 +114,74 @@ export class ProductService {
           ? data.variants.map((variant) => {
               if (data.is_microfiber) {
                 return {
+                  id: variant.id || `var_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
                   gsm: variant.gsm || "",
                   size: variant.size || "",
                   color: variant.color || "",
+                  color_hex: variant.color_hex || null,
                   price: Number.parseFloat(variant.price) || 0,
                   stock: Number.parseInt(variant.stock) || 0,
-                  compareAtPrice: variant.compareAtPrice || null,
+                  compare_at_price: variant.compareAtPrice || null,
                 }
               } else {
                 return {
+                  id: variant.id || `var_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
                   quantity: variant.quantity || "",
                   unit: variant.unit || "ml",
+                  color: variant.color || "",
+                  color_hex: variant.color_hex || null,
                   price: Number.parseFloat(variant.price) || 0,
                   stock: Number.parseInt(variant.stock) || 0,
-                  compareAtPrice: variant.compareAtPrice || null,
+                  compare_at_price: variant.compareAtPrice || null,
                 }
               }
             })
           : [],
       }
 
+      // Log the transformed data for debugging
+      console.log('Sending product data to API (from ProductService.createProduct):', JSON.stringify(transformedData, null, 2));
+
       const res = await fetch(API_BASE_URL, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          "Accept": "application/json"
+        },
         body: JSON.stringify(transformedData),
       })
 
       if (!res.ok) {
-        const errorText = await res.text()
+        const errorText = await res.text();
+        console.error('API Error Response:', {
+          status: res.status,
+          statusText: res.statusText,
+          errorText: errorText
+        });
+
         try {
-          const errorJson = JSON.parse(errorText)
-          throw new Error(errorJson.error || `API error: ${res.status}`)
+          const errorJson = JSON.parse(errorText);
+          throw new Error(errorJson.error || errorJson.message || `API error: ${res.status}`);
         } catch (e) {
-          throw new Error(`API error: ${errorText || res.statusText || res.status}`)
+          if (errorText) {
+            throw new Error(`API error: ${errorText}`);
+          } else {
+            throw new Error(`API error: ${res.status} ${res.statusText}`);
+          }
         }
       }
 
-      const json = await res.json()
-      return this.transformProductData(json.product || json)
+      const json = await res.json();
+      console.log('API Response:', json);
+      return this.transformProductData(json.product || json);
     } catch (error) {
-      console.error("Error in createProduct:", error)
-      throw error
+      console.error("Error in createProduct:", error);
+      console.error("Error details:", {
+        message: error.message,
+        stack: error.stack,
+        data: data
+      });
+      throw error;
     }
   }
 
@@ -169,20 +195,25 @@ export class ProductService {
           ? updateData.variants.map((variant) => {
               if (updateData.is_microfiber) {
                 return {
+                  id: variant.id || `var_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
                   gsm: variant.gsm || "",
                   size: variant.size || "",
                   color: variant.color || "",
+                  color_hex: variant.color_hex || null,
                   price: Number.parseFloat(variant.price) || 0,
                   stock: Number.parseInt(variant.stock) || 0,
-                  compareAtPrice: variant.compareAtPrice || null,
+                  compare_at_price: variant.compareAtPrice || null,
                 }
               } else {
                 return {
+                  id: variant.id || `var_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
                   quantity: variant.quantity || "",
                   unit: variant.unit || "ml",
+                  color: variant.color || "",
+                  color_hex: variant.color_hex || null,
                   price: Number.parseFloat(variant.price) || 0,
                   stock: Number.parseInt(variant.stock) || 0,
-                  compareAtPrice: variant.compareAtPrice || null,
+                  compare_at_price: variant.compareAtPrice || null,
                 }
               }
             })
@@ -193,6 +224,9 @@ export class ProductService {
             ? [updateData.subcategory_names]
             : [],
       }
+
+      // Log the transformed data for debugging
+      console.log('Sending product data to API (from ProductService.updateProduct):', JSON.stringify(transformedData, null, 2));
 
       const res = await fetch(API_BASE_URL, {
         method: "PUT",
@@ -242,213 +276,209 @@ export class ProductService {
     }
   }
 
+  // ============= GSM MANAGEMENT =============
 
-  // Add these constants at the top with your other API constants
-
-
-// ============= GSM MANAGEMENT =============
-
-static async getGSM() {
-  try {
-    const res = await fetch(GSM_API)
-    if (!res.ok) {
-      const errorText = await res.text()
-      try {
-        const errorJson = JSON.parse(errorText)
-        throw new Error(errorJson.error || `API error: ${res.status}`)
-      } catch (e) {
-        throw new Error(`API error: ${errorText || res.statusText || res.status}`)
+  static async getGSM() {
+    try {
+      const res = await fetch(GSM_API)
+      if (!res.ok) {
+        const errorText = await res.text()
+        try {
+          const errorJson = JSON.parse(errorText)
+          throw new Error(errorJson.error || `API error: ${res.status}`)
+        } catch (e) {
+          throw new Error(`API error: ${errorText || res.statusText || res.status}`)
+        }
       }
-    }
-    const data = await res.json()
-    return {
-      success: true,
-      data: Array.isArray(data) ? data : data.data || []
-    }
-  } catch (error) {
-    console.error("Error in getGSM:", error)
-    throw error
-  }
-}
-
-static async createGsm(data) {
-  try {
-    const res = await fetch(GSM_API, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(data),
-    })
-
-    if (!res.ok) {
-      const errorText = await res.text()
-      try {
-        const errorJson = JSON.parse(errorText)
-        throw new Error(errorJson.error || `API error: ${res.status}`)
-      } catch (e) {
-        throw new Error(`API error: ${errorText || res.statusText || res.status}`)
+      const data = await res.json()
+      return {
+        success: true,
+        data: Array.isArray(data) ? data : data.data || []
       }
+    } catch (error) {
+      console.error("Error in getGSM:", error)
+      throw error
     }
-
-    const json = await res.json()
-    return json
-  } catch (error) {
-    console.error("Error in createGsm:", error)
-    throw error
   }
-}
 
-static async updateGsm(id, data) {
-  try {
-    const res = await fetch(GSM_API, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ id, ...data }),
-    })
+  static async createGsm(data) {
+    try {
+      const res = await fetch(GSM_API, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      })
 
-    if (!res.ok) {
-      const errorText = await res.text()
-      try {
-        const errorJson = JSON.parse(errorText)
-        throw new Error(errorJson.error || `API error: ${res.status}`)
-      } catch (e) {
-        throw new Error(`API error: ${errorText || res.statusText || res.status}`)
+      if (!res.ok) {
+        const errorText = await res.text()
+        try {
+          const errorJson = JSON.parse(errorText)
+          throw new Error(errorJson.error || `API error: ${res.status}`)
+        } catch (e) {
+          throw new Error(`API error: ${errorText || res.statusText || res.status}`)
+        }
       }
+
+      const json = await res.json()
+      return json
+    } catch (error) {
+      console.error("Error in createGsm:", error)
+      throw error
     }
-
-    const json = await res.json()
-    return json
-  } catch (error) {
-    console.error("Error in updateGsm:", error)
-    throw error
   }
-}
 
-static async deleteGsm(id) {
-  try {
-    const res = await fetch(`${GSM_API}?id=${id}`, {
-      method: "DELETE",
-    })
+  static async updateGsm(id, data) {
+    try {
+      const res = await fetch(GSM_API, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id, ...data }),
+      })
 
-    if (!res.ok) {
-      const errorText = await res.text()
-      try {
-        const errorJson = JSON.parse(errorText)
-        throw new Error(errorJson.error || `API error: ${res.status}`)
-      } catch (e) {
-        throw new Error(`API error: ${errorText || res.statusText || res.status}`)
+      if (!res.ok) {
+        const errorText = await res.text()
+        try {
+          const errorJson = JSON.parse(errorText)
+          throw new Error(errorJson.error || `API error: ${res.status}`)
+        } catch (e) {
+          throw new Error(`API error: ${errorText || res.statusText || res.status}`)
+        }
       }
+
+      const json = await res.json()
+      return json
+    } catch (error) {
+      console.error("Error in updateGsm:", error)
+      throw error
     }
-
-    const json = await res.json()
-    return json
-  } catch (error) {
-    console.error("Error in deleteGsm:", error)
-    throw error
   }
-}
 
-// ============= QUANTITY MANAGEMENT =============
+  static async deleteGsm(id) {
+    try {
+      const res = await fetch(`${GSM_API}?id=${id}`, {
+        method: "DELETE",
+      })
 
-static async getQuantities() {
-  try {
-    const res = await fetch(QUANTITY_API)
-
-    if (!res.ok) {
-      const errorText = await res.text()
-      try {
-        const errorJson = JSON.parse(errorText)
-        throw new Error(errorJson.error || `API error: ${res.status}`)
-      } catch (e) {
-        throw new Error(`API error: ${errorText || res.statusText || res.status}`)
+      if (!res.ok) {
+        const errorText = await res.text()
+        try {
+          const errorJson = JSON.parse(errorText)
+          throw new Error(errorJson.error || `API error: ${res.status}`)
+        } catch (e) {
+          throw new Error(`API error: ${errorText || res.statusText || res.status}`)
+        }
       }
-    }
 
-    const data = await res.json()
-    return {
-      success: true,
-      data: Array.isArray(data) ? data : data.data || []
+      const json = await res.json()
+      return json
+    } catch (error) {
+      console.error("Error in deleteGsm:", error)
+      throw error
     }
-  } catch (error) {
-    console.error("Error in getQuantities:", error)
-    throw error
   }
-}
 
-static async createQuantity(data) {
-  try {
-    const res = await fetch(QUANTITY_API, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(data),
-    })
+  // ============= QUANTITY MANAGEMENT =============
 
-    if (!res.ok) {
-      const errorText = await res.text()
-      try {
-        const errorJson = JSON.parse(errorText)
-        throw new Error(errorJson.error || `API error: ${res.status}`)
-      } catch (e) {
-        throw new Error(`API error: ${errorText || res.statusText || res.status}`)
+  static async getQuantities() {
+    try {
+      const res = await fetch(QUANTITY_API)
+
+      if (!res.ok) {
+        const errorText = await res.text()
+        try {
+          const errorJson = JSON.parse(errorText)
+          throw new Error(errorJson.error || `API error: ${res.status}`)
+        } catch (e) {
+          throw new Error(`API error: ${errorText || res.statusText || res.status}`)
+        }
       }
-    }
 
-    const json = await res.json()
-    return json
-  } catch (error) {
-    console.error("Error in createQuantity:", error)
-    throw error
-  }
-}
-
-static async updateQuantity(id, data) {
-  try {
-    const res = await fetch(QUANTITY_API, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ id, ...data }),
-    })
-
-    if (!res.ok) {
-      const errorText = await res.text()
-      try {
-        const errorJson = JSON.parse(errorText)
-        throw new Error(errorJson.error || `API error: ${res.status}`)
-      } catch (e) {
-        throw new Error(`API error: ${errorText || res.statusText || res.status}`)
+      const data = await res.json()
+      return {
+        success: true,
+        data: Array.isArray(data) ? data : data.data || []
       }
+    } catch (error) {
+      console.error("Error in getQuantities:", error)
+      throw error
     }
-
-    const json = await res.json()
-    return json
-  } catch (error) {
-    console.error("Error in updateQuantity:", error)
-    throw error
   }
-}
 
-static async deleteQuantity(id) {
-  try {
-    const res = await fetch(`${QUANTITY_API}?id=${id}`, {
-      method: "DELETE",
-    })
+  static async createQuantity(data) {
+    try {
+      const res = await fetch(QUANTITY_API, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      })
 
-    if (!res.ok) {
-      const errorText = await res.text()
-      try {
-        const errorJson = JSON.parse(errorText)
-        throw new Error(errorJson.error || `API error: ${res.status}`)
-      } catch (e) {
-        throw new Error(`API error: ${errorText || res.statusText || res.status}`)
+      if (!res.ok) {
+        const errorText = await res.text()
+        try {
+          const errorJson = JSON.parse(errorText)
+          throw new Error(errorJson.error || `API error: ${res.status}`)
+        } catch (e) {
+          throw new Error(`API error: ${errorText || res.statusText || res.status}`)
+        }
       }
-    }
 
-    const json = await res.json()
-    return json
-  } catch (error) {
-    console.error("Error in deleteQuantity:", error)
-    throw error
+      const json = await res.json()
+      return json
+    } catch (error) {
+      console.error("Error in createQuantity:", error)
+      throw error
+    }
   }
-}
+
+  static async updateQuantity(id, data) {
+    try {
+      const res = await fetch(QUANTITY_API, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id, ...data }),
+      })
+
+      if (!res.ok) {
+        const errorText = await res.text()
+        try {
+          const errorJson = JSON.parse(errorText)
+          throw new Error(errorJson.error || `API error: ${res.status}`)
+        } catch (e) {
+          throw new Error(`API error: ${errorText || res.statusText || res.status}`)
+        }
+      }
+
+      const json = await res.json()
+      return json
+    } catch (error) {
+      console.error("Error in updateQuantity:", error)
+      throw error
+    }
+  }
+
+  static async deleteQuantity(id) {
+    try {
+      const res = await fetch(`${QUANTITY_API}?id=${id}`, {
+        method: "DELETE",
+      })
+
+      if (!res.ok) {
+        const errorText = await res.text()
+        try {
+          const errorJson = JSON.parse(errorText)
+          throw new Error(errorJson.error || `API error: ${res.status}`)
+        } catch (e) {
+          throw new Error(`API error: ${errorText || res.statusText || res.status}`)
+        }
+      }
+
+      const json = await res.json()
+      return json
+    } catch (error) {
+      console.error("Error in deleteQuantity:", error)
+      throw error
+    }
+  }
 
   // ============= CATEGORIES =============
 
@@ -823,23 +853,28 @@ static async deleteQuantity(id) {
       ...product,
       category: product.category_name,
       subcategory: product.subcategory_name,
-      variants: product.variants.map(variant => {
+      variants: (product.variants || []).map(variant => {
         if (product.is_microfiber) {
           return {
-            id: variant.id || this.generateVariantId(),
+            id: variant.id,
             gsm: variant.gsm,
             size: variant.size,
             color: variant.color,
+            color_hex: variant.color_hex || null,
             stock: variant.stock || 0,
-            price: variant.price || 0
+            price: variant.price || 0,
+            compareAtPrice: variant.compare_at_price || null
           };
         } else {
           return {
-            id: variant.id || this.generateVariantId(),
+            id: variant.id,
             quantity: variant.quantity,
             unit: variant.unit,
+            color: variant.color,
+            color_hex: variant.color_hex || null,
             stock: variant.stock || 0,
-            price: variant.price || 0
+            price: variant.price || 0,
+            compareAtPrice: variant.compare_at_price || null
           };
         }
       })

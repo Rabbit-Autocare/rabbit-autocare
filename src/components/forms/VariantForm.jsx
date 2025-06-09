@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import variantService from "@/lib/service/variantService";
+import { Palette } from "lucide-react";
 
 export default function VariantForm({
   productCode,
@@ -13,6 +14,7 @@ export default function VariantForm({
   const [variantValues, setVariantValues] = useState({});
   const [localVariants, setLocalVariants] = useState(variants);
   const [loading, setLoading] = useState(true);
+  const [allColors, setAllColors] = useState([]);
 
   // Fetch variant types and values
   useEffect(() => {
@@ -24,6 +26,9 @@ export default function VariantForm({
 
         const values = await variantService.getAllVariantValues();
         setVariantValues(values);
+
+        const colors = await variantService.getAllColors();
+        setAllColors(colors);
       } catch (error) {
         console.error('Error fetching variant data:', error);
       } finally {
@@ -182,6 +187,31 @@ export default function VariantForm({
                 />
               </div>
             )}
+            <div>
+              <label className="block text-xs font-medium text-gray-600 mb-1">
+                <Palette className="inline w-3 h-3 mr-1" />
+                Color *
+              </label>
+              <select
+                value={variant.color || ''}
+                onChange={(e) => handleVariantChange(index, "color", e.target.value)}
+                required
+                className="w-full px-2 py-1 text-sm border rounded focus:ring-1 focus:ring-blue-500"
+              >
+                <option value="">Select color</option>
+                {allColors.map((color) => (
+                  <option key={color.id} value={color.color} className="flex items-center">
+                    <div className="flex items-center">
+                      <div
+                        className="w-4 h-4 rounded-full mr-2 border border-gray-300"
+                        style={{ backgroundColor: color.hex_code }}
+                      />
+                      {color.color}
+                    </div>
+                  </option>
+                ))}
+              </select>
+            </div>
           </div>
 
           {/* Variant attributes */}

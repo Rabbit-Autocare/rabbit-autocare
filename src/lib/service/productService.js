@@ -290,10 +290,22 @@ export class ProductService {
           throw new Error(`API error: ${errorText || res.statusText || res.status}`)
         }
       }
-      const data = await res.json()
+      const json = await res.json()
+      let gsmData = []
+      if (Array.isArray(json)) {
+        gsmData = json.map((gsm, index) => ({
+          id: gsm.id || `gsm_${index}`,
+          value: typeof gsm === 'string' ? gsm : gsm.value || gsm.gsm
+        })).filter(gsm => gsm.value)
+      } else if (json && Array.isArray(json.data)) {
+        gsmData = json.data.map((gsm, index) => ({
+          id: gsm.id || `gsm_${index}`,
+          value: typeof gsm === 'string' ? gsm : gsm.value || gsm.gsm
+        })).filter(gsm => gsm.value)
+      }
       return {
         success: true,
-        data: Array.isArray(data) ? data : data.data || []
+        data: gsmData
       }
     } catch (error) {
       console.error("Error in getGSM:", error)
@@ -393,10 +405,23 @@ export class ProductService {
         }
       }
 
-      const data = await res.json()
+      const json = await res.json()
+      let quantitiesData = []
+      if (Array.isArray(json)) {
+        quantitiesData = json.map((q, index) => ({
+          id: q.id || `quantity_${index}`,
+          value: typeof q === 'string' ? q : q.value || q.quantity
+        })).filter(q => q.value)
+      } else if (json && Array.isArray(json.data)) {
+        quantitiesData = json.data.map((q, index) => ({
+          id: q.id || `quantity_${index}`,
+          value: typeof q === 'string' ? q : q.value || q.quantity
+        })).filter(q => q.value)
+      }
+
       return {
         success: true,
-        data: Array.isArray(data) ? data : data.data || []
+        data: quantitiesData
       }
     } catch (error) {
       console.error("Error in getQuantities:", error)
@@ -597,7 +622,23 @@ export class ProductService {
       }
 
       const json = await res.json()
-      return json
+      let sizesData = []
+      if (Array.isArray(json)) {
+        sizesData = json.map((size, index) => ({
+          id: size.id || `size_${index}`,
+          name: size.size_cm
+        })).filter(size => size.name)
+      } else if (json && Array.isArray(json.data)) {
+        sizesData = json.data.map((size, index) => ({
+          id: size.id || `size_${index}`,
+          name: size.size_cm
+        })).filter(size => size.name)
+      }
+
+      return {
+        success: true,
+        data: sizesData
+      }
     } catch (error) {
       console.error("Error in getSizes:", error)
       throw error
@@ -697,7 +738,22 @@ export class ProductService {
       }
 
       const json = await res.json()
-      return json
+      let colorsData = []
+      if (Array.isArray(json)) {
+        colorsData = json.map(color => ({
+          name: color.color,
+          hex: color.hex_code
+        })).filter(color => color.name && color.hex)
+      } else if (json && Array.isArray(json.data)) {
+        colorsData = json.data.map(color => ({
+          name: color.color,
+          hex: color.hex_code
+        })).filter(color => color.name && color.hex)
+      }
+      return {
+        success: true,
+        data: colorsData
+      }
     } catch (error) {
       console.error("Error in getColors:", error)
       throw error

@@ -104,11 +104,11 @@ const ProductGrid = ({ products, loading, error, hasActiveFilters, onClearFilter
   })
 
   // Log for debugging
-  console.log("ProductGrid rendering:", {
-    totalProducts: products.length,
-    validProducts: validProducts.length,
-    sampleProduct: validProducts[0]
-  })
+  // console.log("ProductGrid rendering:", {
+  //   totalProducts: products.length,
+  //   validProducts: validProducts.length,
+  //   sampleProduct: validProducts[0]
+  // })
 
   return (
     <div className="w-full">

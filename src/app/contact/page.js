@@ -4,7 +4,7 @@ import Link from 'next/link';
 
 export default function ContactPage() {
   return (
-    <div className='mx-auto px-[100px] py-12'>
+    <div className='mx-auto px-4 md:px-10 lg:px-[100px] py-12'>
       <nav className='text-sm text-gray-500 mb-6'>
         <span className='text-gray-400'>Home</span> &gt;{' '}
         <span>Get In Touch</span>
@@ -13,7 +13,7 @@ export default function ContactPage() {
       <div className='grid md:grid-cols-2 gap-12'>
         {/* LEFT SIDE - TEXT INFO */}
         <div>
-          <h1 className='text-4xl font-semibold my-8 pt-14'>Let&apos;s Talk</h1>
+          <h1 className='text-4xl font-semibold my-8 lg:pt-14'>Let&apos;s Talk</h1>
           <p className='text-gray-700 mb-10 leading-relaxed max-w-lg text-md'>
             Have some big idea or brand to develop and need help? Then reach
             out, we&apos;d love to hear about your project and provide help

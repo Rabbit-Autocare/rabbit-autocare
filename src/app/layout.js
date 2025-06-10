@@ -2,24 +2,27 @@
 import { Inter } from "next/font/google";
 import "./globals.css";
 import ClientLayout from "./client-layout";
+import { AuthProvider } from '@/contexts/AuthContext'
 
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata = {
-  title: "AutoCare - Quality Auto Parts",
-  description: "Your trusted source for quality auto parts and accessories.",
+  title: "Rabbit Auto Care",
+  description: "Your one-stop shop for auto care products",
 };
 
 export default function RootLayout({ children }) {
   return (
     <html lang="en" suppressHydrationWarning>
       <body className={inter.className} suppressHydrationWarning>
-        {/* ✅ ScrollSmoother wrapper */}
-        <div id="smooth-wrapper">
-          <div id="smooth-content">
-            <ClientLayout>{children}</ClientLayout>
+        <AuthProvider>
+          {/* ✅ ScrollSmoother wrapper */}
+          <div id="smooth-wrapper">
+            <div id="smooth-content">
+              <ClientLayout>{children}</ClientLayout>
+            </div>
           </div>
-        </div>
+        </AuthProvider>
       </body>
     </html>
   );

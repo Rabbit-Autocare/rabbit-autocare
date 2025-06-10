@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo } from "react"
 import { ChevronLeft, ChevronRight, Heart, ShoppingCart, X } from "lucide-react"
-import { useCart } from "@/contexts/CartContext"
+import { useCart } from "@/contexts/CartContext.jsx"
 import Image from 'next/image'
 
 export default function FeaturedProductCard({ product, onAddToCart, onBuyNow, onAddToWishlist, className = "" }) {
@@ -22,11 +22,69 @@ export default function FeaturedProductCard({ product, onAddToCart, onBuyNow, on
     product.is_microfiber === true ||
     (typeof product.category_name === "string" && product.category_name.toLowerCase().includes("microfiber"))
 
+  // Get color for display (could be hex, color name, etc.)
+  const getColorStyle = (color) => {
+    // If it's a hex color, use it directly
+    if (color?.startsWith("#")) {
+      return { backgroundColor: color }
+    }
+
+    // Find the variant with this color to get its hex code
+    const variant = product.variants?.find(v => v.color === color)
+    if (variant?.color_hex) {
+      return { backgroundColor: variant.color_hex }
+    }
+
+    // Color mapping for common color names to hex codes
+    const colorMap = {
+      red: "#ef4444",
+      blue: "#3b82f6",
+      green: "#22c55e",
+      yellow: "#eab308",
+      purple: "#a855f7",
+      pink: "#ec4899",
+      orange: "#f97316",
+      gray: "#6b7280",
+      grey: "#6b7280",
+      black: "#000000",
+      white: "#ffffff",
+      brown: "#a78bfa",
+      navy: "#1e40af",
+      teal: "#14b8a6",
+      lime: "#84cc16",
+      cyan: "#06b6d4",
+      indigo: "#6366f1",
+      emerald: "#10b981",
+      rose: "#f43f5e",
+      amber: "#f59e0b",
+      violet: "#8b5cf6",
+      sky: "#0ea5e9",
+      slate: "#64748b",
+    }
+
+    // If it's a named color, use the mapping
+    const lowerColor = color?.toLowerCase()
+    if (colorMap[lowerColor]) {
+      return { backgroundColor: colorMap[lowerColor] }
+    }
+
+    // Fallback to a default gray
+    return { backgroundColor: "#6b7280" }
+  }
+
   // Get unique colors and sizes for all products
   const getUniqueColorsAndSizes = () => {
     if (!product.variants) return { colors: [], sizes: [] }
 
-    const colors = [...new Set(product.variants.map((v) => v.color).filter(Boolean))]
+    // Get unique colors with their hex codes
+    const colorMap = new Map()
+    product.variants.forEach(variant => {
+      if (variant.color && !colorMap.has(variant.color)) {
+        colorMap.set(variant.color, variant.color_hex)
+      }
+    })
+    const colors = Array.from(colorMap.keys())
+
     const sizes = [...new Set(product.variants.map((v) => v.size).filter(Boolean))]
 
     return { colors, sizes }
@@ -112,50 +170,6 @@ export default function FeaturedProductCard({ product, onAddToCart, onBuyNow, on
     return variant && variant.stock > 0
   }
 
-  // Get color for display (could be hex, color name, etc.)
-  const getColorStyle = (color) => {
-    // Color mapping for common color names to hex codes
-    const colorMap = {
-      red: "#ef4444",
-      blue: "#3b82f6",
-      green: "#22c55e",
-      yellow: "#eab308",
-      purple: "#a855f7",
-      pink: "#ec4899",
-      orange: "#f97316",
-      gray: "#6b7280",
-      grey: "#6b7280",
-      black: "#000000",
-      white: "#ffffff",
-      brown: "#a78bfa",
-      navy: "#1e40af",
-      teal: "#14b8a6",
-      lime: "#84cc16",
-      cyan: "#06b6d4",
-      indigo: "#6366f1",
-      emerald: "#10b981",
-      rose: "#f43f5e",
-      amber: "#f59e0b",
-      violet: "#8b5cf6",
-      sky: "#0ea5e9",
-      slate: "#64748b",
-    }
-
-    // If it's a hex color, use it directly
-    if (color?.startsWith("#")) {
-      return { backgroundColor: color }
-    }
-
-    // If it's a named color, use the mapping
-    const lowerColor = color?.toLowerCase()
-    if (colorMap[lowerColor]) {
-      return { backgroundColor: colorMap[lowerColor] }
-    }
-
-    // Fallback to the color name itself
-    return { backgroundColor: color || "#gray" }
-  }
-
   // Get variant display text (size only for microfiber, quantity for others)
   const getVariantDisplayText = (variant) => {
     if (isMicrofiber) {
@@ -195,10 +209,11 @@ export default function FeaturedProductCard({ product, onAddToCart, onBuyNow, on
       },
     }))
 
+    // Update active index after animation
     setTimeout(() => {
       setActiveImageIndex((prev) => ({ ...prev, [product.id]: nextIndex }))
       setImageSlideMap((prev) => ({ ...prev, [product.id]: null }))
-    }, 600)
+    }, 300) // Reduced from 600ms to 300ms for smoother transition
   }
 
   const handleVariantSelect = (variant) => {
@@ -426,24 +441,24 @@ export default function FeaturedProductCard({ product, onAddToCart, onBuyNow, on
             )}
 
             {/* Image Slide Content */}
-            <div className="w-full h-full relative z-10">
+            <div className="w-full h-full relative z-10 overflow-hidden">
               {slideData ? (
                 <>
                   <img
                     key={`prev-${prevIndex}`}
                     src={thumbnails[prevIndex] || "/placeholder.svg"}
                     alt={`${product.name} - previous`}
-                    className={`absolute w-full h-full object-contain transition-transform duration-1000 ease-in-out ${
+                    className={`absolute w-full h-full object-contain transition-all duration-300 ease-in-out ${
                       dir === "next" ? "-translate-x-full" : "translate-x-full"
                     }`}
-                    style={{ transitionTimingFunction: "cubic-bezier(0.45, 0, 0.55, 1)" }}
                   />
                   <img
                     key={`next-${nextIndex}`}
                     src={thumbnails[nextIndex] || "/placeholder.svg"}
                     alt={`${product.name} - next`}
-                    className="absolute w-full h-full object-contain transition-transform duration-1000 ease-in-out translate-x-0"
-                    style={{ transitionTimingFunction: "cubic-bezier(0.45, 0, 0.55, 1)" }}
+                    className={`absolute w-full h-full object-contain transition-all duration-300 ease-in-out ${
+                      dir === "next" ? "translate-x-0" : "translate-x-0"
+                    }`}
                   />
                 </>
               ) : (
@@ -451,7 +466,7 @@ export default function FeaturedProductCard({ product, onAddToCart, onBuyNow, on
                   key={`active-${activeIndex}`}
                   src={activeSrc || "/placeholder.svg"}
                   alt={product.name}
-                  className="w-full h-full object-contain transition-all duration-500"
+                  className="w-full h-full object-contain transition-all duration-300"
                 />
               )}
             </div>
@@ -510,6 +525,7 @@ export default function FeaturedProductCard({ product, onAddToCart, onBuyNow, on
                 {colors.map((color, index) => {
                   const isSelected = selectedColor === color
                   const hasStock = isColorAvailable(color)
+                  const colorStyle = getColorStyle(color)
 
                   return (
                     <div key={index} className="relative group">
@@ -526,7 +542,7 @@ export default function FeaturedProductCard({ product, onAddToCart, onBuyNow, on
                                 : "border-gray-200 cursor-not-allowed opacity-50"
                           }
                         `}
-                        style={getColorStyle(color)}
+                        style={colorStyle}
                         title={color}
                       >
                         {/* White border for white colors */}

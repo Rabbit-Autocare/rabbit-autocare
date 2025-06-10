@@ -1,14 +1,16 @@
 "use client"
 
 import { createContext, useContext, useState, useEffect } from 'react'
-import cartService from '@/lib/service/cartService'
+import { useAuth } from './AuthContext'
+import { supabase } from '@/lib/supabaseClient'
 
-const CartContext = createContext()
+// Create the context
+export const CartContext = createContext()
 
+// Create the provider component
 export function CartProvider({ children }) {
-  const [isOpen, setIsOpen] = useState(false)
+  const { user } = useAuth()
   const [cartItems, setCartItems] = useState([])
-  const [cartCount, setCartCount] = useState(0)
   const [loading, setLoading] = useState(true)
   const [mounted, setMounted] = useState(false)
 
@@ -17,14 +19,43 @@ export function CartProvider({ children }) {
     const initializeCart = async () => {
       try {
         setLoading(true)
-        const items = await cartService.getCartItems()
-        setCartItems(items)
+        if (user) {
+          // Fetch cart from database for logged-in users
+          const { data, error } = await supabase
+            .from('cart_items')
+            .select(`
+              id,
+              user_id,
+              product_id,
+              variant,
+              quantity,
+              created_at,
+              product:products(
+                id,
+                name,
+                main_image_url,
+                price
+              )
+            `)
+            .eq('user_id', user.id)
 
-        // Get cart summary for count
-        const summary = await cartService.getCartSummary()
-        setCartCount(summary.totalItems)
+          if (error) {
+            console.error('Database error:', error)
+            // Fallback to localStorage if database access fails
+            const storedCart = localStorage.getItem('cart')
+            setCartItems(storedCart ? JSON.parse(storedCart) : [])
+          } else {
+            setCartItems(data || [])
+          }
+        } else {
+          // Get cart from localStorage for non-logged-in users
+          const storedCart = localStorage.getItem('cart')
+          setCartItems(storedCart ? JSON.parse(storedCart) : [])
+        }
       } catch (error) {
         console.error('Error initializing cart:', error)
+        // Fallback to empty cart on error
+        setCartItems([])
       } finally {
         setLoading(false)
         setMounted(true)
@@ -32,35 +63,63 @@ export function CartProvider({ children }) {
     }
 
     initializeCart()
-  }, [])
+  }, [user])
 
-  // Add item to cart
-  const addToCart = async (productId, variant, quantity = 1) => {
+  // Sync cart to localStorage when not logged in
+  useEffect(() => {
+    if (!user && mounted) {
+      try {
+        localStorage.setItem('cart', JSON.stringify(cartItems))
+      } catch (error) {
+        console.error('Error syncing cart to localStorage:', error)
+      }
+    }
+  }, [cartItems, user, mounted])
+
+  const addToCart = async (product, variant, quantity = 1) => {
     try {
-      const newItem = await cartService.addToCart(productId, variant, quantity)
+      const cartItem = {
+        product_id: product.id,
+        variant,
+        quantity,
+        product: {
+          id: product.id,
+          name: product.name,
+          main_image_url: product.main_image_url,
+          price: variant?.price || product.price
+        }
+      }
 
-      // Update cart items
+      if (user) {
+        // Add to database for logged-in users
+        const { error } = await supabase
+          .from('cart_items')
+          .upsert([{
+            user_id: user.id,
+            ...cartItem
+          }])
+
+        if (error) {
+          console.error('Database error:', error)
+          // Continue with local state update even if database update fails
+        }
+      }
+
+      // Update local state
       setCartItems(prevItems => {
-        const existingItemIndex = prevItems.findIndex(item =>
-          item.product_id === productId &&
+        const existingItemIndex = prevItems.findIndex(
+          item => item.product_id === product.id &&
           JSON.stringify(item.variant) === JSON.stringify(variant)
         )
 
         if (existingItemIndex >= 0) {
           const updatedItems = [...prevItems]
-          updatedItems[existingItemIndex] = {
-            ...updatedItems[existingItemIndex],
-            quantity: updatedItems[existingItemIndex].quantity + quantity
-          }
+          updatedItems[existingItemIndex].quantity += quantity
           return updatedItems
         }
 
-        return [...prevItems, newItem]
+        return [...prevItems, cartItem]
       })
-
-      // Update cart count
-      const summary = await cartService.getCartSummary()
-      setCartCount(summary.totalItems)
 
       return true
     } catch (error) {
@@ -69,21 +128,27 @@ export function CartProvider({ children }) {
     }
   }
 
-  // Update cart item quantity
   const updateCartItem = async (itemId, quantity) => {
     try {
-      await cartService.updateCartItem(itemId, quantity)
+      if (user) {
+        // Update in database for logged-in users
+        const { error } = await supabase
+          .from('cart_items')
+          .update({ quantity })
+          .eq('id', itemId)
 
-      // Update cart items
+        if (error) {
+          console.error('Database error:', error)
+          // Continue with local state update even if database update fails
+        }
+      }
+
+      // Update local state
       setCartItems(prevItems =>
         prevItems.map(item =>
           item.id === itemId ? { ...item, quantity } : item
         )
       )
-
-      // Update cart count
-      const summary = await cartService.getCartSummary()
-      setCartCount(summary.totalItems)
 
       return true
     } catch (error) {
@@ -92,17 +157,23 @@ export function CartProvider({ children }) {
     }
   }
 
-  // Remove item from cart
   const removeFromCart = async (itemId) => {
     try {
-      await cartService.removeFromCart(itemId)
+      if (user) {
+        // Remove from database for logged-in users
+        const { error } = await supabase
+          .from('cart_items')
+          .delete()
+          .eq('id', itemId)
 
-      // Update cart items
+        if (error) {
+          console.error('Database error:', error)
+          // Continue with local state update even if database update fails
+        }
+      }
+
+      // Update local state
       setCartItems(prevItems => prevItems.filter(item => item.id !== itemId))
-
-      // Update cart count
-      const summary = await cartService.getCartSummary()
-      setCartCount(summary.totalItems)
 
       return true
     } catch (error) {
@@ -111,12 +182,25 @@ export function CartProvider({ children }) {
     }
   }
 
-  // Clear cart
   const clearCart = async () => {
     try {
-      await cartService.clearCart()
+      if (user) {
+        // Clear database cart for logged-in users
+        const { error } = await supabase
+          .from('cart_items')
+          .delete()
+          .eq('user_id', user.id)
+
+        if (error) {
+          console.error('Database error:', error)
+          // Continue with local state update even if database update fails
+        }
+      }
+
+      // Clear local state
       setCartItems([])
-      setCartCount(0)
+      localStorage.removeItem('cart')
+
       return true
     } catch (error) {
       console.error('Error clearing cart:', error)
@@ -124,39 +208,20 @@ export function CartProvider({ children }) {
     }
   }
 
-  // Get cart summary
-  const getCartSummary = async () => {
-    try {
-      return await cartService.getCartSummary()
-    } catch (error) {
-      console.error('Error getting cart summary:', error)
-      return {
-        totalItems: 0,
-        totalPrice: 0,
-        itemCount: 0
-      }
-    }
-  }
-
   const value = {
-    isOpen,
-    setIsOpen,
-    openCart: () => setIsOpen(true),
-    closeCart: () => setIsOpen(false),
     cartItems,
-    cartCount,
     loading,
     mounted,
     addToCart,
     updateCartItem,
     removeFromCart,
-    clearCart,
-    getCartSummary
+    clearCart
   }
 
   return <CartContext.Provider value={value}>{children}</CartContext.Provider>
 }
 
+// Export the hook
 export function useCart() {
   const context = useContext(CartContext)
   if (context === undefined) {

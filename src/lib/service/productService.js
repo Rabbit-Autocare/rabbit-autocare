@@ -94,22 +94,8 @@ export class ProductService {
 
   static async createProduct(data) {
     try {
-      // Transform variants to use direct values
       const transformedData = {
-        product_code: data.product_code,
-        name: data.name,
-        description: data.description,
-        category_name: data.category_name,
-        is_microfiber: data.is_microfiber,
-        main_image_url: data.main_image_url,
-        images: data.images || [],
-        key_features: data.key_features || [],
-        taglines: data.taglines || [],
-        subcategory_names: Array.isArray(data.subcategory_names)
-          ? data.subcategory_names
-          : data.subcategory_names
-            ? [data.subcategory_names]
-            : [],
+        ...data,
         variants: Array.isArray(data.variants)
           ? data.variants.map((variant) => {
               if (data.is_microfiber) {
@@ -137,6 +123,11 @@ export class ProductService {
               }
             })
           : [],
+        subcategory_names: Array.isArray(data.subcategory_names)
+          ? data.subcategory_names
+          : data.subcategory_names
+            ? [data.subcategory_names]
+            : [],
       }
 
       // Log the transformed data for debugging
@@ -144,10 +135,7 @@ export class ProductService {
 
       const res = await fetch(API_BASE_URL, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Accept": "application/json"
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify(transformedData),
       })
 

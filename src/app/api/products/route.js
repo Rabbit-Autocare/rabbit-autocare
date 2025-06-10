@@ -141,9 +141,10 @@ export async function POST(request) {
 					);
 				}
 			} else {
-				if (!variant.size || !variant.color || !variant.quantity || !variant.unit || !variant.price) {
+				// Optional fields for liquid variants
+				if (!variant.price) {
 					return NextResponse.json(
-						{ error: "Size, color, quantity, unit, and price are required for liquid variants" },
+						{ error: "Price is required for liquid variants" },
 						{ status: 400 }
 					);
 				}
@@ -314,9 +315,10 @@ export async function PUT(request) {
 					);
 				}
 			} else {
-				if (!variant.size || !variant.color || !variant.quantity || !variant.unit || !variant.price) {
+				// Optional fields for liquid variants
+				if (!variant.price) {
 					return NextResponse.json(
-						{ error: "Size, color, quantity, unit, and price are required for liquid variants" },
+						{ error: "Price is required for liquid variants" },
 						{ status: 400 }
 					);
 				}

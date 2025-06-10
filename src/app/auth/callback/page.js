@@ -30,7 +30,8 @@ export default function AuthCallbackPage() {
 
 				if (userError) {
 					console.error("Error fetching user data:", userError);
-					window.location.href = "/";
+					// Use router.push for smooth client-side navigation
+					router.push("/");
 					return;
 				}
 
@@ -45,9 +46,11 @@ export default function AuthCallbackPage() {
 
 				// Redirect based on is_admin status
 				if (userData?.is_admin === true) {
-					window.location.href = "/admin";
+					// Use router.push for smooth client-side navigation
+					router.push("/admin");
 				} else {
-					window.location.href = "/";
+					// Use router.push for smooth client-side navigation
+					router.push("/");
 				}
 			} catch (error) {
 				console.error("Auth callback error:", error);

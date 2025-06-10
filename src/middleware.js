@@ -23,8 +23,8 @@ export async function middleware(req) {
   )
 
   // --- START DEBUGGING LOGS ---
-  console.log('Middleware Path:', req.nextUrl.pathname);
-  console.log('Middleware Request Headers (Cookie):', req.headers.get('cookie'));
+//   console.log('Middleware Path:', req.nextUrl.pathname);
+//   console.log('Middleware Request Headers (Cookie):', req.headers.get('cookie'));
   // --- END DEBUGGING LOGS ---
 
   // Refresh session if expired - required for Server Components
@@ -32,8 +32,8 @@ export async function middleware(req) {
   const { data: { session: initialSession }, error: initialSessionError } = await supabase.auth.getSession()
 
   // --- START DEBUGGING LOGS ---
-  console.log('Middleware Initial Session:', initialSession);
-  console.log('Middleware Initial Session Error:', initialSessionError);
+//   console.log('Middleware Initial Session:', initialSession);
+//   console.log('Middleware Initial Session Error:', initialSessionError);
   // --- END DEBUGGING LOGS ---
 
   // Admin protection logic
@@ -41,8 +41,8 @@ export async function middleware(req) {
     const { data: { session }, error: sessionError } = await supabase.auth.getSession()
 
     // --- START DEBUGGING LOGS (specific to admin path) ---
-    console.log('Middleware Admin Path Session (after second getSession):', session);
-    console.log('Middleware Admin Path Session Error (after second getSession):', sessionError);
+    // console.log('Middleware Admin Path Session (after second getSession):', session);
+    // console.log('Middleware Admin Path Session Error (after second getSession):', sessionError);
     // --- END DEBUGGING LOGS ---
 
     // If no session, redirect to login

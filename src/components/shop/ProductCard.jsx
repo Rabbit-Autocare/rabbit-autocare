@@ -90,14 +90,14 @@ export default function ProductCard({ product, index }) {
   const ratingCount = product.reviews?.length || product.reviewCount || Math.floor(Math.random() * 50) + 10
 
   // Get product ID for navigation
-  const productId = product.id || product._id || product.productId
+  const productIdentifier = product.product_code || product.id || product._id || product.productId
 
   const handleViewProduct = () => {
-    if (!productId) {
-      console.error("Cannot navigate: Product ID is missing", product)
+    if (!productIdentifier) {
+      console.error("Cannot navigate: Product identifier (product_code or ID) is missing", product)
       return
     }
-    router.push(`/shop/product/${productId}`)
+    router.push(`/products/${productIdentifier}`)
   }
 
   const handleWishlistToggle = (e) => {
@@ -211,7 +211,7 @@ export default function ProductCard({ product, index }) {
               e.stopPropagation()
               handleViewProduct()
             }}
-            disabled={!productId}
+            disabled={!productIdentifier}
           >
             <span>Add to Shine List</span>
             <Sparkles size={16} className="text-gray-500" />

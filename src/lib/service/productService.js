@@ -65,10 +65,10 @@ export class ProductService {
     }
   }
 
-  static async getProduct(id, includeRelations = false) {
+  static async getProduct(productIdentifier, includeRelations = false) {
     try {
       const params = new URLSearchParams()
-      const url = `${API_BASE_URL}/${id}${params.toString() ? `?${params}` : ""}`
+      const url = `${API_BASE_URL}/${productIdentifier}${params.toString() ? `?${params}` : ""}`
       console.log("Fetching single product from URL:", url)
 
       const res = await fetch(url)

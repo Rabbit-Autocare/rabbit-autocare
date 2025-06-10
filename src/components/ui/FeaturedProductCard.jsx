@@ -5,7 +5,7 @@ import { ChevronLeft, ChevronRight, Heart, ShoppingCart, X } from "lucide-react"
 import { useCart } from "@/contexts/CartContext.jsx"
 import Image from 'next/image'
 
-export default function FeaturedProductCard({ product, onAddToCart, onBuyNow, onAddToWishlist, className = "" }) {
+export default function FeaturedProductCard({ product, className = "" }) {
   const { addToCart, user, cartItems, mounted } = useCart()
   const [imageSlideMap, setImageSlideMap] = useState({})
   const [activeImageIndex, setActiveImageIndex] = useState({})
@@ -318,27 +318,21 @@ export default function FeaturedProductCard({ product, onAddToCart, onBuyNow, on
         }
       }
 
-      if (typeof onAddToCart === 'function') {
-        await onAddToCart(itemToAdd)
-        console.log("Successfully added to cart via prop")
-      } else {
-        // Fallback implementation with proper array handling
-        let existingCart = []
-        try {
-          const storedCart = localStorage.getItem('cart')
-          existingCart = storedCart ? JSON.parse(storedCart) : []
-          if (!Array.isArray(existingCart)) {
-            existingCart = []
-          }
-        } catch (e) {
+      // Add the new item
+      let existingCart = []
+      try {
+        const storedCart = localStorage.getItem('cart')
+        existingCart = storedCart ? JSON.parse(storedCart) : []
+        if (!Array.isArray(existingCart)) {
           existingCart = []
         }
-
-        // Add the new item
-        existingCart.push(itemToAdd)
-        localStorage.setItem('cart', JSON.stringify(existingCart))
-        console.log("Successfully added to cart via localStorage")
+      } catch (e) {
+        existingCart = []
       }
+
+      existingCart.push(itemToAdd)
+      localStorage.setItem('cart', JSON.stringify(existingCart))
+      console.log("Successfully added to cart via localStorage")
     } catch (error) {
       console.error("Error adding to cart:", error)
       alert(`Failed to add item to cart: ${error.message}`)
@@ -348,8 +342,6 @@ export default function FeaturedProductCard({ product, onAddToCart, onBuyNow, on
   }
 
   const handleBuyNow = async () => {
-    if (!onBuyNow) return
-
     // Check if selection is available before buying
     if (isMicrofiber && !isCurrentSelectionAvailable()) {
       console.log("Selected combination is out of stock")
@@ -361,7 +353,8 @@ export default function FeaturedProductCard({ product, onAddToCart, onBuyNow, on
       return
     }
 
-    const cartItem = {
+    // Proceed to checkout logic (e.g., redirect to checkout with item details)
+    const itemToBuy = {
       productId: product.id || product.product_code,
       variantId: selectedVariant?.id || "default",
       quantity: 1,
@@ -373,18 +366,15 @@ export default function FeaturedProductCard({ product, onAddToCart, onBuyNow, on
       productImage: product.main_image_url || product.images?.[0] || thumbnails[0],
     }
 
-    await onBuyNow(cartItem)
+    console.log("Proceeding to buy now with:", itemToBuy)
+    // Implement actual redirection to checkout with itemToBuy details
+    // Example: router.push(`/checkout?item=${JSON.stringify(itemToBuy)}`);
   }
 
   const handleAddToWishlist = async () => {
-    if (!onAddToWishlist) return
-
-    try {
-      await onAddToWishlist(product)
-      setIsWishlisted(!isWishlisted)
-    } catch (error) {
-      console.error("Error adding to wishlist:", error)
-    }
+    // TODO: Implement actual wishlist functionality
+    setIsWishlisted(!isWishlisted)
+    console.log(`${isWishlisted ? 'Removed from' : 'Added to'} wishlist:`, product.name)
   }
 
   const formatPrice = (price) => {
@@ -398,7 +388,7 @@ export default function FeaturedProductCard({ product, onAddToCart, onBuyNow, on
 
   return (
     <div
-      className={`w-full pt-0 overflow-hidden bg-white border-y border-black featured-product-section min-h-[700px] ${className}`}
+      className={`w-full pt-0 overflow-hidden bg-white border-y border-black featured-product-section h-[800px]lg:h-[700px] ${className}`}
     >
       <div className="flex flex-col xl:flex-row gap-6 px-4 md:px-[30px] lg:px-[50px] py-6 md:py-16 lg:pt-[50px] lg:pb-[0px] items-center justify-between">
         {/* Image Section */}
@@ -419,7 +409,7 @@ export default function FeaturedProductCard({ product, onAddToCart, onBuyNow, on
           </div>
 
           {/* Main Image Display */}
-          <div className="relative w-[460px] h-[200px] sm:w-[500px] sm:h-[350px] md:w-[500px] md:h-[320px] lg:w-[600px] lg:h-[300px] xl:w-[600px] xl:h-[600px] flex items-center justify-center overflow-hidden">
+          <div className="relative w-[460px] h-[300px] sm:w-[500px] sm:h-[350px] md:w-[500px] md:h-[320px] lg:w-[600px] lg:h-[300px] xl:w-[600px] xl:h-[600px] flex items-center justify-center overflow-hidden">
             {/* Left Glass Panel */}
             <div className="absolute left-0 top-0 w-[80px] h-full z-10 pointer-events-none">
               <div className="w-full h-full rounded-none" />
@@ -513,7 +503,7 @@ export default function FeaturedProductCard({ product, onAddToCart, onBuyNow, on
           </div>
 
           {/* Description */}
-          <p className="text-[14px] sm:text-[15px] xl:text-[16px] text-black font-light tracking-wider whitespace-pre-line line-clamp-4 xl:line-clamp-none">
+          <p className="text-[14px] sm:text-[15px] xl:text-[16px] text-black font-light tracking-wider whitespace-pre-line line-clamp-2 lg:line-clamp-3 xl:line-clamp-none">
             {product.description}
           </p>
 

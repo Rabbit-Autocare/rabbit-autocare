@@ -278,7 +278,7 @@ export class ProductService {
 
   // ============= GSM MANAGEMENT =============
 
-  static async getGSM() {
+  static async getGSM(format = 'new') {
     try {
       const res = await fetch(GSM_API)
       if (!res.ok) {
@@ -292,17 +292,29 @@ export class ProductService {
       }
       const json = await res.json()
       let gsmData = []
+
       if (Array.isArray(json)) {
         gsmData = json.map((gsm, index) => ({
           id: gsm.id || `gsm_${index}`,
-          value: typeof gsm === 'string' ? gsm : gsm.value || gsm.gsm
+          value: typeof gsm === 'string' ? gsm : gsm.value || gsm.gsm,
+          gsm: typeof gsm === 'string' ? gsm : gsm.value || gsm.gsm // Keep the old format for backward compatibility
         })).filter(gsm => gsm.value)
       } else if (json && Array.isArray(json.data)) {
         gsmData = json.data.map((gsm, index) => ({
           id: gsm.id || `gsm_${index}`,
-          value: typeof gsm === 'string' ? gsm : gsm.value || gsm.gsm
+          value: typeof gsm === 'string' ? gsm : gsm.value || gsm.gsm,
+          gsm: typeof gsm === 'string' ? gsm : gsm.value || gsm.gsm // Keep the old format for backward compatibility
         })).filter(gsm => gsm.value)
       }
+
+      // Return format based on the format parameter
+      if (format === 'old') {
+        return {
+          success: true,
+          data: gsmData.map(gsm => gsm.gsm)
+        }
+      }
+
       return {
         success: true,
         data: gsmData
@@ -391,7 +403,7 @@ export class ProductService {
 
   // ============= QUANTITY MANAGEMENT =============
 
-  static async getQuantities() {
+  static async getQuantities(format = 'new') {
     try {
       const res = await fetch(QUANTITY_API)
 
@@ -407,16 +419,46 @@ export class ProductService {
 
       const json = await res.json()
       let quantitiesData = []
+
       if (Array.isArray(json)) {
-        quantitiesData = json.map((q, index) => ({
-          id: q.id || `quantity_${index}`,
-          value: typeof q === 'string' ? q : q.value || q.quantity
-        })).filter(q => q.value)
+        quantitiesData = json.map((q, index) => {
+          const value = typeof q === 'string' ? q : q.value || q.quantity
+          const num = Number.parseInt(value.toString().replace(/[^\d]/g, ''))
+          const unit = num >= 100 ? 'ml' : 'l'
+
+          return {
+            id: q.id || `quantity_${index}`,
+            value: value,
+            quantity: value,
+            unit: unit,
+            numeric_value: num
+          }
+        }).filter(q => q.value)
       } else if (json && Array.isArray(json.data)) {
-        quantitiesData = json.data.map((q, index) => ({
-          id: q.id || `quantity_${index}`,
-          value: typeof q === 'string' ? q : q.value || q.quantity
-        })).filter(q => q.value)
+        quantitiesData = json.data.map((q, index) => {
+          const value = typeof q === 'string' ? q : q.value || q.quantity
+          const num = Number.parseInt(value.toString().replace(/[^\d]/g, ''))
+          const unit = num >= 100 ? 'ml' : 'l'
+
+          return {
+            id: q.id || `quantity_${index}`,
+            value: value,
+            quantity: value,
+            unit: unit,
+            numeric_value: num
+          }
+        }).filter(q => q.value)
+      }
+
+      // Return format based on the format parameter
+      if (format === 'old') {
+        return {
+          success: true,
+          data: quantitiesData.map(q => ({
+            quantity: q.quantity,
+            unit: q.unit
+          }))
+        }
       }
 
       return {
@@ -607,7 +649,7 @@ export class ProductService {
 
   // ============= SIZES =============
 
-  static async getSizes() {
+  static async getSizes(format = 'new') {
     try {
       const res = await fetch(SIZES_API)
 
@@ -623,16 +665,27 @@ export class ProductService {
 
       const json = await res.json()
       let sizesData = []
+
       if (Array.isArray(json)) {
         sizesData = json.map((size, index) => ({
           id: size.id || `size_${index}`,
-          name: size.size_cm
+          name: size.size_cm,
+          size_cm: size.size_cm // Keep the old format for backward compatibility
         })).filter(size => size.name)
       } else if (json && Array.isArray(json.data)) {
         sizesData = json.data.map((size, index) => ({
           id: size.id || `size_${index}`,
-          name: size.size_cm
+          name: size.size_cm,
+          size_cm: size.size_cm // Keep the old format for backward compatibility
         })).filter(size => size.name)
+      }
+
+      // Return format based on the format parameter
+      if (format === 'old') {
+        return {
+          success: true,
+          data: sizesData.map(size => size.size_cm)
+        }
       }
 
       return {
@@ -723,7 +776,7 @@ export class ProductService {
 
   // ============= COLORS =============
 
-  static async getColors() {
+  static async getColors(format = 'new') {
     try {
       const res = await fetch(COLORS_API)
 
@@ -739,17 +792,36 @@ export class ProductService {
 
       const json = await res.json()
       let colorsData = []
+
       if (Array.isArray(json)) {
         colorsData = json.map(color => ({
+          id: color.id,
           name: color.color,
-          hex: color.hex_code
+          hex: color.hex_code,
+          color: color.color, // Keep the old format for backward compatibility
+          hex_code: color.hex_code // Keep the old format for backward compatibility
         })).filter(color => color.name && color.hex)
       } else if (json && Array.isArray(json.data)) {
         colorsData = json.data.map(color => ({
+          id: color.id,
           name: color.color,
-          hex: color.hex_code
+          hex: color.hex_code,
+          color: color.color, // Keep the old format for backward compatibility
+          hex_code: color.hex_code // Keep the old format for backward compatibility
         })).filter(color => color.name && color.hex)
       }
+
+      // Return format based on the format parameter
+      if (format === 'old') {
+        return {
+          success: true,
+          data: colorsData.map(color => ({
+            color: color.color,
+            hex_code: color.hex_code
+          }))
+        }
+      }
+
       return {
         success: true,
         data: colorsData

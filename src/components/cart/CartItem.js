@@ -3,32 +3,32 @@ import { useCart } from "@/hooks/useCart";
 import Image from "next/image";
 import { X, Plus, Minus } from "lucide-react";
 
-export default function CartItem({ item }) {
-	const { removeFromCart, updateQuantity } = useCart();
+export default function CartItem({ item, formatPrice, getVariantDisplayText }) {
+	const { removeFromCart, updateCartItem } = useCart();
 
 	const handleIncrease = () => {
 		// Check stock before increasing
-		if (item.quantity < (item.product?.stock || 999)) {
-			updateQuantity(item.id, item.quantity + 1);
+		if (item.quantity < (item.product?.stock || item.variant?.stock || 999)) {
+			updateCartItem(item.id, item.quantity + 1);
 		}
 	};
 
 	const handleDecrease = () => {
 		if (item.quantity > 1) {
-			updateQuantity(item.id, item.quantity - 1);
+			updateCartItem(item.id, item.quantity - 1);
 		} else {
 			removeFromCart(item.id);
 		}
 	};
 
-	if (!item.product && !item.name) {
+	if (!item.product) {
 		return null; // Handle case where product data might be missing
 	}
 
 	const productName = item.product?.name || item.name || "Unknown Product";
-	const productPrice = item.product?.price || item.price || 0;
-	const productImage = item.product?.image_url || item.image;
-	const productStock = item.product?.stock || 999;
+	const currentPrice = item.variant?.price || item.product?.price || 0;
+	const productImage = item.product?.main_image_url || item.product?.image_url || item.image;
+	const productStock = item.product?.stock || item.variant?.stock || 999;
 
 	return (
 		<div className="flex items-start gap-3 p-3 bg-white rounded-lg border">
@@ -36,7 +36,7 @@ export default function CartItem({ item }) {
 			<div className="relative w-20 h-20 flex-shrink-0 bg-gray-100 rounded overflow-hidden">
 				{productImage ? (
 					<Image
-						src={productImage || "/placeholder.svg"}
+						src={productImage}
 						alt={productName}
 						fill
 						sizes="80px"
@@ -54,12 +54,12 @@ export default function CartItem({ item }) {
 				<h4 className="font-medium text-gray-900 leading-tight">
 					{productName}
 				</h4>
-				<p className="text-blue-600 font-medium mt-1">₹{productPrice}</p>
+				<p className="text-blue-600 font-medium mt-1">{formatPrice(currentPrice)}</p>
 
 				{/* Variant info if available */}
-				{item.variant_size && (
+				{item.variant && (
 					<p className="text-gray-500 text-xs mt-1">
-						Size: {item.variant_size}
+						{getVariantDisplayText(item.variant)}
 					</p>
 				)}
 

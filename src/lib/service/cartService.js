@@ -3,7 +3,7 @@ import { supabase } from '@/lib/supabaseClient';
 
 class CartService {
   // Get current user's cart items
-  async getCartItems() {
+  async getCartItems(userId) {
     try {
       const { data, error } = await supabase
         .from('cart_items')
@@ -13,25 +13,30 @@ class CartService {
             id,
             name,
             main_image_url,
-            category_id,
-            subcategory_id
+            product_code,
+            is_microfiber,
+            key_features,
+            taglines,
+            images
           )
         `)
+        .eq('user_id', userId)
         .order('created_at', { ascending: false });
 
       if (error) throw error;
-      return data || [];
+      return { cartItems: data || [] };
     } catch (error) {
       console.error('Error in getCartItems:', error);
-      return [];
+      return { error: error.message, cartItems: [] };
     }
   }
 
   // Add item to cart
-  async addToCart(productId, variant, quantity = 1) {
+  async addToCart(productId, variant, quantity = 1, userId) {
     try {
       // Create cart item object
       const cartItem = {
+        user_id: userId,
         product_id: productId,
         variant: variant,
         quantity: quantity,
@@ -41,72 +46,72 @@ class CartService {
       // Insert into database
       const { data, error } = await supabase
         .from('cart_items')
-        .upsert([cartItem], {
-          onConflict: 'product_id,variant'
-        })
+        .upsert([cartItem])
         .select()
         .single();
 
       if (error) throw error;
-      return data;
+      return { success: true, cartItem: data };
     } catch (error) {
       console.error('Error in addToCart:', error);
-      throw error;
+      return { error: error.message };
     }
   }
 
   // Update cart item quantity
-  async updateCartItem(cartItemId, quantity) {
+  async updateCartItem(cartItemId, quantity, userId) {
     try {
       const { data, error } = await supabase
         .from('cart_items')
         .update({ quantity })
         .eq('id', cartItemId)
+        .eq('user_id', userId)
         .select()
         .single();
 
       if (error) throw error;
-      return data;
+      return { success: true, cartItem: data };
     } catch (error) {
       console.error('Error in updateCartItem:', error);
-      throw error;
+      return { error: error.message };
     }
   }
 
   // Remove item from cart
-  async removeFromCart(cartItemId) {
+  async removeFromCart(cartItemId, userId) {
     try {
       const { error } = await supabase
         .from('cart_items')
         .delete()
-        .eq('id', cartItemId);
+        .eq('id', cartItemId)
+        .eq('user_id', userId);
 
       if (error) throw error;
-      return true;
+      return { success: true };
     } catch (error) {
       console.error('Error in removeFromCart:', error);
-      throw error;
+      return { error: error.message };
     }
   }
 
   // Clear entire cart
-  async clearCart() {
+  async clearCart(userId) {
     try {
       const { error } = await supabase
         .from('cart_items')
         .delete()
-        .neq('id', 'dummy'); // Delete all items
+        .eq('user_id', userId);
 
       if (error) throw error;
-      return true;
+      return { success: true };
     } catch (error) {
       console.error('Error in clearCart:', error);
-      throw error;
+      return { error: error.message };
     }
   }
 
   // Get cart summary (total items, total price)
-  async getCartSummary() {
+  async getCartSummary(userId) {
     try {
       const { data, error } = await supabase
         .from('cart_items')
@@ -114,15 +119,19 @@ class CartService {
           quantity,
           variant,
           product:products(
-            price
+            id,
+            name,
+            product_code,
+            is_microfiber
           )
-        `);
+        `)
+        .eq('user_id', userId);
 
       if (error) throw error;
 
       const summary = data.reduce(
         (acc, item) => {
-          const price = item.variant?.price || item.product?.price || 0;
+          const price = item.variant?.price || 0;
           acc.totalItems += item.quantity;
           acc.totalPrice += price * item.quantity;
           acc.itemCount += 1;
@@ -134,7 +143,7 @@ class CartService {
       return summary;
     } catch (error) {
       console.error('Error in getCartSummary:', error);
-      throw error;
+      return { error: error.message };
     }
   }
 }

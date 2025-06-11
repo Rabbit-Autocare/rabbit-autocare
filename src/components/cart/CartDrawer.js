@@ -6,11 +6,13 @@ import CouponSection from "./CouponSection";
 import PriceSummary from "./PriceSummary";
 import FrequentlyBoughtTogether from "./FrequentlyBoughtTogether";
 import Link from "next/link";
-import { ShoppingCart, ChevronLeft } from "lucide-react";
+import { ShoppingCart, ChevronLeft, Trash2 } from "lucide-react";
 import { motion } from "framer-motion";
+import { useAuth } from "@/contexts/AuthContext";
 
 export default function CartDrawer() {
 	const { isCartOpen, closeCart, cartItems, loading, cartCount } = useCart();
+	const { user } = useAuth();
 
 	// Animation variants for content
 	const contentVariants = {
@@ -28,6 +30,52 @@ export default function CartDrawer() {
 	const itemVariants = {
 		hidden: { opacity: 0, x: 20 },
 		visible: { opacity: 1, x: 0 },
+	};
+
+	// Format price
+	const formatPrice = (price) => {
+		return new Intl.NumberFormat("en-IN", {
+			style: "currency",
+			currency: "INR",
+			minimumFractionDigits: 0,
+			maximumFractionDigits: 0,
+		}).format(price);
+	};
+
+	// Get variant display text
+	const getVariantDisplayText = (variant) => {
+		if (!variant) return "Default";
+
+		// For package variants
+		if (variant.is_package) {
+			return `Package of ${variant.package_quantity}`;
+		}
+
+		// For regular variants
+		const attributes = variant.attributes || {};
+		const parts = [];
+
+		// Add quantity for liquid products
+		if (attributes.quantity) {
+			parts.push(attributes.quantity.displayValue);
+		}
+
+		// Add GSM for microfiber products
+		if (attributes.gsm) {
+			parts.push(attributes.gsm.displayValue);
+		}
+
+		// Add size for microfiber products
+		if (attributes.size) {
+			parts.push(attributes.size.displayValue);
+		}
+
+		// Add color for microfiber products
+		if (attributes.color) {
+			parts.push(attributes.color.displayValue);
+		}
+
+		return parts.join(" / ") || "Default";
 	};
 
 	return (
@@ -127,7 +175,11 @@ export default function CartDrawer() {
 											animate={{ opacity: 1, x: 0 }}
 											transition={{ delay: index * 0.1 }}
 										>
-											<CartItem item={item} />
+											<CartItem
+												item={item}
+												formatPrice={formatPrice}
+												getVariantDisplayText={getVariantDisplayText}
+											/>
 										</motion.div>
 									))}
 								</div>
@@ -145,7 +197,7 @@ export default function CartDrawer() {
 
 							{/* Price Summary */}
 							<motion.div variants={itemVariants}>
-								<PriceSummary />
+								<PriceSummary formatPrice={formatPrice} />
 							</motion.div>
 
 							{/* Add some bottom padding for better scrolling */}

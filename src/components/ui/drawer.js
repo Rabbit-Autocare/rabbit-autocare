@@ -97,6 +97,8 @@ export function Drawer({
 							width:
 								position === "top" || position === "bottom" ? "100vw" : "auto",
 						}}
+						// Prevent clicks inside the drawer from bubbling to the backdrop or outside click listener
+						onClick={(e) => e.stopPropagation()}
 					>
 						{children}
 					</motion.div>

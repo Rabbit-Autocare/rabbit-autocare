@@ -5,7 +5,7 @@ import Link from "next/link";
 import Image from "next/image";
 
 import { useTheme } from "@/contexts/ThemeContext";
-import { useCart } from "@/hooks/useCart";
+import { useCart } from "@/contexts/CartContext";
 import CartDrawer from "@/components/cart/CartDrawer";
 import { Menu, X } from "lucide-react";
 

@@ -1,165 +1,215 @@
-"use client"
+'use client';
 
-import { createContext, useContext, useState, useEffect } from 'react'
-import { useAuth } from './AuthContext'
-import CartService from '@/lib/service/cartService'
-import { useRouter } from 'next/navigation'
+import { createContext, useContext, useState, useEffect } from 'react';
+import { useAuth } from './AuthContext';
+import CartService from '@/lib/service/cartService';
+import { useRouter } from 'next/navigation';
 
 // Create the context
-export const CartContext = createContext()
+export const CartContext = createContext();
 
 // Create the provider component
 export function CartProvider({ children }) {
-  const { user } = useAuth()
-  const router = useRouter()
-  const [cartItems, setCartItems] = useState([])
-  const [loading, setLoading] = useState(true)
-  const [mounted, setMounted] = useState(false)
-  const [isCartOpen, setIsCartOpen] = useState(false)
-  const [cartCount, setCartCount] = useState(0)
+  const { user } = useAuth();
+  const router = useRouter();
+  const [cartItems, setCartItems] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [mounted, setMounted] = useState(false);
+  const [isCartOpen, setIsCartOpen] = useState(false);
+  const [cartCount, setCartCount] = useState(0);
 
   // Function to open the cart drawer
-  const openCart = () => setIsCartOpen(true)
+  const openCart = () => setIsCartOpen(true);
   // Function to close the cart drawer
-  const closeCart = () => setIsCartOpen(false)
+  const closeCart = () => setIsCartOpen(false);
 
   // Initialize cart
   useEffect(() => {
     const initializeCart = async () => {
       try {
-        setLoading(true)
+        setLoading(true);
         if (user) {
-          // Fetch cart from database for logged-in users using CartService
-          const data = await CartService.getCartItems(user.id)
-
+          const data = await CartService.getCartItems(user.id);
           if (data.error) {
-            console.error('Database error:', data.error)
-            setCartItems([])
-            setCartCount(0)
+            console.error('Error fetching cart:', data.error);
+            setCartItems([]);
+            setCartCount(0);
           } else {
-            setCartItems(data.cartItems || [])
-            setCartCount(data.cartItems?.length || 0)
+            setCartItems(data.cartItems || []);
+
+            // Calculate total items count (sum of all quantities)
+            const totalItemsCount = (data.cartItems || []).reduce(
+              (sum, item) => sum + (item.quantity || 1),
+              0
+            );
+
+            setCartCount(totalItemsCount);
           }
         } else {
           // If not logged in, cart should be empty
-          setCartItems([])
-          setCartCount(0)
+          setCartItems([]);
+          setCartCount(0);
         }
       } catch (error) {
-        console.error('Error initializing cart:', error)
-        setCartItems([])
-        setCartCount(0)
+        console.error('Error initializing cart:', error);
+        setCartItems([]);
+        setCartCount(0);
       } finally {
-        setLoading(false)
-        setMounted(true)
+        setLoading(false);
+        setMounted(true);
       }
-    }
+    };
 
-    initializeCart()
-  }, [user])
+    initializeCart();
+  }, [user]);
 
   const addToCart = async (product, variant, quantity = 1) => {
     if (!user) {
-      router.push('/login')
-      return false
+      router.push('/login');
+      return false;
     }
 
     try {
-      // Add to database for logged-in users using CartService
-      const result = await CartService.addToCart(product.id, variant, quantity, user.id)
+      // Use the CartService.addToCartSmart method
+      const result = await CartService.addToCartSmart(
+        product.id,
+        variant,
+        quantity,
+        user.id
+      );
 
       if (result.error) {
-        console.error('Database error:', result.error)
-        return false
+        console.error('Database error:', result.error);
+        return false;
       }
 
-      // Update local state by refetching cart items after successful DB update
-      const updatedCartItems = await CartService.getCartItems(user.id)
+      // Update local state by refetching cart items
+      const updatedCartItems = await CartService.getCartItems(user.id);
       if (!updatedCartItems.error) {
-        setCartItems(updatedCartItems.cartItems || [])
-        setCartCount(updatedCartItems.cartItems?.length || 0)
+        setCartItems(updatedCartItems.cartItems || []);
+
+        // Calculate total items count (sum of all quantities)
+        const totalItemsCount = (updatedCartItems.cartItems || []).reduce(
+          (sum, item) => sum + (item.quantity || 1),
+          0
+        );
+
+        setCartCount(totalItemsCount);
       }
 
-      openCart()
-      return true
+      openCart();
+      return true;
     } catch (error) {
-      console.error('Error adding to cart:', error)
-      return false
+      console.error('Error adding to cart:', error);
+      return false;
     }
-  }
+  };
 
+  // Improve the updateCartItem function to refresh cart after update
   const updateCartItem = async (itemId, quantity) => {
-    if (!user) return false
+    if (!user) {
+      router.push('/login');
+      return false;
+    }
 
     try {
-      // Update in database for logged-in users using CartService
-      const result = await CartService.updateCartItem(itemId, quantity, user.id)
+      console.log('Updating cart item in context:', { itemId, quantity });
+
+      // Use the CartService to update quantity
+      const result = await CartService.updateCartItem(
+        itemId,
+        quantity,
+        user.id
+      );
 
       if (result.error) {
-        console.error('Database error:', result.error)
-        return false
+        console.error('Error updating cart item:', result.error);
+        return false;
       }
 
-      // Update local state by refetching cart items after successful DB update
-      const updatedCartItems = await CartService.getCartItems(user.id)
+      // Refresh cart items after successful update
+      const updatedCartItems = await CartService.getCartItems(user.id);
       if (!updatedCartItems.error) {
-        setCartItems(updatedCartItems.cartItems || [])
-        setCartCount(updatedCartItems.cartItems?.length || 0)
-      }
-      return true
-    } catch (error) {
-      console.error('Error updating cart item:', error)
-      return false
-    }
-  }
+        setCartItems(updatedCartItems.cartItems || []);
 
+        // Calculate total items count (sum of all quantities)
+        const totalItemsCount = (updatedCartItems.cartItems || []).reduce(
+          (sum, item) => sum + (item.quantity || 1),
+          0
+        );
+
+        setCartCount(totalItemsCount);
+      }
+
+      return true;
+    } catch (error) {
+      console.error('Error in updateCartItem:', error);
+      return false;
+    }
+  };
+
+  // Also update the removeFromCart function similarly
   const removeFromCart = async (itemId) => {
-    if (!user) return false
+    if (!user) {
+      router.push('/login');
+      return false;
+    }
 
     try {
-      // Remove from database for logged-in users using CartService
-      const result = await CartService.removeFromCart(itemId, user.id)
+      console.log('Removing cart item in context:', itemId);
+
+      // Use the CartService to remove item
+      const result = await CartService.removeFromCart(itemId, user.id);
 
       if (result.error) {
-        console.error('Database error:', result.error)
-        return false
+        console.error('Error removing cart item:', result.error);
+        return false;
       }
 
-      // Update local state by refetching cart items after successful DB update
-      const updatedCartItems = await CartService.getCartItems(user.id)
+      // Refresh cart items after successful removal
+      const updatedCartItems = await CartService.getCartItems(user.id);
       if (!updatedCartItems.error) {
-        setCartItems(updatedCartItems.cartItems || [])
-        setCartCount(updatedCartItems.cartItems?.length || 0)
+        setCartItems(updatedCartItems.cartItems || []);
+
+        // Calculate total items count (sum of all quantities)
+        const totalItemsCount = (updatedCartItems.cartItems || []).reduce(
+          (sum, item) => sum + (item.quantity || 1),
+          0
+        );
+
+        setCartCount(totalItemsCount);
       }
-      return true
+
+      return true;
     } catch (error) {
-      console.error('Error removing from cart:', error)
-      return false
+      console.error('Error in removeFromCart:', error);
+      return false;
     }
-  }
+  };
 
   const clearCart = async () => {
-    if (!user) return false
+    if (!user) {
+      router.push('/login');
+      return false;
+    }
 
     try {
-      // Clear database cart for logged-in users using CartService
-      const result = await CartService.clearCart(user.id)
+      const result = await CartService.clearCart(user.id);
 
       if (result.error) {
-        console.error('Database error:', result.error)
-        return false
+        console.error('Error clearing cart:', result.error);
+        return false;
       }
 
-      // Clear local state
-      setCartItems([])
-      setCartCount(0)
-
-      return true
+      // Reset cart items and count
+      setCartItems([]);
+      setCartCount(0);
+      return true;
     } catch (error) {
-      console.error('Error clearing cart:', error)
-      return false
+      console.error('Error in clearCart:', error);
+      return false;
     }
-  }
+  };
 
   const value = {
     cartItems,
@@ -172,17 +222,17 @@ export function CartProvider({ children }) {
     isCartOpen,
     openCart,
     closeCart,
-    cartCount
-  }
+    cartCount,
+  };
 
-  return <CartContext.Provider value={value}>{children}</CartContext.Provider>
+  return <CartContext.Provider value={value}>{children}</CartContext.Provider>;
 }
 
 // Export the hook
 export function useCart() {
-  const context = useContext(CartContext)
+  const context = useContext(CartContext);
   if (context === undefined) {
-    throw new Error('useCart must be used within a CartProvider')
+    throw new Error('useCart must be used within a CartProvider');
   }
-  return context
+  return context;
 }

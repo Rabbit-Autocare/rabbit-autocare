@@ -109,7 +109,7 @@ export async function GET(request) {
 export async function POST(request) {
 	try {
 		const data = await request.json();
-		console.log("Received product data:", data);
+		console.log("Received product data:", JSON.stringify(data, null, 2));
 
 		// Validate required fields
 		if (!data.name || !data.product_code) {
@@ -146,39 +146,50 @@ export async function POST(request) {
 			}
 		}
 
+		// Prepare the product data
+		const productData = {
+			name: data.name,
+			product_code: data.product_code,
+			description: data.description,
+			category_name: data.category_name,
+			is_microfiber: data.is_microfiber,
+			main_image_url: data.main_image_url,
+			images: data.images,
+			key_features: data.key_features,
+			taglines: data.taglines,
+			subcategory_names: data.subcategory_names,
+			meta_title: data.meta_title,
+			meta_description: data.meta_description,
+			meta_keywords: data.meta_keywords,
+			og_title: data.og_title,
+			og_description: data.og_description,
+			og_image: data.og_image,
+			twitter_title: data.twitter_title,
+			twitter_description: data.twitter_description,
+			twitter_image: data.twitter_image,
+			schema_markup: data.schema_markup,
+		};
+
+		// Log the prepared product data
+		console.log("Prepared product data for insert:", JSON.stringify(productData, null, 2));
+
 		// Start a transaction
 		const { data: product, error: productError } = await supabase
 			.from("products")
-			.insert({
-				name: data.name,
-				product_code: data.product_code,
-				description: data.description,
-				category_name: data.category_name,
-				is_microfiber: data.is_microfiber,
-				main_image_url: data.main_image_url,
-				images: data.images,
-				features: data.features,
-				benefits: data.benefits,
-				usage_instructions: data.usage_instructions,
-				care_instructions: data.care_instructions,
-				meta_title: data.meta_title,
-				meta_description: data.meta_description,
-				meta_keywords: data.meta_keywords,
-				og_title: data.og_title,
-				og_description: data.og_description,
-				og_image: data.og_image,
-				twitter_title: data.twitter_title,
-				twitter_description: data.twitter_description,
-				twitter_image: data.twitter_image,
-				schema_markup: data.schema_markup,
-			})
+			.insert(productData)
 			.select()
 			.single();
 
 		if (productError) {
-			console.error("Error creating product:", productError);
+			console.error("Error creating product:", {
+				error: productError,
+				message: productError.message,
+				details: productError.details,
+				hint: productError.hint,
+				code: productError.code
+			});
 			return NextResponse.json(
-				{ error: "Failed to create product" },
+				{ error: `Failed to create product: ${productError.message}` },
 				{ status: 500 }
 			);
 		}
@@ -214,18 +225,24 @@ export async function POST(request) {
 			}
 		});
 
-		console.log("Variants prepared for INSERT (POST):", JSON.stringify(variants, null, 2));
+		console.log("Variants prepared for INSERT:", JSON.stringify(variants, null, 2));
 
 		const { error: variantsError } = await supabase
 			.from("product_variants")
 			.insert(variants);
 
 		if (variantsError) {
-			console.error("Error creating variants:", variantsError);
+			console.error("Error creating variants:", {
+				error: variantsError,
+				message: variantsError.message,
+				details: variantsError.details,
+				hint: variantsError.hint,
+				code: variantsError.code
+			});
 			// Rollback product creation
 			await supabase.from("products").delete().eq("id", product.id);
 			return NextResponse.json(
-				{ error: "Failed to create product variants" },
+				{ error: `Failed to create product variants: ${variantsError.message}` },
 				{ status: 500 }
 			);
 		}
@@ -276,7 +293,7 @@ export async function POST(request) {
 export async function PUT(request) {
 	try {
 		const data = await request.json();
-		console.log("Received product update data:", data);
+		console.log("Received update data:", JSON.stringify(data, null, 2));
 
 		if (!data.id) {
 			return NextResponse.json(
@@ -310,7 +327,6 @@ export async function PUT(request) {
 					);
 				}
 			} else {
-				// Optional fields for liquid variants
 				if (!variant.price) {
 					return NextResponse.json(
 						{ error: "Price is required for liquid variants" },
@@ -320,38 +336,51 @@ export async function PUT(request) {
 			}
 		}
 
-		// Start a transaction
-		const { error: productError } = await supabase
+		// Prepare the product data
+		const productData = {
+			name: data.name,
+			product_code: data.product_code,
+			description: data.description,
+			category_name: data.category_name,
+			is_microfiber: data.is_microfiber,
+			main_image_url: data.main_image_url,
+			images: data.images,
+			key_features: data.key_features,
+			taglines: data.taglines,
+			subcategory_names: data.subcategory_names,
+			meta_title: data.meta_title,
+			meta_description: data.meta_description,
+			meta_keywords: data.meta_keywords,
+			og_title: data.og_title,
+			og_description: data.og_description,
+			og_image: data.og_image,
+			twitter_title: data.twitter_title,
+			twitter_description: data.twitter_description,
+			twitter_image: data.twitter_image,
+			schema_markup: data.schema_markup,
+		};
+
+		// Log the prepared product data
+		console.log("Prepared product data for update:", JSON.stringify(productData, null, 2));
+
+		// Update the product
+		const { data: product, error: productError } = await supabase
 			.from("products")
-			.update({
-				name: data.name,
-				product_code: data.product_code,
-				description: data.description,
-				category_name: data.category_name,
-				is_microfiber: data.is_microfiber,
-				main_image_url: data.main_image_url,
-				images: data.images,
-				features: data.features,
-				benefits: data.benefits,
-				usage_instructions: data.usage_instructions,
-				care_instructions: data.care_instructions,
-				meta_title: data.meta_title,
-				meta_description: data.meta_description,
-				meta_keywords: data.meta_keywords,
-				og_title: data.og_title,
-				og_description: data.og_description,
-				og_image: data.og_image,
-				twitter_title: data.twitter_title,
-				twitter_description: data.twitter_description,
-				twitter_image: data.twitter_image,
-				schema_markup: data.schema_markup,
-			})
-			.eq("id", data.id);
+			.update(productData)
+			.eq("id", data.id)
+			.select()
+			.single();
 
 		if (productError) {
-			console.error("Error updating product:", productError);
+			console.error("Error updating product:", {
+				error: productError,
+				message: productError.message,
+				details: productError.details,
+				hint: productError.hint,
+				code: productError.code
+			});
 			return NextResponse.json(
-				{ error: "Failed to update product" },
+				{ error: `Failed to update product: ${productError.message}` },
 				{ status: 500 }
 			);
 		}
@@ -363,15 +392,21 @@ export async function PUT(request) {
 			.eq("product_id", data.id);
 
 		if (deleteError) {
-			console.error("Error deleting existing variants:", deleteError);
+			console.error("Error deleting existing variants:", {
+				error: deleteError,
+				message: deleteError.message,
+				details: deleteError.details,
+				hint: deleteError.hint,
+				code: deleteError.code
+			});
 			return NextResponse.json(
-				{ error: "Failed to delete existing variants" },
+				{ error: `Failed to delete existing variants: ${deleteError.message}` },
 				{ status: 500 }
 			);
 		}
 
 		// Insert new variants
-		const variantsToInsert = data.variants.map(variant => {
+		const variants = data.variants.map(variant => {
 			const base = {
 				id: variant.id,
 				product_id: data.id,
@@ -401,18 +436,22 @@ export async function PUT(request) {
 			}
 		});
 
-		console.log("Variants prepared for INSERT (PUT):", JSON.stringify(variantsToInsert, null, 2));
+		console.log("Variants prepared for INSERT:", JSON.stringify(variants, null, 2));
 
 		const { error: variantsError } = await supabase
 			.from("product_variants")
-			.insert(variantsToInsert);
+			.insert(variants);
 
 		if (variantsError) {
-			console.error("Error creating new variants:", variantsError);
-			// Important: Rollback product update if variant creation fails
-			// (Note: full rollback would require more complex transaction management if not natively supported by Supabase client for UPDATE)
+			console.error("Error creating variants:", {
+				error: variantsError,
+				message: variantsError.message,
+				details: variantsError.details,
+				hint: variantsError.hint,
+				code: variantsError.code
+			});
 			return NextResponse.json(
-				{ error: "Failed to create new variants" },
+				{ error: `Failed to create product variants: ${variantsError.message}` },
 				{ status: 500 }
 			);
 		}
@@ -439,16 +478,22 @@ export async function PUT(request) {
 			.single();
 
 		if (fetchError) {
-			console.error("Error fetching updated product:", fetchError);
+			console.error("Error fetching updated product:", {
+				error: fetchError,
+				message: fetchError.message,
+				details: fetchError.details,
+				hint: fetchError.hint,
+				code: fetchError.code
+			});
 			return NextResponse.json(
-				{ error: "Failed to fetch updated product" },
+				{ error: `Failed to fetch updated product: ${fetchError.message}` },
 				{ status: 500 }
 			);
 		}
 
 		return NextResponse.json({
 			success: true,
-			product: completeProduct,
+			product: transformProductData(completeProduct)
 		});
 	} catch (error) {
 		console.error("Error in PUT /api/products:", error);

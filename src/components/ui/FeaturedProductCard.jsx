@@ -411,9 +411,9 @@ export default function FeaturedProductCard({ product, className = "" }) {
 
   return (
     <div
-      className={`w-full pt-0 overflow-hidden bg-white border-y border-black featured-product-section h-[800px]lg:h-[700px] ${className}`}
+      className={`w-full pt-0 overflow-hidden bg-white  featured-product-section h-[800px] lg:h-[800px] ${className}`}
     >
-      <div className="flex flex-col xl:flex-row gap-6 px-4 md:px-[30px] lg:px-[50px] py-6 md:py-16 lg:pt-[50px] lg:pb-[0px] items-center justify-between">
+      <div className="flex flex-col xl:flex-row gap-6 px-4 md:px-[30px] lg:px-[50px] py-6 md:py-16 lg:pt-[20px] lg:pb-[20px] items-center justify-between">
         {/* Image Section */}
         <div className="flex w-full xl:w-1/2 items-center justify-center sm:gap-4">
           {/* Thumbnail Navigation */}
@@ -447,9 +447,9 @@ export default function FeaturedProductCard({ product, className = "" }) {
             {thumbnails.length > 1 && (
               <button
                 onClick={() => handleImageSwipe("prev")}
-                className="absolute z-20 left-2 rounded-full bg-white/20 backdrop-blur-xs shadow p-2 transition hover:bg-white/30"
+                className="absolute z-20 left-0 cursor-pointer bg-white/20 backdrop-blur-xs shadow p-2 transition hover:bg-white/30"
               >
-                <ChevronLeft className="w-5 h-5 text-black cursor-pointer" />
+                <ChevronLeft className="w-5 h-[600px] text-black cursor-pointer" />
               </button>
             )}
 
@@ -488,9 +488,9 @@ export default function FeaturedProductCard({ product, className = "" }) {
             {thumbnails.length > 1 && (
               <button
                 onClick={() => handleImageSwipe("next")}
-                className="absolute right-2 rounded-full bg-white/20 backdrop-blur-xs z-20 shadow p-2 transition hover:bg-white/30"
+                className="absolute right-0 cursor-pointer bg-white/20 backdrop-blur-xs z-20 shadow p-2 transition hover:bg-white/30"
               >
-                <ChevronRight className="w-5 h-5 text-black cursor-pointer" />
+                <ChevronRight className="w-5 h-[600px] text-black cursor-pointer" />
               </button>
             )}
           </div>

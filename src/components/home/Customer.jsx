@@ -7,11 +7,11 @@ import gsap from 'gsap';
 
 const rawVideos = [
   { id: 1, src: '/assets/reel1.gif' },
-  { id: 2, src: '/assets/reel1.gif' },
+  { id: 2, src: '/assets/reel2.gif' },
   { id: 3, src: '/assets/reel1.gif' },
-  { id: 4, src: '/assets/reel1.gif' },
+  { id: 4, src: '/assets/reel2.gif' },
   { id: 5, src: '/assets/reel1.gif' },
-  { id: 6, src: '/assets/reel1.gif' },
+  { id: 6, src: '/assets/reel2.gif' },
 ];
 
 export default function Customer() {

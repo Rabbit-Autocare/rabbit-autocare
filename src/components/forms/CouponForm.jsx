@@ -1,10 +1,9 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { X } from 'lucide-react';
+import { ArrowLeft } from 'lucide-react';
 
 export default function CouponForm({
-  isOpen,
   onClose,
   onSubmit,
   initialData = {
@@ -93,27 +92,28 @@ export default function CouponForm({
     });
   };
 
-  if (!isOpen) return null;
-
   return (
-    <div className='fixed inset-0 bg-gray-500/30 flex justify-center items-center z-50'>
-      <div className='bg-white rounded-lg shadow-xl max-w-2xl w-full p-6 max-h-[90vh] overflow-y-auto'>
-        <div className='flex justify-between items-center mb-4'>
-          <h2 className='text-xl font-semibold'>
-            {formMode === 'add' ? 'Create Coupon' : 'Edit Coupon'}
-          </h2>
-          <button
-            onClick={onClose}
-            className='text-gray-500 hover:text-gray-700'
-          >
-            <X size={24} />
-          </button>
-        </div>
+    <div className='w-full bg-white text-gray-900'>
+      {/* Header */}
+      <div className='px-6'>
+        <button
+          onClick={onClose}
+          className='flex items-center text-gray-600 hover:text-gray-900 mb-4 text-sm'
+        >
+          <ArrowLeft size={18} className='mr-2' />
+          <span>Coupons</span>
+        </button>
+      </div>
 
-        <form onSubmit={handleSubmit} className='space-y-4'>
+      <div className='w-full mx-auto p-6'>
+        <h2 className='text-2xl font-semibold mb-6'>
+          {formMode === 'add' ? 'Create Coupon' : 'Edit Coupon'}
+        </h2>
+
+        <form onSubmit={handleSubmit} className='space-y-6'>
           <div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
             <div>
-              <label className='block text-sm font-medium mb-1'>
+              <label className='block text-base font-medium text-gray-900 mb-2'>
                 Coupon Code
               </label>
               <input
@@ -121,14 +121,14 @@ export default function CouponForm({
                 name='code'
                 value={couponData.code}
                 onChange={handleInputChange}
-                className='w-full p-2 border rounded'
+                className='w-full px-4 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-black'
                 placeholder='e.g. SUMMER25'
                 maxLength={20}
               />
             </div>
 
             <div>
-              <label className='block text-sm font-medium mb-1'>
+              <label className='block text-base font-medium text-gray-900 mb-2'>
                 Discount (%)
               </label>
               <input
@@ -136,7 +136,7 @@ export default function CouponForm({
                 name='discount_percent'
                 value={couponData.discount_percent}
                 onChange={handleInputChange}
-                className='w-full p-2 border rounded'
+                className='w-full px-4 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-black'
                 placeholder='e.g. 10'
                 min='1'
                 max='100'
@@ -144,7 +144,7 @@ export default function CouponForm({
             </div>
 
             <div>
-              <label className='block text-sm font-medium mb-1'>
+              <label className='block text-base font-medium text-gray-900 mb-2'>
                 Min. Order Amount (₹)
               </label>
               <input
@@ -152,14 +152,14 @@ export default function CouponForm({
                 name='min_order_amount'
                 value={couponData.min_order_amount}
                 onChange={handleInputChange}
-                className='w-full p-2 border rounded'
+                className='w-full px-4 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-black'
                 placeholder='e.g. 999'
                 min='0'
               />
             </div>
 
             <div>
-              <label className='block text-sm font-medium mb-1'>
+              <label className='block text-base font-medium text-gray-900 mb-2'>
                 Expiry Date
               </label>
               <input
@@ -167,13 +167,13 @@ export default function CouponForm({
                 name='expiry_date'
                 value={couponData.expiry_date}
                 onChange={handleInputChange}
-                className='w-full p-2 border rounded'
+                className='w-full px-4 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-black'
                 disabled={couponData.is_permanent}
               />
             </div>
 
             <div className='md:col-span-2'>
-              <label className='block text-sm font-medium mb-1'>
+              <label className='block text-base font-medium text-gray-900 mb-2'>
                 Description
               </label>
               <input
@@ -181,7 +181,7 @@ export default function CouponForm({
                 name='description'
                 value={couponData.description}
                 onChange={handleInputChange}
-                className='w-full p-2 border rounded'
+                className='w-full px-4 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-black'
                 placeholder='e.g. 10% off on orders above ₹999'
               />
             </div>
@@ -195,15 +195,17 @@ export default function CouponForm({
                   onChange={handleInputChange}
                   className='mr-2'
                 />
-                <span>Permanent Coupon (Never Expires)</span>
+                <span className='text-base'>
+                  Permanent Coupon (Never Expires)
+                </span>
               </label>
             </div>
           </div>
 
-          <div className='flex gap-2 pt-4 border-t'>
+          <div className='pt-4 flex justify-end'>
             <button
               type='submit'
-              className='bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700'
+              className='bg-black text-white px-6 py-2 rounded-full text-sm font-semibold hover:bg-[#601E8D] disabled:opacity-50 disabled:cursor-not-allowed'
               disabled={isLoading}
             >
               {isLoading
@@ -211,13 +213,6 @@ export default function CouponForm({
                 : formMode === 'add'
                 ? 'Create Coupon'
                 : 'Update Coupon'}
-            </button>
-            <button
-              type='button'
-              onClick={onClose}
-              className='bg-gray-300 px-4 py-2 rounded hover:bg-gray-400'
-            >
-              Cancel
             </button>
           </div>
         </form>

@@ -26,8 +26,8 @@ export async function GET(request) {
         .from('combo_products')
         .select(
           `
-		  product_id, 
-		  variant_id, 
+		  product_id,
+		  variant_id,
 		  quantity,
 		  products:products(*)
 		`
@@ -46,7 +46,7 @@ export async function GET(request) {
     const { data: combos, error } = await supabase
       .from('combos')
       .select('*')
-      .order('created_at', { ascending: false });
+      .order('updated_at', { ascending: false });
 
     if (error) return errorResponse(error.message);
 
@@ -93,8 +93,8 @@ export async function POST(request) {
     // Add products to the combo
     const comboProductEntries = products.map((product) => ({
       combo_id: combo.id,
-      product_id: product.id,
-      variant_id: product.variant_id || null,
+      product_id: product.product_id,
+      variant_id: product.variant_id,
       quantity: product.quantity || 1,
     }));
 

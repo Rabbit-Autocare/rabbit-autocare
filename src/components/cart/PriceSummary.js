@@ -1,26 +1,20 @@
 "use client";
 import { useCart } from "@/hooks/useCart";
 
-export default function PriceSummary() {
+export default function PriceSummary({ formatPrice }) {
 	const {
-		calculateSubtotal,
-		calculateDiscount,
-		calculateTotal,
 		coupon,
 		cartItems,
 	} = useCart();
 
-	// Fallback calculations if hook methods don't exist
 	const getSubtotal = () => {
-		if (calculateSubtotal) return calculateSubtotal();
 		return cartItems.reduce((total, item) => {
-			const price = item.product?.price || item.price || 0;
+			const price = item.variant?.price || 0;
 			return total + price * item.quantity;
 		}, 0);
 	};
 
 	const getDiscount = () => {
-		if (calculateDiscount) return calculateDiscount();
 		if (!coupon) return 0;
 		const subtotal = getSubtotal();
 		if (coupon.type === "percentage") {
@@ -30,7 +24,6 @@ export default function PriceSummary() {
 	};
 
 	const getTotal = () => {
-		if (calculateTotal) return calculateTotal();
 		return Math.max(0, getSubtotal() - getDiscount());
 	};
 
@@ -49,24 +42,24 @@ export default function PriceSummary() {
 			<div className="space-y-2 text-sm">
 				<div className="flex justify-between">
 					<span className="text-gray-600">Subtotal</span>
-					<span>₹{subtotal.toFixed(2)}</span>
+					<span>{formatPrice(subtotal)}</span>
 				</div>
 
 				{discount > 0 && (
 					<div className="flex justify-between text-green-600">
 						<span>Discount {coupon?.code ? `(${coupon.code})` : ""}</span>
-						<span>-₹{discount.toFixed(2)}</span>
+						<span>-{formatPrice(discount)}</span>
 					</div>
 				)}
 
 				<div className="border-t pt-2 mt-2 flex justify-between font-medium">
 					<span>Total</span>
-					<span>₹{total.toFixed(2)}</span>
+					<span>{formatPrice(total)}</span>
 				</div>
 
 				{discount > 0 && (
 					<p className="text-green-600 text-xs font-medium">
-						You saved ₹{discount.toFixed(2)} on this order
+						You saved {formatPrice(discount)} on this order
 					</p>
 				)}
 			</div>

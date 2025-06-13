@@ -94,6 +94,13 @@ export class ProductService {
 
   static async createProduct(data) {
     try {
+      // Add detailed logging for the fields in question
+      console.log('Original data received:', {
+        key_features: data.key_features,
+        taglines: data.taglines,
+        subcategory_names: data.subcategory_names
+      });
+
       const transformedData = {
         ...data,
         variants: Array.isArray(data.variants)
@@ -128,10 +135,16 @@ export class ProductService {
           : data.subcategory_names
             ? [data.subcategory_names]
             : [],
+        key_features: Array.isArray(data.key_features) ? data.key_features : [],
+        taglines: Array.isArray(data.taglines) ? data.taglines : [],
       }
 
-      // Log the transformed data for debugging
-      console.log('Sending product data to API (from ProductService.createProduct):', JSON.stringify(transformedData, null, 2));
+      // Log the transformed data
+      console.log('Transformed data being sent:', {
+        key_features: transformedData.key_features,
+        taglines: transformedData.taglines,
+        subcategory_names: transformedData.subcategory_names
+      });
 
       const res = await fetch(API_BASE_URL, {
         method: "POST",
@@ -175,7 +188,13 @@ export class ProductService {
 
   static async updateProduct(id, updateData) {
     try {
-      // Transform variants to use direct values
+      // Add detailed logging for the fields in question
+      console.log('Original update data received:', {
+        key_features: updateData.key_features,
+        taglines: updateData.taglines,
+        subcategory_names: updateData.subcategory_names
+      });
+
       const transformedData = {
         id,
         ...updateData,
@@ -211,10 +230,16 @@ export class ProductService {
           : updateData.subcategory_names
             ? [updateData.subcategory_names]
             : [],
+        key_features: Array.isArray(updateData.key_features) ? updateData.key_features : [],
+        taglines: Array.isArray(updateData.taglines) ? updateData.taglines : [],
       }
 
-      // Log the transformed data for debugging
-      console.log('Sending product data to API (from ProductService.updateProduct):', JSON.stringify(transformedData, null, 2));
+      // Log the transformed data
+      console.log('Transformed update data being sent:', {
+        key_features: transformedData.key_features,
+        taglines: transformedData.taglines,
+        subcategory_names: transformedData.subcategory_names
+      });
 
       const res = await fetch(API_BASE_URL, {
         method: "PUT",

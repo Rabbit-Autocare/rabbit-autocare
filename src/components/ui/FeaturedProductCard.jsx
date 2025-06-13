@@ -347,33 +347,61 @@ export default function FeaturedProductCard({ product, className = "", isLastCar
   }
 
   const handleBuyNow = async () => {
-    // Check if selection is available before buying
-    if (isMicrofiber && !isCurrentSelectionAvailable()) {
-      console.log("Selected combination is out of stock")
+    if (!isCurrentSelectionAvailable()) {
+      alert("Please select available variant.")
       return
     }
 
-    if (!isMicrofiber && (!selectedVariant || selectedVariant.stock === 0)) {
-      console.log("Selected variant is out of stock")
-      return
-    }
+    setIsAddingToCart(true)
 
-    // Proceed to checkout logic (e.g., redirect to checkout with item details)
-    const itemToBuy = {
-      productId: product.id || product.product_code,
-      variantId: selectedVariant?.id || "default",
-      quantity: 1,
-      price: getCurrentPrice(),
-      variant: isMicrofiber
-        ? `${selectedSize} - ${selectedColor}`
-        : selectedVariant?.size || selectedVariant?.color || selectedVariant?.quantity || "default",
-      productName: product.name,
-      productImage: product.main_image_url || product.images?.[0] || thumbnails[0],
-    }
+    try {
+      const itemToAdd = {
+        productId: product.id,
+        quantity: 1,
+        price: getCurrentPrice(),
+        productName: product.name,
+        productImage: product.main_image_url || product.image_url || product.images?.[0] || "",
+      }
 
-    console.log("Proceeding to buy now with:", itemToBuy)
-    // Implement actual redirection to checkout with itemToBuy details
-    // Example: router.push(`/checkout?item=${JSON.stringify(itemToBuy)}`);
+      if (isMicrofiber) {
+        const variant = getVariantForCombination(selectedColor, selectedSize)
+        if (!variant) {
+          throw new Error("Selected color/size combination not available.")
+        }
+        itemToAdd.variant = {
+          ...variant,
+          color: selectedColor,
+          size: selectedSize,
+          displayText: `${selectedColor} / ${selectedSize}`
+        }
+      } else if (selectedVariant) {
+        itemToAdd.variant = {
+          ...selectedVariant,
+          displayText: getVariantDisplayText(selectedVariant)
+        }
+      } else {
+        itemToAdd.variant = {
+          id: 'default',
+          price: product.price || product.mrp,
+          displayText: 'Default'
+        }
+      }
+
+      // Add the item to cart first (using the centralized addToCart logic)
+      const success = await addToCart(product, itemToAdd.variant, 1)
+
+      if (success) {
+        console.log("Item added to cart, redirecting to checkout.")
+        router.push('/checkout')
+      } else {
+        alert("Failed to add item to cart for direct purchase.")
+      }
+    } catch (error) {
+      console.error("Error during Buy Now:", error)
+      alert(`Failed to complete purchase: ${error.message}`)
+    } finally {
+      setIsAddingToCart(false)
+    }
   }
 
   const handleAddToWishlist = async () => {

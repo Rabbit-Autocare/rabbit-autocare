@@ -23,7 +23,7 @@ const concerns = [
 export default function Shop() {
   return (
     <div className="max-w-[1240px] mx-auto px-4 pb-[60px]">
-      <h2 className="text-[42px] text-black font-bold mb-6">Shop By Concern</h2>
+      <h2 className="text-[30px] md:text-[42px] text-black font-bold mb-6">Shop By Concern</h2>
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {concerns.map((item, index) => (
           <div

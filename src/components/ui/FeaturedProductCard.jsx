@@ -1,11 +1,11 @@
 "use client"
 
 import { useState, useEffect, useMemo } from "react"
-import { ChevronLeft, ChevronRight, Heart, ShoppingCart, X } from "lucide-react"
+import { ChevronLeft, ChevronRight, X } from "lucide-react"
 import { useCart } from "@/contexts/CartContext.jsx"
-import Image from 'next/image'
+import Image from "next/image"
 
-export default function FeaturedProductCard({ product, className = "" }) {
+export default function FeaturedProductCard({ product, className = "", isLastCard = false }) {
   const { addToCart, user, cartItems, mounted } = useCart()
   const [imageSlideMap, setImageSlideMap] = useState({})
   const [activeImageIndex, setActiveImageIndex] = useState({})
@@ -14,13 +14,15 @@ export default function FeaturedProductCard({ product, className = "" }) {
   const [selectedVariant, setSelectedVariant] = useState(null)
   const [selectedColor, setSelectedColor] = useState(null)
   const [selectedSize, setSelectedSize] = useState(null)
-
-  if (!product) return null
+  const [uniqueColorsAndSizes, setUniqueColorsAndSizes] = useState({ colors: [], sizes: [] })
 
   // Check if product is microfiber category
-  const isMicrofiber =
-    product.is_microfiber === true ||
-    (typeof product.category_name === "string" && product.category_name.toLowerCase().includes("microfiber"))
+  const isMicrofiber = useMemo(() => {
+    return (
+      product?.is_microfiber === true ||
+      (typeof product?.category_name === "string" && product?.category_name?.toLowerCase()?.includes("microfiber"))
+    )
+  }, [product])
 
   // Get color for display (could be hex, color name, etc.)
   const getColorStyle = (color) => {
@@ -30,7 +32,7 @@ export default function FeaturedProductCard({ product, className = "" }) {
     }
 
     // Find the variant with this color to get its hex code
-    const variant = product.variants?.find(v => v.color === color)
+    const variant = product.variants?.find((v) => v.color === color)
     if (variant?.color_hex) {
       return { backgroundColor: variant.color_hex }
     }
@@ -73,12 +75,15 @@ export default function FeaturedProductCard({ product, className = "" }) {
   }
 
   // Get unique colors and sizes for all products
-  const getUniqueColorsAndSizes = () => {
-    if (!product.variants) return { colors: [], sizes: [] }
+  useEffect(() => {
+    if (!product?.variants) {
+      setUniqueColorsAndSizes({ colors: [], sizes: [] })
+      return
+    }
 
     // Get unique colors with their hex codes
     const colorMap = new Map()
-    product.variants.forEach(variant => {
+    product.variants.forEach((variant) => {
       if (variant.color && !colorMap.has(variant.color)) {
         colorMap.set(variant.color, variant.color_hex)
       }
@@ -87,10 +92,10 @@ export default function FeaturedProductCard({ product, className = "" }) {
 
     const sizes = [...new Set(product.variants.map((v) => v.size).filter(Boolean))]
 
-    return { colors, sizes }
-  }
+    setUniqueColorsAndSizes({ colors, sizes })
+  }, [product?.variants])
 
-  const { colors, sizes } = useMemo(() => getUniqueColorsAndSizes(), [product?.variants])
+  const { colors, sizes } = uniqueColorsAndSizes
 
   // Get all available variants (for non-microfiber products)
   const allVariants = useMemo(() => {
@@ -213,7 +218,7 @@ export default function FeaturedProductCard({ product, className = "" }) {
     setTimeout(() => {
       setActiveImageIndex((prev) => ({ ...prev, [product.id]: nextIndex }))
       setImageSlideMap((prev) => ({ ...prev, [product.id]: null }))
-    }, 300) // Reduced from 600ms to 300ms for smoother transition
+    }, 600) // Reduced from 600ms to 300ms for smoother transition
   }
 
   const handleVariantSelect = (variant) => {
@@ -303,25 +308,25 @@ export default function FeaturedProductCard({ product, className = "" }) {
           ...variant,
           color: selectedColor,
           size: selectedSize,
-          displayText: `${selectedColor} / ${selectedSize}`
+          displayText: `${selectedColor} / ${selectedSize}`,
         }
       } else if (selectedVariant) {
         itemToAdd.variant = {
           ...selectedVariant,
-          displayText: getVariantDisplayText(selectedVariant)
+          displayText: getVariantDisplayText(selectedVariant),
         }
       } else {
         itemToAdd.variant = {
-          id: 'default',
+          id: "default",
           price: product.price || product.mrp,
-          displayText: 'Default'
+          displayText: "Default",
         }
       }
 
       // Add the new item
       let existingCart = []
       try {
-        const storedCart = localStorage.getItem('cart')
+        const storedCart = localStorage.getItem("cart")
         existingCart = storedCart ? JSON.parse(storedCart) : []
         if (!Array.isArray(existingCart)) {
           existingCart = []
@@ -331,7 +336,7 @@ export default function FeaturedProductCard({ product, className = "" }) {
       }
 
       existingCart.push(itemToAdd)
-      localStorage.setItem('cart', JSON.stringify(existingCart))
+      localStorage.setItem("cart", JSON.stringify(existingCart))
       console.log("Successfully added to cart via localStorage")
     } catch (error) {
       console.error("Error adding to cart:", error)
@@ -374,7 +379,7 @@ export default function FeaturedProductCard({ product, className = "" }) {
   const handleAddToWishlist = async () => {
     // TODO: Implement actual wishlist functionality
     setIsWishlisted(!isWishlisted)
-    console.log(`${isWishlisted ? 'Removed from' : 'Added to'} wishlist:`, product.name)
+    console.log(`${isWishlisted ? "Removed from" : "Added to"} wishlist:`, product.name)
   }
 
   const formatPrice = (price) => {
@@ -387,14 +392,18 @@ export default function FeaturedProductCard({ product, className = "" }) {
   }
 
   return (
-    <div
-      className={`w-full pt-0 overflow-hidden bg-white  featured-product-section h-[800px] lg:h-[800px] ${className}`}
-    >
-      <div className="flex flex-col xl:flex-row gap-6 px-4 md:px-[30px] lg:px-[50px] py-6 md:py-16 lg:pt-[20px] lg:pb-[20px] items-center justify-between">
+    <div className={`w-full pt-0 overflow-visible bg-white featured-product-section ${className}`}>
+      <div
+        className={`flex flex-col lg:flex-row gap-4 sm:gap-6 px-4 md:px-[30px] lg:px-4 pt-6 md:pt-16 lg:pt-[30px] items-center ${
+          isLastCard
+            ? "pb-[0px] xs:pb-[0px] sm:pb-[0px] md:pb-[0px] lg:pb-[0px] xl:pb-[50px]" // Last card: pb-0 up to 1024px, then pb-50 on 2xl+
+            : "pb-[0px] sm:pb-[160px] md:pb-[180px] lg:pb-[80px] xl:pb-[80px]" // Other cards keep original padding for button visibility
+        }`}
+      >
         {/* Image Section */}
-        <div className="flex w-full xl:w-1/2 items-center justify-center sm:gap-4">
+        <div className="flex w-full lg:w-1/2 items-start justify-center sm:gap-4">
           {/* Thumbnail Navigation */}
-          <div className="flex-col space-y-2 items-center hidden md:block">
+          <div className="flex-col space-y-2 items-start hidden md:block  mt-2">
             {thumbnails.map((thumb, i) => (
               <img
                 key={i}
@@ -409,24 +418,14 @@ export default function FeaturedProductCard({ product, className = "" }) {
           </div>
 
           {/* Main Image Display */}
-          <div className="relative w-[460px] h-[300px] sm:w-[500px] sm:h-[350px] md:w-[500px] md:h-[320px] lg:w-[600px] lg:h-[300px] xl:w-[600px] xl:h-[600px] flex items-center justify-center overflow-hidden">
-            {/* Left Glass Panel */}
-            <div className="absolute left-0 top-0 w-[80px] h-full z-10 pointer-events-none">
-              <div className="w-full h-full rounded-none" />
-            </div>
-
-            {/* Right Glass Panel */}
-            <div className="absolute right-0 top-0 w-[80px] h-full z-10 pointer-events-none">
-              <div className="w-full h-full bg-white/10 backdrop-blur-md rounded-none" />
-            </div>
-
+          <div className="relative w-full h-[250px] xs:w-[350px] xs:h-[280px] sm:w-[500px] sm:h-[350px] md:w-[500px] md:h-[320px] lg:w-[500px] lg:h-[500px] xl:w-[600px] xl:h-[600px] flex items-center justify-center overflow-hidden">
             {/* Left Navigation Button */}
             {thumbnails.length > 1 && (
               <button
                 onClick={() => handleImageSwipe("prev")}
-                className="absolute z-20 left-0 cursor-pointer bg-white/20 backdrop-blur-xs shadow p-2 transition hover:bg-white/30"
+                className="absolute z-20 left-0 cursor-pointer bg-transparent p-1 sm:p-2 transition"
               >
-                <ChevronLeft className="w-5 h-[600px] text-black cursor-pointer" />
+                <ChevronLeft className="w-8 h-8 sm:w-12 sm:h-12 xl:h-[600px] text-black cursor-pointer" />
               </button>
             )}
 
@@ -465,22 +464,36 @@ export default function FeaturedProductCard({ product, className = "" }) {
             {thumbnails.length > 1 && (
               <button
                 onClick={() => handleImageSwipe("next")}
-                className="absolute right-0 cursor-pointer bg-white/20 backdrop-blur-xs z-20 shadow p-2 transition hover:bg-white/30"
+                className="absolute right-0 cursor-pointer bg-transparent z-20 p-1 sm:p-2 transition"
               >
-                <ChevronRight className="w-5 h-[600px] text-black cursor-pointer" />
+                <ChevronRight className="w-8 h-8 sm:w-12 sm:h-12 xl:h-[600px] text-black cursor-pointer" />
               </button>
             )}
           </div>
+          
         </div>
+        <div className="flex flex-row justify-start space-x-2 md:hidden overflow-x-auto w-full">
+            {thumbnails.map((thumb, i) => (
+              <img
+                key={i}
+                src={thumb || "/placeholder.svg"}
+                alt={`${product.name} thumbnail ${i + 1}`}
+                onClick={() => setActiveImageIndex((prev) => ({ ...prev, [product.id]: i }))}
+                className={`w-[50px] h-[40px] xl:w-[68px] xl:h-[55px] cursor-pointer transition-all duration-200 ease-in-out ring-2 object-cover ${
+                  activeIndex === i ? "ring-black opacity-100" : "ring-transparent opacity-50"
+                }`}
+              />
+            ))}
+          </div>
 
         {/* Product Details */}
-        <div className="w-full md:w-[585px] lg:w-[685px] xl:w-1/2 space-y-2 xl:space-y-5">
-          <h2 className="product-heading text-[28px] sm:text-[36px] lg:text-[40px] xl:text-[48px] font-semibold tracking-wide">
+        <div className="w-full md:w-[585px] lg:w-[685px] xl:w-1/2 space-y-2 md:space-y-3 lg:space-y-2 xl:space-y-5 flex flex-col min-h-[400px] sm:min-h-[500px] md:min-h-[550px] lg:min-h-[550px] xl:min-h-[600px]">
+          <h2 className="product-heading text-[20px] xs:text-[22px] sm:text-[34px] lg:text-[35px] xl:text-[38px] 2xl:text-[41px] font-semibold tracking-wide">
             {product.name || product.heading}
           </h2>
 
           {/* Rating */}
-          <div className="flex items-center gap-1 text-[12px] md:text-sm xl:text-[12px] font-extralight text-black">
+          <div className="flex items-center gap-1 text-[11px] xs:text-[12px] md:text-sm xl:text-[12px] font-extralight text-black">
             {[...Array(5)].map((_, i) => (
               <img
                 key={i}
@@ -490,28 +503,30 @@ export default function FeaturedProductCard({ product, className = "" }) {
                     : "/assets/featured/ratingstar2.svg"
                 }
                 alt="star"
-                className="w-4 h-4"
+                className="w-3 h-3 xs:w-4 xs:h-4"
               />
             ))}
             <span className="ml-1">| {product.totalRatings || product.reviews?.length || 12} Ratings</span>
           </div>
 
           {/* Price */}
-          <div className="text-[20px] sm:text-[28px] md:text-[32px] font-medium tracking-wide">
+          <div className="text-[18px] xs:text-[20px] sm:text-[28px] md:text-[32px] font-medium tracking-wide">
             <span className="font-extralight">MRP:</span>
             <span> {formatPrice(getCurrentPrice())}</span>
           </div>
 
           {/* Description */}
-          <p className="text-[14px] sm:text-[15px] xl:text-[16px] text-black font-light tracking-wider whitespace-pre-line line-clamp-2 lg:line-clamp-3 xl:line-clamp-none">
-            {product.description}
-          </p>
+          <div className="xl:flex-grow">
+            <p className="text-[13px] xs:text-[14px] sm:text-[15px] xl:text-[16px] text-black font-light tracking-wider whitespace-pre-line line-clamp-2 xs:line-clamp-2 sm:line-clamp-3 md:line-clamp-4 lg:line-clamp-4 xl:line-clamp-none">
+              {product.description}
+            </p>
+          </div>
 
           {/* Color Selection for Microfiber Products */}
           {isMicrofiber && colors.length > 0 && (
-            <div className="space-y-3">
-              <h4 className="font-medium text-sm">Choose Color:</h4>
-              <div className="flex flex-wrap gap-3">
+            <div className="space-y-2 sm:space-y-3">
+              <h4 className="font-medium text-xs xs:text-sm">Choose Color:</h4>
+              <div className="flex flex-wrap gap-2 sm:gap-3">
                 {colors.map((color, index) => {
                   const isSelected = selectedColor === color
                   const hasStock = isColorAvailable(color)
@@ -523,7 +538,7 @@ export default function FeaturedProductCard({ product, className = "" }) {
                         onClick={() => handleColorSelect(color)}
                         disabled={!hasStock}
                         className={`
-                          w-8 h-8 rounded-full border-2 transition-all duration-200 relative
+                          w-6 h-6 xs:w-7 xs:h-7 sm:w-8 sm:h-8 rounded-full border-2 transition-all duration-200 relative
                           ${
                             isSelected
                               ? "border-black ring-2 ring-black ring-offset-2"
@@ -543,7 +558,7 @@ export default function FeaturedProductCard({ product, className = "" }) {
                         {/* Out of stock indicator */}
                         {!hasStock && (
                           <div className="absolute inset-0 flex items-center justify-center">
-                            <X className="w-3 h-3 text-gray-600" />
+                            <X className="w-2 h-2 xs:w-3 xs:h-3 text-gray-600" />
                           </div>
                         )}
                       </button>
@@ -561,23 +576,24 @@ export default function FeaturedProductCard({ product, className = "" }) {
 
           {/* Size/Variant Selection */}
           {((isMicrofiber && sizes.length > 0) || (!isMicrofiber && allVariants.length > 0)) && (
-            <div className="space-y-3">
-              <h4 className="font-medium text-sm">{isMicrofiber ? "Choose Size:" : "Choose Quantity:"}</h4>
-              <div className="flex flex-wrap gap-2">
+            <div className="space-y-2 sm:space-y-3">
+              <h4 className="font-medium text-xs xs:text-sm">{isMicrofiber ? "Choose Size:" : "Choose Quantity:"}</h4>
+              <div className="flex flex-wrap gap-1 xs:gap-2">
                 {isMicrofiber
                   ? // For microfiber products, show all available sizes
                     sizes.map((size, index) => {
                       const isSelected = selectedSize === size
                       const hasStock = isSizeAvailable(size)
-                      const isCurrentCombinationAvailable = selectedColor ?
-                        getVariantForCombination(selectedColor, size)?.stock > 0 : hasStock
+                      const isCurrentCombinationAvailable = selectedColor
+                        ? getVariantForCombination(selectedColor, size)?.stock > 0
+                        : hasStock
 
                       return (
                         <div key={index} className="relative group">
                           <button
                             onClick={() => handleSizeSelect(size)}
                             className={`
-                              px-4 py-2 text-sm font-medium transition-all duration-200 rounded-full
+                              px-2 py-1 xs:px-3 xs:py-2 sm:px-4 sm:py-2 text-xs xs:text-sm font-medium transition-all duration-200 rounded-full
                               ${
                                 isSelected
                                   ? "bg-white text-black border-2 border-black"
@@ -594,7 +610,7 @@ export default function FeaturedProductCard({ product, className = "" }) {
                           {!isCurrentCombinationAvailable && selectedColor && (
                             <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none">
                               <div className="bg-red-500 text-white rounded-full p-1">
-                                <X className="w-3 h-3" />
+                                <X className="w-2 h-2 xs:w-3 xs:h-3" />
                               </div>
                             </div>
                           )}
@@ -612,7 +628,7 @@ export default function FeaturedProductCard({ product, className = "" }) {
                             onClick={() => handleVariantSelect(variant)}
                             disabled={isOutOfStock}
                             className={`
-                              px-4 py-2 text-sm font-medium transition-all duration-200 rounded-full
+                              px-2 py-1 xs:px-3 xs:py-2 sm:px-4 sm:py-2 text-xs xs:text-sm font-medium transition-all duration-200 rounded-full
                               ${
                                 isSelected
                                   ? "bg-white text-black border-2 border-black"
@@ -629,7 +645,7 @@ export default function FeaturedProductCard({ product, className = "" }) {
                           {isOutOfStock && (
                             <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none">
                               <div className="bg-red-500 text-white rounded-full p-1">
-                                <X className="w-3 h-3" />
+                                <X className="w-2 h-2 xs:w-3 xs:h-3" />
                               </div>
                             </div>
                           )}
@@ -665,41 +681,32 @@ export default function FeaturedProductCard({ product, className = "" }) {
             </div>
           )}
 
-          {/* Action Buttons */}
-          <div className="space-y-2 lg:space-y-4">
+          {/* Action Buttons - Fixed at bottom with proper spacing for all screen sizes */}
+          <div className="space-y-2 xl:space-y-4 relative z-10 mt-4 sm:mt-6">
             <div className="flex items-center w-full">
-              <div className="border-1 border-black px-4 py-2 mr-1 rounded-[4px] xl:block hidden">
-                <div className="relative w-5 h-5">
-                  <Image
-                    src="/assets/featured/cartstar.svg"
-                    alt="cart-star"
-                    fill
-                    className="object-contain"
-                  />
+              <div className="border-1 border-black px-2 py-2 xs:px-3 xs:py-2 sm:px-4 sm:py-2 mr-1 rounded-[4px]">
+                <div className="relative w-4 h-4 xs:w-5 xs:h-5 cursor-pointer">
+                  <Image src="/assets/featured/cartstar.svg" alt="cart-star" fill className="object-contain" />
                 </div>
               </div>
               <button
                 onClick={handleAddToCart}
                 disabled={isAddingToCart || !isCurrentSelectionAvailable()}
-                className="text-sm text-black font-semibold border-1 px-4 py-2 w-full rounded-[4px] border-black cursor-pointer flex items-center justify-center gap-2 hover:bg-gray-50 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed disabled:bg-gray-100"
+                className="text-xs xs:text-sm text-black font-semibold border-1 px-2 py-2 xs:px-3 xs:py-2 sm:px-4 sm:py-2 w-full rounded-[4px] border-black cursor-pointer flex items-center justify-center gap-1 xs:gap-2 hover:bg-gray-50 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed disabled:bg-gray-100"
               >
                 {isAddingToCart ? (
                   <>
-                    <div className="w-4 h-4 border-2 border-black border-t-transparent rounded-full animate-spin" />
-                    Adding...
+                    <div className="w-3 h-3 xs:w-4 xs:h-4 border-2 border-black border-t-transparent rounded-full animate-spin" />
+                    <span className="hidden xs:inline">Adding...</span>
+                    <span className="xs:hidden">...</span>
                   </>
                 ) : !isCurrentSelectionAvailable() ? (
                   "Out of Stock"
                 ) : (
                   <>
                     Add to Cart
-                    <div className="relative w-5 h-5">
-                      <Image
-                        src="/assets/featured/cartstar.svg"
-                        alt="cart-star"
-                        fill
-                        className="object-contain"
-                      />
+                    <div className="relative w-4 h-4 xs:w-5 xs:h-5">
+                      <Image src="/assets/featured/cartstar.svg" alt="cart-star" fill className="object-contain" />
                     </div>
                   </>
                 )}
@@ -708,16 +715,11 @@ export default function FeaturedProductCard({ product, className = "" }) {
             <button
               onClick={handleBuyNow}
               disabled={!isCurrentSelectionAvailable()}
-              className="bg-black cursor-pointer rounded-[4px] text-white w-full px-4 py-3 flex items-center justify-center gap-2 hover:bg-gray-800 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed disabled:bg-gray-600"
+              className="bg-black cursor-pointer rounded-[4px] text-white w-full px-2 py-2 xs:px-3 xs:py-3 sm:px-4 sm:py-3 flex items-center justify-center gap-1 xs:gap-2 hover:bg-gray-800 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed disabled:bg-gray-600 text-xs xs:text-sm"
             >
               {!isCurrentSelectionAvailable() ? "Out of Stock" : "Buy Now"}
-              <div className="relative w-5 h-5">
-                <Image
-                  src="/assets/featured/buynowsvg.svg"
-                  alt="buy-now"
-                  fill
-                  className="object-contain"
-                />
+              <div className="relative w-4 h-4 xs:w-5 xs:h-5">
+                <Image src="/assets/featured/buynowsvg.svg" alt="buy-now" fill className="object-contain" />
               </div>
             </button>
           </div>

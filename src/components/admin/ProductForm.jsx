@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import { ProductService } from "@/lib/service/productService";
+import { SizeService, ColorService, CategoryService, GsmService, QuantityService } from "@/lib/service/microdataService";
 import { Plus, Trash2, Package, Palette, Ruler, Hash, DollarSign, Archive, Tag, X, Image as ImageIcon } from "lucide-react";
 
 export default function EnhancedProductForm({ product = null, onSuccess, onCancel }) {
@@ -53,11 +54,11 @@ export default function EnhancedProductForm({ product = null, onSuccess, onCance
 		setLoading(true);
 		try {
 			const [sizesRes, colorsRes, categoriesRes, gsmRes, quantitiesRes] = await Promise.all([
-				ProductService.getSizes(),
-				ProductService.getColors(),
-				ProductService.getCategories(),
-				ProductService.getGSM(),
-				ProductService.getQuantities(),
+				SizeService.getSizes(),
+				ColorService.getColors(),
+				CategoryService.getCategories(),
+				GsmService.getGSM(),
+				QuantityService.getQuantities(),
 			]);
 
 			setAllSizes(sizesRes.data || []);
@@ -88,19 +89,17 @@ export default function EnhancedProductForm({ product = null, onSuccess, onCance
 		}
 
 		const productVariants = product.variants?.map(variant => {
-			// Prioritize existing color_hex from the product object
-			const existingHex = variant.color_hex;
-			// If not present, derive from allColors
-			const derivedHex = allColors.find(c => c.color === variant.color)?.hex_code || null;
-			const finalHex = existingHex || derivedHex;
+			// Get color hex from the color service data
+			const colorData = allColors.find(c => c.color === variant.color);
+			const colorHex = colorData?.hex_code || variant.color_hex;
 
 			if (product.is_microfiber) {
 				return {
 					id: variant.id || null,
 					gsm: variant.gsm || '',
-					size: variant.size_cm || variant.size || '',
+					size: variant.size || '',
 					color: variant.color || '',
-					color_hex: finalHex, // Use the determined hex
+					color_hex: colorHex,
 					stock: parseInt(variant.stock) || 0,
 					price: parseFloat(variant.price) || 0,
 					compareAtPrice: parseFloat(variant.compare_at_price || variant.compareAtPrice) || null
@@ -111,7 +110,7 @@ export default function EnhancedProductForm({ product = null, onSuccess, onCance
 					quantity: variant.quantity || '',
 					unit: variant.unit || 'ml',
 					color: variant.color || '',
-					color_hex: finalHex, // Use the determined hex
+					color_hex: colorHex,
 					stock: parseInt(variant.stock) || 0,
 					price: parseFloat(variant.price) || 0,
 					compareAtPrice: parseFloat(variant.compare_at_price || variant.compareAtPrice) || null
@@ -169,7 +168,7 @@ export default function EnhancedProductForm({ product = null, onSuccess, onCance
 			newVariants[index] = {
 				...newVariants[index],
 				color: value,
-				color_hex: selectedColor ? selectedColor.hex_code : '',
+				color_hex: selectedColor?.hex_code || null,
 			};
 		} else {
 			// Update the field with the direct value

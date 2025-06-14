@@ -8,6 +8,7 @@ import AdminLayout from '@/components/layouts/AdminLayout';
 import { Search, Trash2, Plus } from 'lucide-react';
 import { KitsCombosService } from '@/lib/service/kitsCombosService';
 import { ProductService } from '@/lib/service/productService';
+import { StockService } from '@/lib/service/stockService';
 
 // Dynamically import the shared form
 const KitsCombosForm = dynamic(() =>
@@ -58,8 +59,41 @@ export default function KitsAndCombosPage() {
 
   const fetchProducts = async () => {
     try {
+      console.log("Fetching products from ProductService...");
       const response = await ProductService.getProducts({});
-      setAllProducts(response?.success ? response.products : []);
+      let products = response?.success ? response.products : [];
+      console.log("Products after ProductService.getProducts (raw):"+ JSON.stringify(products));
+
+      // Collect all unique variant IDs from all products
+      const allVariantIds = [];
+      products.forEach(product => {
+        if (product.variants && product.variants.length > 0) {
+          product.variants.forEach(variant => {
+            allVariantIds.push(variant.id);
+          });
+        }
+      });
+      console.log("All variant IDs to fetch stock for:", allVariantIds);
+
+      // Fetch real-time stock for all collected variant IDs
+      const fetchedStocks = await StockService.getMultipleVariantsStock(allVariantIds);
+      console.log("Fetched real-time stocks from StockService:", fetchedStocks);
+
+      // Update the stock in the products array with the fetched real-time stock
+      const updatedProducts = products.map(product => {
+        if (product.variants && product.variants.length > 0) {
+          const updatedVariants = product.variants.map(variant => {
+            const stock = fetchedStocks[variant.id];
+            // Ensure stock is updated, fallback to existing if not found (though it should be)
+            return { ...variant, stock: stock !== undefined ? stock : variant.stock };
+          });
+          return { ...product, variants: updatedVariants };
+        }
+        return product;
+      });
+
+      console.log("Products with updated stock before setting allProducts:", JSON.parse(JSON.stringify(updatedProducts)));
+      setAllProducts(updatedProducts);
     } catch (err) {
       console.error('Error fetching products:', err);
       setAllProducts([]);
@@ -90,10 +124,20 @@ export default function KitsAndCombosPage() {
 
   const handleProductSelect = (product, isSelected) => {
     if (isSelected) {
-      // When selecting a product, add it WITHOUT auto-selecting a variant
+      // When selecting a product, add it and attempt to auto-select the first in-stock variant
+      const productToAdd = { ...product };
+      if (productToAdd.variants && productToAdd.variants.length > 0) {
+        // Find the first variant with stock > 0
+        const inStockVariant = productToAdd.variants.find(v => v.stock > 0);
+        productToAdd.selected_variant = inStockVariant || null; // Assign the in-stock variant or null
+      } else {
+        productToAdd.selected_variant = null;
+      }
+      productToAdd.quantity = 1; // Default quantity
+
       setSelectedProducts([
         ...selectedProducts,
-        { ...product, selected_variant: null },
+        productToAdd,
       ]);
     } else {
       // When deselecting a product, remove it from the array
@@ -105,26 +149,51 @@ export default function KitsAndCombosPage() {
     }
   };
 
-  // Fix the handleVariantSelect function
+  const handleVariantSelect = (productId, variant, instanceIndex) => {
+    const updatedProducts = [...selectedProducts];
+    let productFoundCount = 0;
 
-  const handleVariantSelect = (productId, variant) => {
-    const updatedProducts = selectedProducts.map((product) => {
-      if (product.id === productId) {
-        return { ...product, selected_variant: variant };
+    // Iterate through updatedProducts to find the specific instance by productId and instanceIndex
+    for (let i = 0; i < updatedProducts.length; i++) {
+      if (updatedProducts[i].id === productId) {
+        if (productFoundCount === instanceIndex) {
+          updatedProducts[i] = { ...updatedProducts[i], selected_variant: variant };
+          break; // Found and updated the specific instance
+        }
+        productFoundCount++;
       }
-      return product;
-    });
+    }
 
     setSelectedProducts(updatedProducts);
     calculatePrices(updatedProducts);
   };
 
-  const handleQuantityChange = (productId, quantity) => {
-    const updated = selectedProducts.map((p) =>
-      p.id === productId ? { ...p, quantity: parseInt(quantity) || 1 } : p
+  const handleRemoveProductInstance = (productId, instanceIndexToRemove) => {
+    const updatedProducts = [];
+    let productCount = 0;
+
+    for (let i = 0; i < selectedProducts.length; i++) {
+      if (selectedProducts[i].id === productId) {
+        if (productCount === instanceIndexToRemove) {
+          // Skip this instance (i.e., don't add it to updatedProducts)
+        } else {
+          updatedProducts.push(selectedProducts[i]);
+        }
+        productCount++;
+      } else {
+        updatedProducts.push(selectedProducts[i]);
+      }
+    }
+    setSelectedProducts(updatedProducts);
+    calculatePrices(updatedProducts);
+  };
+
+  const handleQuantityChange = (productId, newQuantity) => {
+    const updatedProducts = selectedProducts.map((p) =>
+      p.id === productId ? { ...p, quantity: parseInt(newQuantity) || 1 } : p
     );
-    setSelectedProducts(updated);
-    calculatePrices(updated);
+    setSelectedProducts(updatedProducts);
+    calculatePrices(updatedProducts);
   };
 
   const handleDiscountChange = (e) => {
@@ -182,9 +251,7 @@ export default function KitsAndCombosPage() {
 
   // Update the handleSubmit function to work with JSON variants
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-
+  const handleSubmit = async (formData) => {
     // First check if all selected products have a variant selected
     const missingVariants = selectedProducts.filter(
       (p) => p.variants?.length > 0 && !p.selected_variant
@@ -195,7 +262,7 @@ export default function KitsAndCombosPage() {
       return;
     }
 
-    if (!itemData.name) {
+    if (!formData.name) {
       alert(`Please enter a ${itemLabel} name`);
       return;
     }
@@ -208,22 +275,21 @@ export default function KitsAndCombosPage() {
     try {
       setLoading(true);
 
-      // Since variants are stored as JSON, we need to include the variant object
-      // instead of just an ID in the payload
+      // Transform products data for API
       const productsData = selectedProducts.map((p) => ({
-        id: p.id,
-        selected_variant: p.selected_variant || null, // Store the entire variant object
-        quantity: 1, // Fixed quantity to 1 as requested
+        product_id: p.id,
+        variant_id: p.selected_variant.id,
+        quantity: p.quantity || 1
       }));
 
       const payload = {
-        name: itemData.name,
-        description: itemData.description,
-        image_url: itemData.image_url,
-        original_price: itemData.original_price,
-        price: itemData.discounted_price,
-        discount_percent: itemData.discount_percentage,
-        products: productsData,
+        name: formData.name,
+        description: formData.description,
+        image_url: formData.image_url,
+        original_price: formData.original_price,
+        price: formData.price,
+        discount_percent: formData.discount_percentage,
+        products: productsData
       };
 
       if (activeTab === 'kits') {
@@ -375,6 +441,7 @@ export default function KitsAndCombosPage() {
             onProductSelect={handleProductSelect}
             onVariantSelect={handleVariantSelect}
             onQuantityChange={handleQuantityChange}
+            onRemoveProductInstance={handleRemoveProductInstance}
             getImageUrl={getImageUrl}
           />
         )}

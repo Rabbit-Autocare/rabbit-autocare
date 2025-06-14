@@ -4,9 +4,11 @@ import { useState, useEffect, useMemo } from "react"
 import { ChevronLeft, ChevronRight, X } from "lucide-react"
 import { useCart } from "@/contexts/CartContext.jsx"
 import Image from "next/image"
+import { useRouter } from 'next/navigation'
 
 export default function FeaturedProductCard({ product, className = "", isLastCard = false }) {
-  const { addToCart, user, cartItems, mounted } = useCart()
+  const { addToCart, user, openCart } = useCart()
+  const router = useRouter()
   const [imageSlideMap, setImageSlideMap] = useState({})
   const [activeImageIndex, setActiveImageIndex] = useState({})
   const [isWishlisted, setIsWishlisted] = useState(false)
@@ -218,7 +220,7 @@ export default function FeaturedProductCard({ product, className = "", isLastCar
     setTimeout(() => {
       setActiveImageIndex((prev) => ({ ...prev, [product.id]: nextIndex }))
       setImageSlideMap((prev) => ({ ...prev, [product.id]: null }))
-    }, 600) // Reduced from 600ms to 300ms for smoother transition
+    }, 300)
   }
 
   const handleVariantSelect = (variant) => {
@@ -308,36 +310,29 @@ export default function FeaturedProductCard({ product, className = "", isLastCar
           ...variant,
           color: selectedColor,
           size: selectedSize,
-          displayText: `${selectedColor} / ${selectedSize}`,
+          displayText: `${selectedColor} / ${selectedSize}`
         }
       } else if (selectedVariant) {
         itemToAdd.variant = {
           ...selectedVariant,
-          displayText: getVariantDisplayText(selectedVariant),
+          displayText: getVariantDisplayText(selectedVariant)
         }
       } else {
         itemToAdd.variant = {
-          id: "default",
+          id: 'default',
           price: product.price || product.mrp,
-          displayText: "Default",
+          displayText: 'Default'
         }
       }
 
-      // Add the new item
-      let existingCart = []
-      try {
-        const storedCart = localStorage.getItem("cart")
-        existingCart = storedCart ? JSON.parse(storedCart) : []
-        if (!Array.isArray(existingCart)) {
-          existingCart = []
-        }
-      } catch (e) {
-        existingCart = []
-      }
+      const success = await addToCart(product, itemToAdd.variant, 1)
 
-      existingCart.push(itemToAdd)
-      localStorage.setItem("cart", JSON.stringify(existingCart))
-      console.log("Successfully added to cart via localStorage")
+      if (success) {
+        console.log("Successfully added to cart.")
+        openCart()
+      } else {
+        alert("Failed to add item to cart.")
+      }
     } catch (error) {
       console.error("Error adding to cart:", error)
       alert(`Failed to add item to cart: ${error.message}`)
@@ -407,7 +402,7 @@ export default function FeaturedProductCard({ product, className = "", isLastCar
   const handleAddToWishlist = async () => {
     // TODO: Implement actual wishlist functionality
     setIsWishlisted(!isWishlisted)
-    console.log(`${isWishlisted ? "Removed from" : "Added to"} wishlist:`, product.name)
+    console.log(`${isWishlisted ? 'Removed from' : 'Added to'} wishlist:`, product.name)
   }
 
   const formatPrice = (price) => {
@@ -419,19 +414,21 @@ export default function FeaturedProductCard({ product, className = "", isLastCar
     }).format(price)
   }
 
+  if (!product) return null
+
   return (
     <div className={`w-full pt-0 overflow-visible bg-white featured-product-section ${className}`}>
       <div
         className={`flex flex-col lg:flex-row gap-4 sm:gap-6 px-4 md:px-[30px] lg:px-4 pt-6 md:pt-16 lg:pt-[30px] items-center ${
           isLastCard
-            ? "pb-[0px] xs:pb-[0px] sm:pb-[0px] md:pb-[0px] lg:pb-[0px] xl:pb-[50px]" // Last card: pb-0 up to 1024px, then pb-50 on 2xl+
-            : "pb-[0px] sm:pb-[160px] md:pb-[180px] lg:pb-[80px] xl:pb-[80px]" // Other cards keep original padding for button visibility
+            ? "pb-[0px] xs:pb-[0px] sm:pb-[0px] md:pb-[0px] lg:pb-[0px] xl:pb-[50px]"
+            : "pb-[0px] sm:pb-[160px] md:pb-[180px] lg:pb-[80px] xl:pb-[80px]"
         }`}
       >
         {/* Image Section */}
         <div className="flex w-full lg:w-1/2 items-start justify-center sm:gap-4">
           {/* Thumbnail Navigation */}
-          <div className="flex-col space-y-2 items-start hidden md:block  mt-2">
+          <div className="flex-col space-y-2 items-start hidden md:block mt-2">
             {thumbnails.map((thumb, i) => (
               <img
                 key={i}
@@ -498,21 +495,22 @@ export default function FeaturedProductCard({ product, className = "", isLastCar
               </button>
             )}
           </div>
-          
         </div>
+
+        {/* Mobile Thumbnails */}
         <div className="flex flex-row justify-start space-x-2 md:hidden overflow-x-auto w-full">
-            {thumbnails.map((thumb, i) => (
-              <img
-                key={i}
-                src={thumb || "/placeholder.svg"}
-                alt={`${product.name} thumbnail ${i + 1}`}
-                onClick={() => setActiveImageIndex((prev) => ({ ...prev, [product.id]: i }))}
-                className={`w-[50px] h-[40px] xl:w-[68px] xl:h-[55px] cursor-pointer transition-all duration-200 ease-in-out ring-2 object-cover ${
-                  activeIndex === i ? "ring-black opacity-100" : "ring-transparent opacity-50"
-                }`}
-              />
-            ))}
-          </div>
+          {thumbnails.map((thumb, i) => (
+            <img
+              key={i}
+              src={thumb || "/placeholder.svg"}
+              alt={`${product.name} thumbnail ${i + 1}`}
+              onClick={() => setActiveImageIndex((prev) => ({ ...prev, [product.id]: i }))}
+              className={`w-[50px] h-[40px] xl:w-[68px] xl:h-[55px] cursor-pointer transition-all duration-200 ease-in-out ring-2 object-cover ${
+                activeIndex === i ? "ring-black opacity-100" : "ring-transparent opacity-50"
+              }`}
+            />
+          ))}
+        </div>
 
         {/* Product Details */}
         <div className="w-full md:w-[585px] lg:w-[685px] xl:w-1/2 space-y-2 md:space-y-3 lg:space-y-2 xl:space-y-5 flex flex-col min-h-[400px] sm:min-h-[500px] md:min-h-[550px] lg:min-h-[550px] xl:min-h-[600px]">
@@ -608,8 +606,7 @@ export default function FeaturedProductCard({ product, className = "", isLastCar
               <h4 className="font-medium text-xs xs:text-sm">{isMicrofiber ? "Choose Size:" : "Choose Quantity:"}</h4>
               <div className="flex flex-wrap gap-1 xs:gap-2">
                 {isMicrofiber
-                  ? // For microfiber products, show all available sizes
-                    sizes.map((size, index) => {
+                  ? sizes.map((size, index) => {
                       const isSelected = selectedSize === size
                       const hasStock = isSizeAvailable(size)
                       const isCurrentCombinationAvailable = selectedColor
@@ -645,8 +642,7 @@ export default function FeaturedProductCard({ product, className = "", isLastCar
                         </div>
                       )
                     })
-                  : // For non-microfiber products, show all variants
-                    allVariants.map((variant, index) => {
+                  : allVariants.map((variant, index) => {
                       const isOutOfStock = variant.stock === 0
                       const isSelected = selectedVariant?.id === variant.id
 
@@ -709,7 +705,7 @@ export default function FeaturedProductCard({ product, className = "", isLastCar
             </div>
           )}
 
-          {/* Action Buttons - Fixed at bottom with proper spacing for all screen sizes */}
+          {/* Action Buttons */}
           <div className="space-y-2 xl:space-y-4 relative z-10 mt-4 sm:mt-6">
             <div className="flex items-center w-full">
               <div className="border-1 border-black px-2 py-2 xs:px-3 xs:py-2 sm:px-4 sm:py-2 mr-1 rounded-[4px]">

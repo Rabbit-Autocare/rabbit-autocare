@@ -1,55 +1,41 @@
 "use client"
 import { useState } from "react"
-import { ProductService } from "@/lib/service/productService"
-import { Trash2, Plus, Edit2, Save, X } from "lucide-react"
+import { Plus, Pencil, Trash2 } from "lucide-react"
+import { SizeService } from "@/lib/service/microdataService"
 
-export default function SizesManagement({ sizes, onDataChange, loading, saving, setSaving, setError }) {
+export default function SizesManagement({ sizes = [], loading, saving, setSaving, setError, onDataChange }) {
   const [newSize, setNewSize] = useState("")
   const [editingSize, setEditingSize] = useState(null)
 
   const handleAddSize = async () => {
-    if (!newSize.trim()) {
-      alert("Please enter a size")
-      return
-    }
+    if (!newSize.trim()) return
 
     setSaving(true)
     setError(null)
     try {
-      await ProductService.createSize({ size_cm: newSize.trim() })
+      await SizeService.createSize({ size_cm: newSize.trim() })
       setNewSize("")
       await onDataChange()
-      alert("Size added successfully!")
     } catch (error) {
       console.error("Error adding size:", error)
       setError(`Error adding size: ${error.message}`)
-      alert(`Error adding size: ${error.message}`)
     } finally {
       setSaving(false)
     }
   }
 
-  const handleEditSize = (size) => {
-    setEditingSize({ ...size })
-  }
-
-  const handleSaveSize = async () => {
-    if (!editingSize.size_cm.trim()) {
-      alert("Size cannot be empty")
-      return
-    }
+  const handleUpdateSize = async (id, newValue) => {
+    if (!newValue.trim()) return
 
     setSaving(true)
     setError(null)
     try {
-      await ProductService.updateSize(editingSize.id, { size_cm: editingSize.size_cm })
+      await SizeService.updateSize(id, { size_cm: newValue.trim() })
       setEditingSize(null)
       await onDataChange()
-      alert("Size updated successfully!")
     } catch (error) {
       console.error("Error updating size:", error)
       setError(`Error updating size: ${error.message}`)
-      alert(`Error updating size: ${error.message}`)
     } finally {
       setSaving(false)
     }
@@ -61,13 +47,11 @@ export default function SizesManagement({ sizes, onDataChange, loading, saving, 
     setSaving(true)
     setError(null)
     try {
-      await ProductService.deleteSize(id)
+      await SizeService.deleteSize(id)
       await onDataChange()
-      alert("Size deleted successfully!")
     } catch (error) {
       console.error("Error deleting size:", error)
       setError(`Error deleting size: ${error.message}`)
-      alert(`Error deleting size: ${error.message}`)
     } finally {
       setSaving(false)
     }
@@ -81,12 +65,14 @@ export default function SizesManagement({ sizes, onDataChange, loading, saving, 
         <div className="flex gap-3 items-end">
           <div className="flex-1">
             <input
+              type="text"
               value={newSize}
               onChange={(e) => setNewSize(e.target.value)}
-              placeholder="Size (e.g., 40x60, 30x30, 50x80)"
+              placeholder="Size (e.g., 40x60, 30x30)"
               className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               onKeyPress={(e) => e.key === "Enter" && handleAddSize()}
             />
+            <p className="text-sm text-gray-600 mt-1">Enter size in centimeters (e.g., 40x60)</p>
           </div>
           <button
             onClick={handleAddSize}
@@ -99,59 +85,58 @@ export default function SizesManagement({ sizes, onDataChange, loading, saving, 
         </div>
       </div>
 
-      {/* Sizes List */}
-      <div>
-        <h3 className="text-xl font-semibold text-gray-800 mb-4">Existing Sizes ({sizes.length})</h3>
-        {sizes.length === 0 ? (
-          <div className="text-center py-8 text-gray-500 bg-gray-50 rounded-lg">No sizes added yet</div>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-            {sizes.map((size) => (
-              <div key={size.id} className="bg-white p-3 border border-gray-200 rounded-lg shadow-sm">
-                {editingSize?.id === size.id ? (
-                  <div className="flex gap-2 items-center">
-                    <input
-                      value={editingSize.size_cm}
-                      onChange={(e) => setEditingSize({ ...editingSize, size_cm: e.target.value })}
-                      className="flex-1 p-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500"
-                    />
+      {/* Size List */}
+      <div className="bg-white rounded-lg border border-gray-200">
+        <div className="p-4 border-b border-gray-200">
+          <h3 className="text-lg font-semibold text-gray-900">Size List</h3>
+        </div>
+        <div className="divide-y divide-gray-200">
+          {sizes.map((size) => (
+            <div key={size.id} className="p-4 flex items-center justify-between">
+              {editingSize?.id === size.id ? (
+                <div className="flex-1 flex gap-2">
+                  <input
+                    type="text"
+                    value={editingSize.size_cm}
+                    onChange={(e) => setEditingSize({ ...editingSize, size_cm: e.target.value })}
+                    className="flex-1 p-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    onKeyPress={(e) => e.key === "Enter" && handleUpdateSize(size.id, editingSize.size_cm)}
+                  />
+                  <button
+                    onClick={() => handleUpdateSize(size.id, editingSize.size_cm)}
+                    className="text-blue-600 hover:text-blue-700"
+                  >
+                    Save
+                  </button>
+                  <button
+                    onClick={() => setEditingSize(null)}
+                    className="text-gray-600 hover:text-gray-700"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              ) : (
+                <>
+                  <span className="text-gray-900">{size.size_cm}</span>
+                  <div className="flex gap-2">
                     <button
-                      onClick={handleSaveSize}
-                      disabled={saving}
-                      className="bg-green-600 hover:bg-green-700 disabled:bg-green-400 text-white p-1 rounded transition-colors"
+                      onClick={() => setEditingSize(size)}
+                      className="text-blue-600 hover:text-blue-700"
                     >
-                      <Save size={14} />
+                      <Pencil size={16} />
                     </button>
                     <button
-                      onClick={() => setEditingSize(null)}
-                      className="bg-gray-500 hover:bg-gray-600 text-white p-1 rounded transition-colors"
+                      onClick={() => handleDeleteSize(size.id, size.size_cm)}
+                      className="text-red-600 hover:text-red-700"
                     >
-                      <X size={14} />
+                      <Trash2 size={16} />
                     </button>
                   </div>
-                ) : (
-                  <div className="flex items-center justify-between">
-                    <span className="font-medium text-gray-900">{size.size_cm} cm</span>
-                    <div className="flex gap-1">
-                      <button
-                        onClick={() => handleEditSize(size)}
-                        className="text-blue-600 hover:text-blue-800 p-1 transition-colors"
-                      >
-                        <Edit2 size={14} />
-                      </button>
-                      <button
-                        onClick={() => handleDeleteSize(size.id, size.size_cm)}
-                        className="text-red-600 hover:text-red-800 p-1 transition-colors"
-                      >
-                        <Trash2 size={14} />
-                      </button>
-                    </div>
-                  </div>
-                )}
-              </div>
-            ))}
-          </div>
-        )}
+                </>
+              )}
+            </div>
+          ))}
+        </div>
       </div>
     </div>
   )

@@ -2,6 +2,11 @@
 import { useEffect, useState } from "react"
 import { ProductService } from "@/lib/service/productService"
 import { X, AlertTriangle } from "lucide-react"
+import { SizeService } from "@/lib/service/microdataService"
+import { ColorService } from "@/lib/service/microdataService"
+import { GsmService } from "@/lib/service/microdataService"
+import { QuantityService } from "@/lib/service/microdataService"
+import { CategoryService } from "@/lib/service/microdataService"
 
 // Import all tab components
 import CategoriesManagement from "../admin/datatabs/CategoryTab"
@@ -34,23 +39,23 @@ export default function MicrodataManagementForm({ onBack }) {
     try {
       // Fetch each data type separately to isolate errors
       const fetchPromises = [
-        ProductService.getCategories().then(res => setCategories(res.data || [])).catch(err => {
+        CategoryService.getCategories().then(res => setCategories(res.data || [])).catch(err => {
           console.error("Error fetching categories:", err)
           setError((prev) => prev || "Failed to load categories")
         }),
-        ProductService.getSizes().then(res => setSizes(res.data || [])).catch(err => {
+        SizeService.getSizes().then(res => setSizes(res.data || [])).catch(err => {
           console.error("Error fetching sizes:", err)
           setError((prev) => prev || "Failed to load sizes")
         }),
-        ProductService.getColors().then(res => setColors(res.data || [])).catch(err => {
+        ColorService.getColors().then(res => setColors(res.data || [])).catch(err => {
           console.error("Error fetching colors:", err)
           setError((prev) => prev || "Failed to load colors")
         }),
-        ProductService.getGSM().then(res => setGsm(res.data || [])).catch(err => {
+        GsmService.getGSM().then(res => setGsm(res.data || [])).catch(err => {
           console.error("Error fetching GSM:", err)
           setError((prev) => prev || "Failed to load GSM")
         }),
-        ProductService.getQuantities().then(res => setQuantities(res.data || [])).catch(err => {
+        QuantityService.getQuantities().then(res => setQuantities(res.data || [])).catch(err => {
           console.error("Error fetching quantities:", err)
           setError((prev) => prev || "Failed to load quantities")
         })

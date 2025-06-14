@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from "react"
 import { useParams, useRouter, useSearchParams } from "next/navigation"
 import { ProductService } from "@/lib/service/productService"
 import { KitsCombosService } from "@/lib/service/kitsCombosService"
+import { CategoryService } from "@/lib/service/microdataService"
 import FilterSidebar from "@/components/shop/FilterSidebar"
 import ProductGrid from "@/components/shop/ProductGrid"
 import { Filter, ArrowUpDown, X } from "lucide-react"
@@ -376,6 +377,23 @@ export default function ShopPage() {
     { value: "rating", label: "Customer Rating" },
     { value: "name", label: "Name (A-Z)" },
   ]
+
+  const [categories, setCategories] = useState([])
+
+  useEffect(() => {
+    const fetchCategories = async () => {
+      try {
+        const response = await CategoryService.getCategories()
+        if (response.success) {
+          setCategories(response.data || [])
+        }
+      } catch (error) {
+        console.error("Error fetching categories:", error)
+      }
+    }
+
+    fetchCategories()
+  }, [])
 
   return (
     <div className="bg-white min-h-screen">

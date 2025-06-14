@@ -64,7 +64,6 @@ export class ProductService {
     try {
       const params = new URLSearchParams()
       const url = `${API_BASE_URL}/${productIdentifier}${params.toString() ? `?${params}` : ""}`
-      console.log("Fetching single product from URL:", url)
 
       const res = await fetch(url)
       if (!res.ok) {
@@ -89,13 +88,6 @@ export class ProductService {
 
   static async createProduct(data) {
     try {
-      // Add detailed logging for the fields in question
-      console.log('Original data received:', {
-        key_features: data.key_features,
-        taglines: data.taglines,
-        subcategory_names: data.subcategory_names
-      });
-
       const transformedData = {
         ...data,
         variants: Array.isArray(data.variants)
@@ -120,13 +112,6 @@ export class ProductService {
         key_features: Array.isArray(data.key_features) ? data.key_features : [],
         taglines: Array.isArray(data.taglines) ? data.taglines : [],
       }
-
-      // Log the transformed data
-      console.log('Transformed data being sent:', {
-        key_features: transformedData.key_features,
-        taglines: transformedData.taglines,
-        subcategory_names: transformedData.subcategory_names
-      });
 
       const res = await fetch(API_BASE_URL, {
         method: "POST",
@@ -155,7 +140,6 @@ export class ProductService {
       }
 
       const json = await res.json();
-      console.log('API Response:', json);
       return this.transformProductData(json.product || json);
     } catch (error) {
       console.error("Error in createProduct:", error);
@@ -170,13 +154,6 @@ export class ProductService {
 
   static async updateProduct(id, updateData) {
     try {
-      // Add detailed logging for the fields in question
-      console.log('Original update data received:', {
-        key_features: updateData.key_features,
-        taglines: updateData.taglines,
-        subcategory_names: updateData.subcategory_names
-      });
-
       const transformedData = {
         id,
         ...updateData,
@@ -202,13 +179,6 @@ export class ProductService {
         key_features: Array.isArray(updateData.key_features) ? updateData.key_features : [],
         taglines: Array.isArray(updateData.taglines) ? updateData.taglines : [],
       }
-
-      // Log the transformed data
-      console.log('Transformed update data being sent:', {
-        key_features: transformedData.key_features,
-        taglines: transformedData.taglines,
-        subcategory_names: transformedData.subcategory_names
-      });
 
       const res = await fetch(API_BASE_URL, {
         method: "PUT",
@@ -263,11 +233,8 @@ export class ProductService {
   static async getProductsByCategory(categoryName, { limit, sort, filters = {} } = {}) {
     try {
       if (!categoryName || categoryName === "all") {
-        console.log("getProductsByCategory: Category not specified or 'all', calling getProducts.")
         return this.getProducts({ limit, sort, filters })
       }
-
-      console.log("getProductsByCategory: Fetching for category:", categoryName, "with filters:", filters)
 
       const combinedFilters = { ...filters, category: categoryName }
       return this.getProducts({ limit, sort, filters: combinedFilters })
@@ -285,7 +252,6 @@ export class ProductService {
       if (limit) params.append("limit", limit)
 
       const url = params.toString() ? `/api/products/kits?${params}` : `/api/products/kits`
-      console.log("Fetching kits from URL:", url)
 
       const res = await fetch(url)
 
@@ -300,7 +266,6 @@ export class ProductService {
       }
 
       const data = await res.json()
-      console.log("Raw API response for kits:", data)
 
       const products = Array.isArray(data.products)
         ? data.products

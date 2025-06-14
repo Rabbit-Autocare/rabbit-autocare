@@ -30,19 +30,38 @@ export class ComboService {
 
   static async createCombo(comboData) {
     try {
-      // Create combo using the database function
-      const { data, error } = await supabase.rpc('create_combo', {
-        p_name: comboData.name,
-        p_description: comboData.description,
-        p_image_url: comboData.image_url,
-        p_original_price: comboData.original_price,
-        p_price: comboData.price,
-        p_discount_percent: comboData.discount_percent,
-        p_products: comboData.products
-      });
+      const inventory = comboData.inventory || 1;
 
-      if (error) throw error;
-      return data;
+      const { data: newCombo, error: comboError } = await supabase
+        .from('combos')
+        .insert({
+          name: comboData.name,
+          description: comboData.description,
+          image_url: comboData.image_url,
+          original_price: comboData.original_price,
+          price: comboData.price,
+          discount_percent: comboData.discount_percentage,
+          inventory: inventory
+        })
+        .select()
+        .single();
+
+      if (comboError) throw comboError;
+
+      const comboProductsData = comboData.products.map(p => ({
+        combo_id: newCombo.id,
+        product_id: p.id,
+        variant_id: p.selected_variant?.id || null,
+        quantity: p.quantity || 1
+      }));
+
+      const { error: comboProductsError } = await supabase
+        .from('combo_products')
+        .insert(comboProductsData);
+
+      if (comboProductsError) throw comboProductsError;
+
+      return newCombo;
     } catch (error) {
       console.error('Error creating combo:', error);
       throw error;
@@ -51,35 +70,56 @@ export class ComboService {
 
   static async updateCombo(id, comboData) {
     try {
-      // First get the existing combo to calculate stock differences
-      const existingCombo = await this.getCombos(id);
-      if (!existingCombo) throw new Error('Combo not found');
+      const inventory = comboData.inventory || 1;
 
-      // Calculate stock differences and update accordingly
-      const stockUpdates = [];
+      const transformedProducts = comboData.products.map(p => ({
+        product_id: p.id,
+        variant_id: p.selected_variant?.id || null,
+        quantity: p.quantity || 1
+      }));
 
-      // Return stock from old combo
-      existingCombo.combo_products.forEach(cp => {
-        stockUpdates.push({
-          variantId: cp.variant_id,
-          quantity: cp.quantity * existingCombo.inventory,
-          operation: 'add'
-        });
-      });
+      const { data: existingComboProducts, error: fetchError } = await supabase
+        .from('combo_products')
+        .select('*')
+        .eq('combo_id', id);
 
-      // Reserve stock for new combo
-      comboData.products.forEach(p => {
-        stockUpdates.push({
-          variantId: p.variant_id,
-          quantity: p.quantity * comboData.inventory,
-          operation: 'subtract'
-        });
-      });
+      if (fetchError) throw fetchError;
 
-      // Update all stock changes
-      await StockService.updateMultipleVariantsStock(stockUpdates);
+      const existingProductMap = new Map(existingComboProducts.map(p => [`${p.product_id}-${p.variant_id}-${p.quantity}`, p])); // Include quantity for unique key
+      const newProductMap = new Map(transformedProducts.map(p => [`${p.product_id}-${p.variant_id}-${p.quantity}`, p])); // Include quantity for unique key
 
-      // Update combo details
+      const productsToAdd = [];
+      const productsToDelete = [];
+
+      // Determine products to add
+      for (const [key, newProduct] of newProductMap.entries()) {
+        if (!existingProductMap.has(key)) {
+          productsToAdd.push({
+            combo_id: id,
+            product_id: newProduct.product_id,
+            variant_id: newProduct.variant_id,
+            quantity: newProduct.quantity
+          });
+        }
+      }
+
+      // Determine products to delete
+      for (const [key, existingProduct] of existingProductMap.entries()) {
+        if (!newProductMap.has(key)) {
+          productsToDelete.push(existingProduct.id);
+        }
+      }
+
+      if (productsToAdd.length > 0) {
+        const { error } = await supabase.from('combo_products').insert(productsToAdd);
+        if (error) throw error;
+      }
+
+      if (productsToDelete.length > 0) {
+        const { error } = await supabase.from('combo_products').delete().in('id', productsToDelete);
+        if (error) throw error;
+      }
+
       const { data, error } = await supabase
         .from('combos')
         .update({
@@ -88,8 +128,8 @@ export class ComboService {
           image_url: comboData.image_url,
           original_price: comboData.original_price,
           price: comboData.price,
-          discount_percent: comboData.discount_percent,
-          inventory: comboData.inventory
+          discount_percent: comboData.discount_percentage,
+          inventory: inventory
         })
         .eq('id', id);
 
@@ -103,20 +143,6 @@ export class ComboService {
 
   static async deleteCombo(id) {
     try {
-      // First get the combo to return stock
-      const combo = await this.getCombos(id);
-      if (!combo) throw new Error('Combo not found');
-
-      // Return stock to variants
-      const stockUpdates = combo.combo_products.map(cp => ({
-        variantId: cp.variant_id,
-        quantity: cp.quantity * combo.inventory,
-        operation: 'add'
-      }));
-
-      await StockService.updateMultipleVariantsStock(stockUpdates);
-
-      // Delete the combo
       const { error } = await supabase
         .from('combos')
         .delete()

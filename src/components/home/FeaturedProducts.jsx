@@ -86,9 +86,7 @@ export default function FeaturedProducts() {
   useEffect(() => {
     const fetchProducts = async () => {
       try {
-        console.log("Fetching featured products...")
         const response = await ProductService.getProducts({ limit: 4 })
-        console.log("Fetched products:", response)
         setProducts(response.products)
       } catch (error) {
         console.error("Error fetching products:", error)
@@ -276,6 +274,11 @@ export default function FeaturedProducts() {
     } catch (error) {
       console.error("Error in buy now:", error)
     }
+  }
+
+  const handleAddToWishlist = async () => {
+    // TODO: Implement actual wishlist functionality
+    setIsWishlisted(!isWishlisted)
   }
 
   if (loading) {

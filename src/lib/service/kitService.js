@@ -30,31 +30,48 @@ export class KitService {
 
   static async createKit(kitData) {
     try {
-      // First check if all variants have enough stock
-      const variants = kitData.products.map(p => ({
-        variantId: p.variant_id,
-        quantity: p.quantity * kitData.inventory
+      // Ensure inventory defaults to 1 if not provided by the form
+      const inventory = kitData.inventory || 1;
+
+      // Transform products for database insertion
+      const transformedProducts = kitData.products.map(p => ({
+        product_id: p.id,
+        variant_id: p.selected_variant?.id || null, // Handle cases where variant might not be selected
+        quantity: p.quantity || 1
       }));
 
-      const hasEnoughStock = await StockService.checkMultipleVariantsStock(variants);
-      if (!hasEnoughStock) {
-        throw new Error('Insufficient stock for one or more variants');
-      }
+      // Insert the new kit into the 'kits' table
+      const { data: newKit, error: kitError } = await supabase
+        .from('kits')
+        .insert({
+          name: kitData.name,
+          description: kitData.description,
+          image_url: kitData.image_url,
+          original_price: kitData.original_price,
+          price: kitData.price,
+          discount_percent: kitData.discount_percentage,
+          inventory: inventory
+        })
+        .select()
+        .single();
 
-      // Create kit using the database function
-      const { data, error } = await supabase.rpc('create_kit_with_variant_stock', {
-        p_name: kitData.name,
-        p_description: kitData.description,
-        p_image_url: kitData.image_url,
-        p_original_price: kitData.original_price,
-        p_price: kitData.price,
-        p_discount_percent: kitData.discount_percent,
-        p_inventory: kitData.inventory,
-        p_products: kitData.products
-      });
+      if (kitError) throw kitError;
 
-      if (error) throw error;
-      return data;
+      // Insert each product into the 'kit_products' table
+      const kitProductsData = transformedProducts.map(p => ({
+        kit_id: newKit.id,
+        product_id: p.product_id,
+        variant_id: p.variant_id,
+        quantity: p.quantity
+      }));
+
+      const { error: kitProductsError } = await supabase
+        .from('kit_products')
+        .insert(kitProductsData);
+
+      if (kitProductsError) throw kitProductsError;
+
+      return newKit;
     } catch (error) {
       console.error('Error creating kit:', error);
       throw error;
@@ -63,35 +80,76 @@ export class KitService {
 
   static async updateKit(id, kitData) {
     try {
-      // First get the existing kit to calculate stock differences
-      const existingKit = await this.getKits(id);
-      if (!existingKit) throw new Error('Kit not found');
+      // Ensure inventory defaults to 1 if not provided by the form
+      const inventory = kitData.inventory || 1;
 
-      // Calculate stock differences and update accordingly
-      const stockUpdates = [];
+      // Transform products for database update (used for kit_products manipulation)
+      const transformedProducts = kitData.products.map(p => ({
+        product_id: p.id,
+        variant_id: p.selected_variant?.id || null,
+        quantity: p.quantity || 1
+      }));
 
-      // Return stock from old kit
-      existingKit.kit_products.forEach(kp => {
-        stockUpdates.push({
-          variantId: kp.variant_id,
-          quantity: kp.quantity * existingKit.inventory,
-          operation: 'add'
-        });
-      });
+      // First get the existing kit's products to compare (no stock return/reserve needed)
+      const { data: existingKitProducts, error: fetchError } = await supabase
+        .from('kit_products')
+        .select('*')
+        .eq('kit_id', id);
 
-      // Reserve stock for new kit
-      kitData.products.forEach(p => {
-        stockUpdates.push({
-          variantId: p.variant_id,
-          quantity: p.quantity * kitData.inventory,
-          operation: 'subtract'
-        });
-      });
+      if (fetchError) throw fetchError;
 
-      // Update all stock changes
-      await StockService.updateMultipleVariantsStock(stockUpdates);
+      const existingProductMap = new Map(existingKitProducts.map(p => [`${p.product_id}-${p.variant_id}`, p]));
+      const newProductMap = new Map(transformedProducts.map(p => [`${p.product_id}-${p.variant_id}`, p]));
 
-      // Update kit details
+      const productsToAdd = [];
+      const productsToUpdate = [];
+      const productIdsToDelete = [];
+
+      // Determine products to add/update/delete
+      for (const [key, newProduct] of newProductMap.entries()) {
+        if (existingProductMap.has(key)) {
+          // Product exists, check if quantity changed (no stock update, just quantity change)
+          const existingProduct = existingProductMap.get(key);
+          if (existingProduct.quantity !== newProduct.quantity) {
+            productsToUpdate.push({
+              id: existingProduct.id,
+              quantity: newProduct.quantity
+            });
+          }
+          existingProductMap.delete(key); // Mark as processed
+        } else {
+          // New product to add
+          productsToAdd.push({
+            kit_id: id,
+            product_id: newProduct.product_id,
+            variant_id: newProduct.variant_id,
+            quantity: newProduct.quantity
+          });
+        }
+      }
+
+      // Remaining in existingProductMap are products to delete
+      for (const [key, existingProduct] of existingProductMap.entries()) {
+        productIdsToDelete.push(existingProduct.id);
+      }
+
+      // Perform database operations
+      if (productsToAdd.length > 0) {
+        const { error } = await supabase.from('kit_products').insert(productsToAdd);
+        if (error) throw error;
+      }
+      if (productsToUpdate.length > 0) {
+        for (const update of productsToUpdate) {
+          const { error } = await supabase.from('kit_products').update({ quantity: update.quantity }).eq('id', update.id);
+          if (error) throw error;
+        }
+      }
+      if (productIdsToDelete.length > 0) {
+        const { error } = await supabase.from('kit_products').delete().in('id', productIdsToDelete);
+        if (error) throw error;
+      }
+
+      // Update kit details (excluding stock-related fields)
       const { data, error } = await supabase
         .from('kits')
         .update({
@@ -100,8 +158,8 @@ export class KitService {
           image_url: kitData.image_url,
           original_price: kitData.original_price,
           price: kitData.price,
-          discount_percent: kitData.discount_percent,
-          inventory: kitData.inventory
+          discount_percent: kitData.discount_percentage,
+          inventory: inventory
         })
         .eq('id', id);
 
@@ -115,20 +173,7 @@ export class KitService {
 
   static async deleteKit(id) {
     try {
-      // First get the kit to return stock
-      const kit = await this.getKits(id);
-      if (!kit) throw new Error('Kit not found');
-
-      // Return stock to variants
-      const stockUpdates = kit.kit_products.map(kp => ({
-        variantId: kp.variant_id,
-        quantity: kp.quantity * kit.inventory,
-        operation: 'add'
-      }));
-
-      await StockService.updateMultipleVariantsStock(stockUpdates);
-
-      // Delete the kit
+      // Delete the kit (no stock return needed)
       const { error } = await supabase
         .from('kits')
         .delete()

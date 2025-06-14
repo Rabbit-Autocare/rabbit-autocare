@@ -29,7 +29,11 @@ const KitsCombosForm = dynamic(() =>
 
 // Helper functions from products page
 function getVariantFields(variants) {
-	const fields = ["gsm", "size", "color", "color_hex", "quantity", "unit", "price", "stock", "compare_at_price"];
+	const fields = [
+		"gsm", "size", "color", "color_hex", "quantity", "unit",
+		"price", "stock", "compare_at_price", "sku", "barcode",
+		"weight", "dimensions", "material", "care_instructions"
+	];
 	return fields.filter(field => variants.some(v => v[field] !== undefined && v[field] !== null && v[field] !== ""));
 }
 
@@ -617,14 +621,18 @@ export default function KitsAndCombosPage() {
                                               {fields.includes("unit") && <th className="px-4 py-3 text-left font-medium text-gray-700 border-b">Unit</th>}
                                               <th className="px-4 py-3 text-left font-medium text-gray-700 border-b">Variant Price</th>
                                               {fields.includes("stock") && <th className="px-4 py-3 text-left font-medium text-gray-700 border-b">Available Stock</th>}
+                                              {fields.includes("sku") && <th className="px-4 py-3 text-left font-medium text-gray-700 border-b">SKU</th>}
+                                              {fields.includes("barcode") && <th className="px-4 py-3 text-left font-medium text-gray-700 border-b">Barcode</th>}
+                                              {fields.includes("weight") && <th className="px-4 py-3 text-left font-medium text-gray-700 border-b">Weight</th>}
+                                              {fields.includes("dimensions") && <th className="px-4 py-3 text-left font-medium text-gray-700 border-b">Dimensions</th>}
+                                              {fields.includes("material") && <th className="px-4 py-3 text-left font-medium text-gray-700 border-b">Material</th>}
+                                              {fields.includes("care_instructions") && <th className="px-4 py-3 text-left font-medium text-gray-700 border-b">Care Instructions</th>}
                                             </tr>
                                           </thead>
                                           <tbody className="bg-white">
                                             {includedProducts.map((includedProduct, index) => {
-                                              const variant = includedProduct.variant; // This is the actual variant selected for the kit/combo
-                                              const product = includedProduct.product; // This is the main product data
-
-                                              // Determine the stock of the specific selected variant for the kit/combo
+                                              const variant = includedProduct.variant;
+                                              const product = includedProduct.product;
                                               const availableStock = variant?.stock !== undefined ? variant.stock : 'N/A';
 
                                               return (
@@ -634,12 +642,12 @@ export default function KitsAndCombosPage() {
                                                   </td>
                                                   {fields.includes("gsm") && (
                                                     <td className="px-4 py-3 border-b border-gray-100">
-                                                      {variant?.gsm || "—"}
+                                                      {variant?.gsm ? `${variant.gsm} GSM` : "—"}
                                                     </td>
                                                   )}
                                                   {fields.includes("size") && (
                                                     <td className="px-4 py-3 border-b border-gray-100">
-                                                      {variant?.size || "—"}
+                                                      {variant?.size ? `${variant.size} cm` : "—"}
                                                     </td>
                                                   )}
                                                   {fields.includes("color") && (
@@ -680,15 +688,60 @@ export default function KitsAndCombosPage() {
                                                     </td>
                                                   )}
                                                   <td className="px-4 py-3 border-b border-gray-100">
-                                                    <span className="font-semibold text-green-600">
-                                                      {formatRupee(variant?.price)}
-                                                    </span>
+                                                    <div className="flex flex-col">
+                                                      <span className="font-semibold text-green-600">
+                                                        {formatRupee(variant?.price)}
+                                                      </span>
+                                                      {variant?.compare_at_price && variant.compare_at_price > variant?.price && (
+                                                        <span className="text-xs text-gray-500 line-through">
+                                                          {formatRupee(variant.compare_at_price)}
+                                                        </span>
+                                                      )}
+                                                    </div>
                                                   </td>
                                                   {fields.includes("stock") && (
                                                     <td className="px-4 py-3 border-b border-gray-100">
                                                       <span className={`font-medium ${availableStock > 0 ? 'text-green-600' : 'text-red-600'}`}>
                                                         {availableStock}
                                                       </span>
+                                                    </td>
+                                                  )}
+                                                  {fields.includes("sku") && (
+                                                    <td className="px-4 py-3 border-b border-gray-100 font-mono text-xs">
+                                                      {variant?.sku || "—"}
+                                                    </td>
+                                                  )}
+                                                  {fields.includes("barcode") && (
+                                                    <td className="px-4 py-3 border-b border-gray-100 font-mono text-xs">
+                                                      {variant?.barcode || "—"}
+                                                    </td>
+                                                  )}
+                                                  {fields.includes("weight") && (
+                                                    <td className="px-4 py-3 border-b border-gray-100">
+                                                      {variant?.weight ? `${variant.weight} g` : "—"}
+                                                    </td>
+                                                  )}
+                                                  {fields.includes("dimensions") && (
+                                                    <td className="px-4 py-3 border-b border-gray-100">
+                                                      {variant?.dimensions || "—"}
+                                                    </td>
+                                                  )}
+                                                  {fields.includes("material") && (
+                                                    <td className="px-4 py-3 border-b border-gray-100">
+                                                      {variant?.material || "—"}
+                                                    </td>
+                                                  )}
+                                                  {fields.includes("care_instructions") && (
+                                                    <td className="px-4 py-3 border-b border-gray-100">
+                                                      <div className="max-w-xs">
+                                                        {variant?.care_instructions ? (
+                                                          <div className="text-xs text-gray-600">
+                                                            {variant.care_instructions}
+                                                          </div>
+                                                        ) : (
+                                                          "—"
+                                                        )}
+                                                      </div>
                                                     </td>
                                                   )}
                                                 </tr>

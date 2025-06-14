@@ -3,6 +3,13 @@
 import { useEffect, useState } from "react"
 import { Star } from "lucide-react"
 import { ProductService } from "@/lib/service/productService"
+import {
+  CategoryService,
+  SizeService,
+  ColorService,
+  GsmService,
+  QuantityService
+} from "@/lib/service/microdataService"
 
 const FilterSidebar = ({
   selectedSize,
@@ -47,11 +54,11 @@ const FilterSidebar = ({
 
         // Fetch all data in parallel
         const [categoriesRes, sizesRes, colorsRes, gsmRes, quantitiesRes] = await Promise.all([
-          ProductService.getCategories(),
-          ProductService.getSizes(),
-          ProductService.getColors(),
-          ProductService.getGSM(),
-          ProductService.getQuantities(),
+          CategoryService.getCategories(),
+          SizeService.getSizes(),
+          ColorService.getColors(),
+          GsmService.getGSM(),
+          QuantityService.getQuantities(),
         ])
 
         // Determine price range from products
@@ -78,10 +85,24 @@ const FilterSidebar = ({
               label: cat.name
             }))
           ],
-          sizes: sizesRes.data || [],
-          colors: colorsRes.data || [],
-          gsmValues: gsmRes.data || [],
-          quantities: quantitiesRes.data || [],
+          sizes: (sizesRes.data || []).map(size => ({
+            id: size.id,
+            name: size.size_cm
+          })),
+          colors: (colorsRes.data || []).map(color => ({
+            id: color.id,
+            name: color.color,
+            hex: color.hex_code
+          })),
+          gsmValues: (gsmRes.data || []).map(gsm => ({
+            id: gsm.id,
+            value: gsm.gsm
+          })),
+          quantities: (quantitiesRes.data || []).map(qty => ({
+            id: qty.id,
+            value: qty.quantity,
+            unit: qty.unit
+          })),
           priceRange: [
             minProductPrice === Infinity ? 0 : minProductPrice,
             maxProductPrice === 0 ? 1000 : maxProductPrice

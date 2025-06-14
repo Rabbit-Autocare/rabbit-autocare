@@ -23,6 +23,7 @@ const KitsCombosForm = ({
   onVariantSelect,
   onQuantityChange,
   getImageUrl,
+  onRemoveProductInstance,
 }) => {
   const [errors, setErrors] = useState({});
   const [stockErrors, setStockErrors] = useState({});
@@ -84,26 +85,29 @@ const KitsCombosForm = ({
     return product.variants?.find((v) => v.color === color && v.size === size) || null;
   };
 
-  // Fetch stock information for variants
+  // Fetch stock information for variants when selectedProducts change
   useEffect(() => {
     const fetchVariantStocks = async () => {
       const stocks = {};
-      for (const product of selectedProducts) {
-        if (product.selected_variant) {
-          try {
-            const stock = await StockService.getVariantStock(product.selected_variant.id);
-            stocks[product.selected_variant.id] = stock;
-          } catch (error) {
-            console.error('Error fetching stock for variant', product.selected_variant.id, error);
-          }
+      const variantIdsToFetch = selectedProducts
+        .filter(p => p.selected_variant)
+        .map(p => p.selected_variant.id);
+
+      if (variantIdsToFetch.length > 0) {
+        try {
+          const fetchedStocks = await StockService.getMultipleVariantsStock(variantIdsToFetch);
+          // Correctly iterate over the object returned by getMultipleVariantsStock
+          Object.keys(fetchedStocks).forEach(variantId => {
+            stocks[variantId] = fetchedStocks[variantId];
+          });
+        } catch (error) {
+          console.error('Error fetching multiple variant stocks:', error);
         }
       }
       setVariantStocks(stocks);
     };
 
-    if (selectedProducts.length > 0) {
-      fetchVariantStocks();
-    }
+    fetchVariantStocks();
   }, [selectedProducts]);
 
   // Validate form data
@@ -190,66 +194,32 @@ const KitsCombosForm = ({
       return;
     }
 
-    // Transform data for API
-    const productsData = selectedProducts.map(p => {
-      if (!p.selected_variant) {
-        throw new Error(`No variant selected for product: ${p.name}`);
-      }
-      return {
-        product_id: p.id,
-        variant_id: p.selected_variant.id,
-        quantity: p.quantity || 1
-      };
-    });
-
-    const submitData = {
-      name: itemData.name,
-      description: itemData.description,
-      image_url: itemData.image_url,
-      original_price: itemData.original_price,
-      price: itemData.price,
-      discount_percentage: itemData.discount_percentage,
-      products: productsData
-    };
-
-    // Call the parent's onSubmit with the transformed data
-    onSubmit(submitData);
+    // Call the parent's onSubmit with the form data
+    onSubmit(itemData);
   };
 
   // Add quantity selection UI for each product
   const renderQuantitySelector = (product) => {
+    const currentStock = variantStocks[product.selected_variant?.id] || 0;
+    const isMaxQuantityReached = product.quantity >= currentStock;
     return (
       <div className="mt-2 flex items-center space-x-2">
         <label className="text-sm text-gray-600">Quantity:</label>
         <div className="flex items-center space-x-1">
           <button
             type="button"
-            onClick={() => {
-              const newQuantity = Math.max(1, (product.quantity || 1) - 1);
-              const updatedProducts = selectedProducts.map(p =>
-                p.id === product.id && p.selected_variant?.id === product.selected_variant?.id
-                  ? { ...p, quantity: newQuantity }
-                  : p
-              );
-              onQuantityChange(updatedProducts);
-            }}
-            className="w-6 h-6 flex items-center justify-center border rounded-full hover:bg-gray-100"
+            onClick={() => onQuantityChange(product.id, Math.max(1, (product.quantity || 1) - 1))}
+            className="w-6 h-6 flex items-center justify-center border rounded-full hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
+            disabled={product.quantity <= 1}
           >
             -
           </button>
           <span className="w-8 text-center">{product.quantity || 1}</span>
           <button
             type="button"
-            onClick={() => {
-              const newQuantity = (product.quantity || 1) + 1;
-              const updatedProducts = selectedProducts.map(p =>
-                p.id === product.id && p.selected_variant?.id === product.selected_variant?.id
-                  ? { ...p, quantity: newQuantity }
-                  : p
-              );
-              onQuantityChange(updatedProducts);
-            }}
-            className="w-6 h-6 flex items-center justify-center border rounded-full hover:bg-gray-100"
+            onClick={() => onQuantityChange(product.id, (product.quantity || 1) + 1)}
+            className="w-6 h-6 flex items-center justify-center border rounded-full hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
+            disabled={isMaxQuantityReached}
           >
             +
           </button>
@@ -303,81 +273,112 @@ const KitsCombosForm = ({
                 <p className='text-gray-500'>Loading products...</p>
               </div>
             ) : (
-              <div className='p-4 space-y-6'>
+              <div className='divide-y divide-gray-200'>
                 {allProducts.map((product) => {
+                  // Determine if this product is currently selected
+                  const isSelected = selectedProducts.some((p) => p.id === product.id);
                   const selectedInstances = selectedProducts.filter(p => p.id === product.id);
-                  const isSelected = selectedInstances.length > 0;
-                  const isMicrofiber = product.is_microfiber === true;
-                  const { colors, sizes } = getUniqueColorsAndSizes(product);
 
                   return (
                     <div
-                      key={`product-${product.id}`}
-                      className={`rounded-lg p-4 transition-all duration-200 ${
-                        isSelected ? 'bg-purple-50 border border-purple-200' : 'hover:bg-gray-50'
-                      }`}
+                      key={product.id}
+                      className={`flex items-start p-5 transition-colors ${isSelected ? 'bg-gray-50' : 'hover:bg-gray-50'}`}
                     >
-                      <div className='flex items-start space-x-4'>
-                        <div className='w-20 h-20 bg-gray-100 rounded flex items-center justify-center overflow-hidden'>
-                          {product.main_image_url ? (
-                            <img
-                              src={getImageUrl(product.main_image_url)}
-                              alt={product.name}
-                              className='object-cover w-full h-full rounded'
-                              onError={(e) => {
-                                e.target.onerror = null;
-                                e.target.src = '/placeholder-image.png';
-                              }}
+                      <img
+                        src={getImageUrl(product.main_image_url)}
+                        alt={product.name}
+                        className='w-20 h-20 object-cover rounded-lg mr-4'
+                      />
+                      <div className='flex-1'>
+                        <div className='flex justify-between items-start'>
+                          <div>
+                            <p className='text-sm font-medium truncate'>
+                              {product.name}
+                            </p>
+                            <p className='text-xs text-gray-500 mt-1'>
+                              {isSelected
+                                ? selectedInstances.length > 0 && selectedInstances[0].selected_variant
+                                  ? `Selected: ${selectedInstances[0].selected_variant.color || ''} ${selectedInstances[0].selected_variant.size || ''} ${selectedInstances[0].selected_variant.quantity || ''} ${selectedInstances[0].selected_variant.unit || ''}`
+                                  : 'Select variants below'
+                                : 'Tap to select'}
+                            </p>
+                          </div>
+                          <label className='relative flex items-start'>
+                            <input
+                              type='checkbox'
+                              checked={isSelected}
+                              onChange={(e) =>
+                                onProductSelect(product, e.target.checked)
+                              }
+                              className='peer ml-2 h-4 w-4 appearance-none border border-[#E0E0E0] rounded bg-white checked:bg-[#601E8D] checked:border-[#601E8D] cursor-pointer'
                             />
-                          ) : (
-                            <div className='text-xs px-2'>No image</div>
-                          )}
+                            <Check
+                              size={12}
+                              className='absolute left-[0.65rem] top-1/2 -translate-y-1/2 text-white opacity-0 peer-checked:opacity-100 pointer-events-none'
+                            />
+                          </label>
                         </div>
 
-                        <div className='flex-1'>
-                          <div className='flex justify-between items-start'>
-                            <div>
-                              <p className='text-sm font-medium truncate'>
-                                {product.name}
-                              </p>
-                              <p className='text-xs text-gray-500 mt-1'>
-                                {isSelected
-                                  ? 'Select variants below'
-                                  : 'Tap to select'}
-                              </p>
-                            </div>
-                            <label className='relative flex items-start'>
-                              <input
-                                type='checkbox'
-                                checked={isSelected}
-                                onChange={(e) =>
-                                  onProductSelect(product, e.target.checked)
-                                }
-                                className='peer ml-2 h-4 w-4 appearance-none border border-[#E0E0E0] rounded bg-white checked:bg-[#601E8D] checked:border-[#601E8D] cursor-pointer'
-                              />
-                              <Check
-                                size={12}
-                                className='absolute left-[0.65rem] top-1/2 -translate-y-1/2 text-white opacity-0 peer-checked:opacity-100 pointer-events-none'
-                              />
-                            </label>
-                          </div>
+                        {isSelected && (
+                          <div className='mt-4 space-y-4'>
+                            {/* Show selected instances */}
+                            {selectedInstances.map((selected, instanceIndex) => {
+                              const { colors, sizes } = getUniqueColorsAndSizes(product);
+                              const hasColorOptions = colors.length > 0;
+                              const hasSizeOptions = sizes.length > 0;
+                              const hasGsmOptions = product.variants?.some(v => v.gsm) || false; // Check for GSM
+                              const hasQuantityOptions = product.variants?.some(v => v.quantity) || false; // Check for Quantity
 
-                          {isSelected && (
-                            <div className='mt-4 space-y-4'>
-                              {/* Show selected instances */}
-                              {selectedInstances.map((selected, index) => (
-                                <div key={`${product.id}-instance-${index}`} className="border-t pt-2">
+                              // Determine active variant based on selected instance's selected_variant
+                              const activeVariant = selected.selected_variant;
+
+                              const handleColorSelect = (color) => {
+                                const newVariant = product.variants.find(
+                                  v => v.color === color && (hasSizeOptions ? v.size === activeVariant?.size : true) &&
+                                       (hasGsmOptions ? v.gsm === activeVariant?.gsm : true) &&
+                                       (hasQuantityOptions ? v.quantity === activeVariant?.quantity : true)
+                                );
+                                onVariantSelect(product.id, newVariant, instanceIndex);
+                              };
+
+                              const handleSizeSelect = (size) => {
+                                const newVariant = product.variants.find(
+                                  v => v.size === size && (hasColorOptions ? v.color === activeVariant?.color : true) &&
+                                       (hasGsmOptions ? v.gsm === activeVariant?.gsm : true) &&
+                                       (hasQuantityOptions ? v.quantity === activeVariant?.quantity : true)
+                                );
+                                onVariantSelect(product.id, newVariant, instanceIndex);
+                              };
+
+                              const handleGsmSelect = (gsm) => {
+                                const newVariant = product.variants.find(
+                                  v => v.gsm === gsm && (hasColorOptions ? v.color === activeVariant?.color : true) &&
+                                       (hasSizeOptions ? v.size === activeVariant?.size : true) &&
+                                       (hasQuantityOptions ? v.quantity === activeVariant?.quantity : true)
+                                );
+                                onVariantSelect(product.id, newVariant, instanceIndex);
+                              };
+
+                              const handleQuantitySelect = (quantity) => {
+                                const newVariant = product.variants.find(
+                                  v => v.quantity === quantity && (hasColorOptions ? v.color === activeVariant?.color : true) &&
+                                       (hasSizeOptions ? v.size === activeVariant?.size : true) &&
+                                       (hasGsmOptions ? v.gsm === activeVariant?.gsm : true)
+                                );
+                                onVariantSelect(product.id, newVariant, instanceIndex);
+                              };
+
+
+                              return (
+                                <div key={`${product.id}-instance-${instanceIndex}`} className="border-t pt-4">
                                   <div className="flex justify-between items-center mb-2">
-                                    <span className="text-sm font-medium">Instance {index + 1}</span>
+                                    <span className="text-sm font-medium">Instance {instanceIndex + 1}</span>
                                     {selectedInstances.length > 1 && (
                                       <button
                                         type="button"
                                         onClick={() => {
-                                          const updatedProducts = selectedProducts.filter(p =>
-                                            !(p.id === product.id &&
-                                              p.selected_variant?.id === selected.selected_variant?.id)
-                                          );
-                                          onProductSelect(product, false);
+                                          // This needs to remove *this specific instance*
+                                          onRemoveProductInstance(product.id, instanceIndex);
                                         }}
                                         className="text-red-500 hover:text-red-700"
                                       >
@@ -386,204 +387,246 @@ const KitsCombosForm = ({
                                     )}
                                   </div>
 
-                                  {/* Color Selection for Microfiber Products */}
-                                  {isMicrofiber && colors.length > 0 && (
-                                    <div className='space-y-2'>
-                                      <h4 className='font-medium text-sm'>Choose Color:</h4>
-                                      <div className='flex flex-wrap gap-2'>
-                                        {colors.map((color, colorIndex) => {
-                                          const isSelected = selected?.selected_variant?.color === color;
-                                          const hasStock = isColorAvailable(product, color);
+                                  {product.variants?.length > 0 ? (
+                                    <div className="space-y-4">
+                                      {/* Color Selection for Microfiber Products */}
+                                      {hasColorOptions && (
+                                        <div className='space-y-2'>
+                                          <h4 className='font-medium text-sm'>Choose Color:</h4>
+                                          <div className='flex flex-wrap gap-2'>
+                                            {colors.map((color) => {
+                                              const isSelectedColor = activeVariant?.color === color;
+                                              const hasStock = product.variants.some(v =>
+                                                v.color === color &&
+                                                (hasSizeOptions ? v.size === activeVariant?.size : true) &&
+                                                (hasGsmOptions ? v.gsm === activeVariant?.gsm : true) &&
+                                                (hasQuantityOptions ? v.quantity === activeVariant?.quantity : true) &&
+                                                variantStocks[v.id] > 0
+                                              );
+                                              const variantIdForColor = product.variants.find(v => v.color === color)?.id;
 
-                                          return (
-                                            <div key={`${product.id}-color-${colorIndex}`} className='relative group'>
-                                              <button
-                                                type='button'
-                                                onClick={() => {
-                                                  const currentSelectedSize = selected?.selected_variant?.size;
-                                                  let targetVariant = product.variants.find(v =>
-                                                    v.color === color &&
-                                                    (currentSelectedSize ? v.size === currentSelectedSize : true) &&
-                                                    v.stock > 0
-                                                  );
-
-                                                  if (!targetVariant) {
-                                                    targetVariant = product.variants.find(v => v.color === color && v.stock > 0);
-                                                  }
-
-                                                  if (targetVariant) {
-                                                    onVariantSelect(product.id, targetVariant, selected);
-                                                  } else {
-                                                    onVariantSelect(product.id, null, selected);
-                                                  }
-                                                }}
-                                                disabled={!hasStock}
-                                                className={`
-                                                  w-8 h-8 rounded-full border-2 transition-all duration-200 relative
-                                                  ${
-                                                    isSelected
-                                                      ? 'border-black ring-2 ring-black ring-offset-2'
-                                                      : hasStock
-                                                        ? 'border-gray-300 hover:border-gray-400'
-                                                        : 'border-gray-200 cursor-not-allowed opacity-50'
-                                                  }
-                                                `}
-                                                style={getColorStyle(color)}
-                                                title={color}
-                                              >
-                                                {color?.toLowerCase() === 'white' && (
-                                                  <div className='absolute inset-0 rounded-full border border-gray-300'></div>
-                                                )}
-                                                {!hasStock && (
-                                                  <div className='absolute inset-0 flex items-center justify-center'>
-                                                    <X className='w-3 h-3 text-gray-600' />
-                                                  </div>
-                                                )}
-                                              </button>
-                                              <div className='absolute -bottom-6 left-1/2 transform -translate-x-1/2 bg-black text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap pointer-events-none z-10'>
-                                                {color}
-                                              </div>
-                                            </div>
-                                          );
-                                        })}
-                                      </div>
-                                    </div>
-                                  )}
-
-                                  {/* Size Selection for Microfiber Products */}
-                                  {isMicrofiber && sizes.length > 0 && (
-                                    <div className='space-y-2'>
-                                      <h4 className='font-medium text-sm'>Choose Size:</h4>
-                                      <div className='flex flex-wrap gap-2'>
-                                        {sizes.map((size, sizeIndex) => {
-                                          const isSelected = selected?.selected_variant?.size === size;
-                                          const currentSelectedColor = selected?.selected_variant?.color;
-                                          const hasStock = isSizeAvailable(product, size);
-                                          const isCurrentCombinationAvailable = currentSelectedColor ?
-                                            getVariantForCombination(product, currentSelectedColor, size)?.stock > 0 : hasStock;
-
-                                          return (
-                                            <div key={`${product.id}-size-${sizeIndex}`} className='relative group'>
-                                              <button
-                                                type='button'
-                                                onClick={() => {
-                                                  const currentSelectedColor = selected?.selected_variant?.color;
-                                                  let targetVariant = product.variants.find(v =>
-                                                    v.size === size &&
-                                                    (currentSelectedColor ? v.color === currentSelectedColor : true) &&
-                                                    v.stock > 0
-                                                  );
-
-                                                  if (!targetVariant) {
-                                                    targetVariant = product.variants.find(v => v.size === size && v.stock > 0);
-                                                  }
-
-                                                  if (targetVariant) {
-                                                    onVariantSelect(product.id, targetVariant, selected);
-                                                  } else {
-                                                    onVariantSelect(product.id, null, selected);
-                                                  }
-                                                }}
-                                                className={`
-                                                  px-4 py-2 text-sm font-medium transition-all duration-200 rounded-full
-                                                  ${
-                                                    isSelected
-                                                      ? 'bg-white text-black border-2 border-black'
-                                                      : !isCurrentCombinationAvailable && currentSelectedColor
-                                                        ? 'bg-gray-100 text-gray-400 cursor-not-allowed border border-gray-200'
-                                                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200 border border-transparent'
-                                                  }
-                                                `}
-                                              >
-                                                {size}
-                                              </button>
-                                              {!isCurrentCombinationAvailable && currentSelectedColor && (
-                                                <div className='absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none'>
-                                                  <div className='bg-red-500 text-white rounded-full p-1'>
-                                                    <X className='w-3 h-3' />
-                                                  </div>
+                                              return (
+                                                <div key={color} className='relative group'>
+                                                  <button
+                                                    type="button"
+                                                    onClick={() => hasStock && handleColorSelect(color)}
+                                                    disabled={!hasStock}
+                                                    className={`
+                                                      w-8 h-8 rounded-full border-2 transition-all duration-200 relative
+                                                      ${
+                                                        isSelectedColor
+                                                          ? 'border-black ring-2 ring-black ring-offset-2'
+                                                          : hasStock
+                                                            ? 'border-gray-300 hover:border-gray-400'
+                                                            : 'border-gray-200 cursor-not-allowed opacity-50'
+                                                      }
+                                                    `}
+                                                    style={getColorStyle(color)}
+                                                    title={color}
+                                                  >
+                                                    {color?.toLowerCase() === 'white' && (
+                                                      <div className='absolute inset-0 rounded-full border border-gray-300'></div>
+                                                    )}
+                                                    {!hasStock && (
+                                                      <div className='absolute inset-0 flex items-center justify-center'>
+                                                        <X className='w-3 h-3 text-gray-600' />
+                                                      </div>
+                                                    )}
+                                                  </button>
                                                 </div>
-                                              )}
-                                            </div>
-                                          );
-                                        })}
-                                      </div>
-                                    </div>
-                                  )}
-
-                                  {/* Variant Selection for Non-Microfiber Products */}
-                                  {!isMicrofiber && product.variants?.length > 0 && (
-                                    <div className='space-y-2'>
-                                      <h4 className='font-medium text-sm'>Choose Quantity:</h4>
-                                      <div className='flex flex-wrap gap-2'>
-                                        {product.variants.map((variant, variantIndex) => {
-                                          const isOutOfStock = variant.stock === 0;
-                                          const isSelected = selected?.selected_variant?.id === variant.id;
-
-                                          return (
-                                            <div key={`${product.id}-variant-${variantIndex}`} className='relative group'>
-                                              <button
-                                                type='button'
-                                                onClick={() => onVariantSelect(product.id, variant, selected)}
-                                                disabled={isOutOfStock}
-                                                className={`
-                                                  px-4 py-2 text-sm font-medium transition-all duration-200 rounded-full
-                                                  ${
-                                                    isSelected
-                                                      ? 'bg-white text-black border-2 border-black'
-                                                      : isOutOfStock
-                                                        ? 'bg-gray-100 text-gray-400 cursor-not-allowed border border-gray-200'
-                                                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200 border border-transparent'
-                                                  }
-                                                `}
-                                              >
-                                                {`${variant.quantity || ''} ${variant.unit || 'ml'}`}
-                                              </button>
-                                              {isOutOfStock && (
-                                                <div className='absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none'>
-                                                  <div className='bg-red-500 text-white rounded-full p-1'>
-                                                    <X className='w-3 h-3' />
-                                                  </div>
-                                                </div>
-                                              )}
-                                            </div>
-                                          );
-                                        })}
-                                      </div>
-                                    </div>
-                                  )}
-
-                                  {/* Quantity Selector */}
-                                  {selected?.selected_variant && renderQuantitySelector(selected)}
-
-                                  {/* Stock Information */}
-                                  {selected?.selected_variant && (
-                                    <div className='text-xs text-gray-600'>
-                                      {variantStocks[selected.selected_variant.id] ? (
-                                        <span className='text-green-600'>
-                                          In Stock
-                                        </span>
-                                      ) : (
-                                        <span className='text-red-600'>Out of stock</span>
+                                              );
+                                            })}
+                                          </div>
+                                        </div>
                                       )}
+
+                                      {/* Size Selection */}
+                                      {hasSizeOptions && (
+                                        <div className='space-y-2'>
+                                          <h4 className='font-medium text-sm'>Choose Size:</h4>
+                                          <div className='flex flex-wrap gap-2'>
+                                            {sizes.map((size) => {
+                                              const isSelectedSize = activeVariant?.size === size;
+                                              const hasStock = product.variants.some(v =>
+                                                v.size === size &&
+                                                (hasColorOptions ? v.color === activeVariant?.color : true) &&
+                                                (hasGsmOptions ? v.gsm === activeVariant?.gsm : true) &&
+                                                (hasQuantityOptions ? v.quantity === activeVariant?.quantity : true) &&
+                                                variantStocks[v.id] > 0
+                                              );
+                                              const variantIdForSize = product.variants.find(v => v.size === size)?.id;
+
+                                              return (
+                                                <div key={size} className='relative group'>
+                                                  <button
+                                                    type="button"
+                                                    onClick={() => hasStock && handleSizeSelect(size)}
+                                                    disabled={!hasStock}
+                                                    className={`
+                                                      px-4 py-2 text-sm font-medium transition-all duration-200 rounded-full
+                                                      ${
+                                                        isSelectedSize
+                                                          ? 'bg-black text-white border-2 border-black'
+                                                          : hasStock
+                                                            ? 'bg-gray-100 text-gray-600 hover:bg-gray-200 border border-transparent'
+                                                            : 'bg-gray-100 text-gray-400 cursor-not-allowed border border-gray-200'
+                                                      }
+                                                    `}
+                                                  >
+                                                    {size}
+                                                  </button>
+                                                  {!hasStock && (
+                                                    <div className='absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none'>
+                                                      <div className='bg-red-500 text-white rounded-full p-1'>
+                                                        <X className='w-3 h-3' />
+                                                      </div>
+                                                    </div>
+                                                  )}
+                                                </div>
+                                              );
+                                            })}
+                                          </div>
+                                        </div>
+                                      )}
+
+                                      {/* GSM Selection (for microfiber) */}
+                                      {hasGsmOptions && product.is_microfiber && (
+                                        <div className='space-y-2'>
+                                          <h4 className='font-medium text-sm'>Choose GSM:</h4>
+                                          <div className='flex flex-wrap gap-2'>
+                                            {[...new Set(product.variants.map(v => v.gsm).filter(Boolean))].map(gsm => {
+                                              const isSelectedGsm = activeVariant?.gsm === gsm;
+                                              const hasStock = product.variants.some(v =>
+                                                v.gsm === gsm &&
+                                                (hasColorOptions ? v.color === activeVariant?.color : true) &&
+                                                (hasSizeOptions ? v.size === activeVariant?.size : true) &&
+                                                (hasQuantityOptions ? v.quantity === activeVariant?.quantity : true) &&
+                                                variantStocks[v.id] > 0
+                                              );
+                                              return (
+                                                <div key={gsm} className='relative group'>
+                                                  <button
+                                                    type="button"
+                                                    onClick={() => hasStock && handleGsmSelect(gsm)}
+                                                    disabled={!hasStock}
+                                                    className={`
+                                                      px-4 py-2 text-sm font-medium transition-all duration-200 rounded-full
+                                                      ${
+                                                        isSelectedGsm
+                                                          ? 'bg-black text-white border-2 border-black'
+                                                          : hasStock
+                                                            ? 'bg-gray-100 text-gray-600 hover:bg-gray-200 border border-transparent'
+                                                            : 'bg-gray-100 text-gray-400 cursor-not-allowed border border-gray-200'
+                                                      }
+                                                    `}
+                                                  >
+                                                    {gsm}
+                                                  </button>
+                                                  {!hasStock && (
+                                                    <div className='absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none'>
+                                                      <div className='bg-red-500 text-white rounded-full p-1'>
+                                                        <X className='w-3 h-3' />
+                                                      </div>
+                                                    </div>
+                                                  )}
+                                                </div>
+                                              );
+                                            })}
+                                          </div>
+                                        </div>
+                                      )}
+
+                                      {/* Quantity Selection (for non-microfiber) */}
+                                      {hasQuantityOptions && !product.is_microfiber && (
+                                        <div className='space-y-2'>
+                                          <h4 className='font-medium text-sm'>Choose Quantity:</h4>
+                                          <div className='flex flex-wrap gap-2'>
+                                            {[...new Set(product.variants.map(v => v.quantity).filter(Boolean))].map(quantity => {
+                                              const isSelectedQuantity = activeVariant?.quantity === quantity;
+                                              const hasStock = product.variants.some(v =>
+                                                v.quantity === quantity &&
+                                                (hasColorOptions ? v.color === activeVariant?.color : true) &&
+                                                (hasSizeOptions ? v.size === activeVariant?.size : true) &&
+                                                (hasGsmOptions ? v.gsm === activeVariant?.gsm : true) &&
+                                                variantStocks[v.id] > 0
+                                              );
+                                              return (
+                                                <div key={quantity} className='relative group'>
+                                                  <button
+                                                    type="button"
+                                                    onClick={() => hasStock && handleQuantitySelect(quantity)}
+                                                    disabled={!hasStock}
+                                                    className={`
+                                                      px-4 py-2 text-sm font-medium transition-all duration-200 rounded-full
+                                                      ${
+                                                        isSelectedQuantity
+                                                          ? 'bg-black text-white border-2 border-black'
+                                                          : hasStock
+                                                            ? 'bg-gray-100 text-gray-600 hover:bg-gray-200 border border-transparent'
+                                                            : 'bg-gray-100 text-gray-400 cursor-not-allowed border border-gray-200'
+                                                      }
+                                                    `}
+                                                  >
+                                                    {quantity} {product.variants.find(v => v.quantity === quantity)?.unit || ''}
+                                                  </button>
+                                                  {!hasStock && (
+                                                    <div className='absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none'>
+                                                      <div className='bg-red-500 text-white rounded-full p-1'>
+                                                        <X className='w-3 h-3' />
+                                                      </div>
+                                                    </div>
+                                                  )}
+                                                </div>
+                                              );
+                                            })}
+                                          </div>
+                                        </div>
+                                      )}
+
+                                      {activeVariant && renderQuantitySelector(selected)}
+
+                                      {/* Stock Information for selected variant */}
+                                      {activeVariant && (
+                                        <div className='text-xs mt-2'>
+                                          Stock: {' '
+                                          }{variantStocks[activeVariant.id] !== undefined ? (
+                                            variantStocks[activeVariant.id] > 0 ? (
+                                              <span className='text-green-600 font-medium'>
+                                                {variantStocks[activeVariant.id]} in stock
+                                              </span>
+                                            ) : (
+                                              <span className='text-red-600 font-medium'>Out of stock</span>
+                                            )
+                                          ) : (
+                                            <span className='text-gray-500'>N/A</span>
+                                          )}
+                                        </div>
+                                      )}
+                                    </div>
+                                  ) : (
+                                    <div className='text-sm text-gray-500 mt-2'>
+                                      This product has no variants.
                                     </div>
                                   )}
                                 </div>
-                              ))}
+                              );
+                            })}
 
-                              {/* Add Another Instance Button */}
+                            {/* Add Another Instance Button (only for combos) */}
+                            {itemLabel === 'Combo' && (
                               <button
                                 type="button"
                                 onClick={() => {
+                                  // This will add a new instance of the same product
                                   onProductSelect(product, true);
                                 }}
                                 className="mt-2 text-sm text-purple-600 hover:text-purple-800"
                               >
                                 + Add Another Instance
                               </button>
-                            </div>
-                          )}
-                        </div>
+                            )}
+                          </div>
+                        )}
                       </div>
                     </div>
                   );
@@ -644,37 +687,26 @@ const KitsCombosForm = ({
                 {/* Image Upload */}
                 <div>
                   <label className='block text-base font-medium text-gray-900 mb-2'>
-                    Media
+                    {itemLabel} Image
                   </label>
-                  <div
-                    className='border border-gray-300 rounded-lg px-4 py-6 text-center bg-white'
-                    onDrop={(e) => {
-                      e.preventDefault();
-                      if (e.dataTransfer.files.length > 0) {
-                        onImageUpload({
-                          target: { files: e.dataTransfer.files },
-                        });
-                      }
-                    }}
-                    onDragOver={(e) => e.preventDefault()}
-                  >
-                    {previewImage ? (
-                      <div className='space-y-3'>
+                  <div className='mt-1 flex justify-center rounded-md border-2 border-dashed border-gray-300 px-6 pt-5 pb-6'>
+                    {previewImage || itemData.image_url ? (
+                      <div className='text-center'>
                         <img
-                          src={previewImage}
+                          src={previewImage || getImageUrl(itemData.image_url)}
                           alt='Preview'
-                          className='h-24 w-auto mx-auto object-contain'
+                          className='mx-auto h-32 w-32 object-cover rounded-md mb-3'
                         />
-                        <label className='inline-block bg-gray-200 font-bold text-black text-sm px-5 py-2 rounded cursor-pointer hover:bg-[#601E8D] hover:text-white'>
-                          Browse
-                          <input
-                            type='file'
-                            accept='image/*'
-                            className='hidden'
-                            onChange={onImageUpload}
-                            disabled={uploading}
-                          />
-                        </label>
+                        <button
+                          type='button'
+                          onClick={() => {
+                            onChange({ ...itemData, image_url: null });
+                            setPreviewImage(null);
+                          }}
+                          className='text-red-500 text-sm hover:underline'
+                        >
+                          Remove Image
+                        </button>
                       </div>
                     ) : (
                       <div className='py-5 space-y-3 text-black'>
@@ -724,31 +756,45 @@ const KitsCombosForm = ({
                   <div className='border rounded-lg p-4'>
                     <h3 className='font-medium mb-3'>Selected Products</h3>
                     <div className='space-y-2'>
-                      {selectedProducts.map((product) => (
-                        <div key={product.id} className='flex items-center justify-between text-sm'>
-                          <div className='flex items-center space-x-2'>
-                            <Package size={16} className='text-gray-500' />
-                            <span>{product.name}</span>
-                            {product.selected_variant && (
-                              <span className='text-gray-500'>
-                                ({product.is_microfiber
-                                  ? `${product.selected_variant.color || 'N/A'} - ${product.selected_variant.size || 'N/A'}`
-                                  : `${product.selected_variant.quantity || ''} ${product.selected_variant.unit || 'ml'}`})
-                              </span>
-                            )}
+                      {selectedProducts.map((product) => {
+                        const currentStock = variantStocks[product.selected_variant?.id];
+                        return (
+                          <div key={product.id + (product.selected_variant?.id || '')} className='flex items-center justify-between text-sm'>
+                            <div className='flex items-center space-x-2'>
+                              <Package size={16} className='text-gray-500' />
+                              <span>{product.name}</span>
+                              {product.selected_variant && (
+                                <span className='text-gray-500'>
+                                  ({product.is_microfiber
+                                    ? `${product.selected_variant.color || ''} ${product.selected_variant.size || ''} ${product.selected_variant.gsm || ''}`
+                                    : `${product.selected_variant.quantity || ''} ${product.selected_variant.unit || ''}`})
+                                </span>
+                              )}
+                            </div>
+                            <div className='flex items-center space-x-2'>
+                              {product.selected_variant && (
+                                <span className='text-gray-600'>₹{(product.selected_variant.price || product.selected_variant.mrp || 0).toFixed(2)}</span>
+                              )}
+                              {product.selected_variant && (
+                                <span className='text-xs text-gray-500'>
+                                  Stock: {' '
+                                  }{currentStock !== undefined ? (
+                                    currentStock > 0 ? (
+                                      <span className='text-green-600 font-medium'>
+                                        {currentStock} in stock
+                                      </span>
+                                    ) : (
+                                      <span className='text-red-600 font-medium'>Out of stock</span>
+                                    )
+                                  ) : (
+                                    <span className='text-gray-500'>N/A</span>
+                                  )}
+                                </span>
+                              )}
+                            </div>
                           </div>
-                          <div className='flex items-center space-x-2'>
-                            {product.selected_variant && (
-                              <span className='text-gray-600'>₹{(product.selected_variant.price || product.selected_variant.mrp || 0).toFixed(2)}</span>
-                            )}
-                            {product.selected_variant && (
-                              <span className='text-xs text-gray-500'>
-                                Stock: {product.selected_variant.stock > 0 ? product.selected_variant.stock : 'Out of stock'}
-                              </span>
-                            )}
-                          </div>
-                        </div>
-                      ))}
+                        );
+                      })}
                     </div>
                   </div>
                 )}

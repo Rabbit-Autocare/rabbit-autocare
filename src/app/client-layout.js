@@ -8,6 +8,7 @@ import Footer from "@/components/navigation/Footer";
 import { CartProvider } from "@/contexts/CartContext";
 import MainNavbar from "@/components/navigation/MainNavbar";
 import { ThemeProvider } from "@/contexts/ThemeContext";
+import ExtraNavbar from "@/components/navigation/extranavbar";
 
 export default function ClientLayout({ children }) {
 	const router = useRouter();
@@ -61,8 +62,10 @@ export default function ClientLayout({ children }) {
 			disableTransitionOnChange
 		>
 			<CartProvider>
+				<ExtraNavbar/>
 				<MainNavbar user={user} />
 				{children}
+				
 				<Footer />
 			</CartProvider>
 		</ThemeProvider>

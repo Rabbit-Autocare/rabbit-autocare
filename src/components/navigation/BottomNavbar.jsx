@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useCart } from "@/hooks/useCart";
 import CartDrawer from "@/components/cart/CartDrawer";
-import { ProductService } from "@/lib/service/productService";
+import { CategoryService } from "@/lib/service/microdataService";
 
 // Default shop categories including only Kits & Combos
 const defaultCategories = [
@@ -51,7 +51,7 @@ export default function BottomNavbar() {
 			setLoading(true);
 			try {
 				console.log("Attempting to fetch categories...");
-				const fetchedData = await ProductService.getCategories();
+				const fetchedData = await CategoryService.getCategories();
 				console.log("Fetched data:", fetchedData);
 
 				// Assume categories are in fetchedData.data; fallback to empty array if not
@@ -61,7 +61,7 @@ export default function BottomNavbar() {
 				const transformedCategories = [
 					...fetchedCategoriesArray.map(cat => ({
 						name: cat.name,
-						href: `/shop/${cat.name}`,
+						href: `/shop/${cat.name.toLowerCase().replace(/\s+/g, '-')}`,
 						image: cat.image || "/placeholder.svg?height=200&width=300",
 					})),
 					defaultCategories[0], // Kits & Combos
@@ -83,7 +83,7 @@ export default function BottomNavbar() {
 
 	return (
 		<>
-			<div className="border-b border-gray-200 py-3 bg-white relative z-40">
+			<div className="border-b border-gray-200 py-3 bg-white relative ">
 				<div className="container mx-auto flex justify-between items-center px-6">
 					{/* Desktop Shop Button */}
 					<div className="relative">

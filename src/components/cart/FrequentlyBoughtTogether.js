@@ -21,26 +21,27 @@ export default function FrequentlyBoughtTogether() {
 			setLoading(true);
 			setError(null);
 
-			console.log("Component: Fetching combos for cart items:", cartItems);
+			// Get unique product IDs from cart
+			const cartProductIds = [...new Set(cartItems.map(item =>
+				item.product_id || item.product?.id || item.id
+			))];
 
 			const response = await fetch("/api/combos/frequently-bought", {
 				method: "POST",
 				headers: {
 					"Content-Type": "application/json",
 				},
-				body: JSON.stringify({ cartItems }),
+				body: JSON.stringify({
+					cartItems,
+					productIds: cartProductIds
+				}),
 			});
 
-			console.log("Component: Response status:", response.status);
-
 			if (!response.ok) {
-				const errorText = await response.text();
-				console.error("Component: API Error:", response.status, errorText);
-				throw new Error(`API Error: ${response.status} - ${errorText}`);
+				throw new Error(`API Error: ${response.status}`);
 			}
 
 			const data = await response.json();
-			console.log("Component: Received data:", data);
 
 			if (data.error) {
 				throw new Error(data.error);
@@ -50,20 +51,19 @@ export default function FrequentlyBoughtTogether() {
 			const filteredCombos = (data.combos || []).filter((combo) => {
 				const comboProductIds = combo.products.map((p) => p.product_id);
 				const cartProductIds = cartItems.map(
-					(item) => item.product_id || item.productId || item.id,
+					(item) => item.product_id || item.product?.id || item.id
 				);
 
 				// Only show combos that don't have ALL their products already in cart
 				const hasNewProducts = comboProductIds.some(
-					(id) => !cartProductIds.includes(id),
+					(id) => !cartProductIds.includes(id)
 				);
 				return hasNewProducts;
 			});
 
-			console.log("Component: Filtered combos:", filteredCombos);
 			setFrequentlyBought(filteredCombos);
 		} catch (error) {
-			console.error("Component: Error fetching combo products:", error);
+			console.error("Error fetching combo products:", error);
 			setError(`Failed to load suggestions: ${error.message}`);
 			setFrequentlyBought([]);
 		} finally {

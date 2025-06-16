@@ -125,12 +125,14 @@ export default function CartDrawer() {
 
         {/* Scrollable content area - improved touch scrolling */}
         <div
-          className='flex-1 overflow-y-auto min-h-0 max-h-[calc(100vh-180px)]'
+          className='flex-1 overflow-y-auto min-h-0'
           style={{
             WebkitOverflowScrolling: 'touch',
             touchAction: 'pan-y',
             overscrollBehavior: 'contain',
             msOverflowStyle: '-ms-autohiding-scrollbar',
+            maxHeight: 'calc(100vh - 180px)',
+            height: '100%'
           }}
         >
           {loading ? (

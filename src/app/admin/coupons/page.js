@@ -1,7 +1,6 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { supabase } from '../../../lib/supabaseClient';
 import AdminLayout from '@/components/layouts/AdminLayout';
 import CouponForm from '@/components/forms/CouponForm';
 import '../../../app/globals.css';
@@ -30,51 +29,64 @@ export default function CouponsPage() {
 
   const fetchCoupons = async () => {
     setLoading(true);
-    const { data, error } = await supabase
-      .from('coupons')
-      .select(`*, user_coupons:user_coupons(count)`)
-      .order('created_at', { ascending: false });
+    try {
+      const response = await fetch('/api/coupons', {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('supabase.auth.token')}`
+        },
+      });
 
-    if (error) {
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.error || 'Failed to fetch coupons');
+      }
+
+      if (result.success) {
+        setCoupons(result.coupons || []);
+        const active = result.coupons.filter((coupon) => coupon.is_active).length;
+        setActiveCount(active);
+      }
+    } catch (error) {
       console.error('Error fetching coupons:', error);
-    } else {
-      const couponsWithUsage = data.map((coupon) => ({
-        ...coupon,
-        usage_count: coupon.user_coupons?.[0]?.count || 0,
-      }));
-      setCoupons(couponsWithUsage || []);
-      const active = data.filter((coupon) => coupon.is_active).length;
-      setActiveCount(active);
+      alert(`Error fetching coupons: ${error.message}`);
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   const handleSubmit = async (couponData) => {
     setLoading(true);
     try {
-      if (formMode === 'add') {
-        const { error } = await supabase.from('coupons').insert([
-          {
-            ...couponData,
-            is_active: true,
-          },
-        ]);
-        if (error) throw error;
-        alert('Coupon created successfully!');
-      } else {
-        const { error } = await supabase
-          .from('coupons')
-          .update(couponData)
-          .eq('id', couponData.id);
-        if (error) throw error;
-        alert('Coupon updated successfully!');
+      const url = '/api/coupons';
+      const method = formMode === 'add' ? 'POST' : 'PUT';
+
+      const response = await fetch(url, {
+        method,
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('supabase.auth.token')}`
+        },
+        body: JSON.stringify(couponData),
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.error || `Failed to ${formMode} coupon`);
       }
-      resetForm();
-      setCurrentView('list');
-      fetchCoupons();
+
+      if (result.success) {
+        alert(`Coupon ${formMode === 'add' ? 'created' : 'updated'} successfully!`);
+        resetForm();
+        setCurrentView('list');
+        fetchCoupons();
+      }
     } catch (error) {
+      console.error(`Error ${formMode}ing coupon:`, error);
       alert(`Error: ${error.message}`);
-      console.error(error);
     } finally {
       setLoading(false);
     }
@@ -82,12 +94,31 @@ export default function CouponsPage() {
 
   const handleDelete = async (id) => {
     if (window.confirm('Are you sure you want to delete this coupon?')) {
-      const { error } = await supabase.from('coupons').delete().eq('id', id);
-      if (error) {
+      setLoading(true);
+      try {
+        const response = await fetch(`/api/coupons?id=${id}`, {
+          method: 'DELETE',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${localStorage.getItem('supabase.auth.token')}`
+          },
+        });
+
+        const result = await response.json();
+
+        if (!response.ok) {
+          throw new Error(result.error || 'Failed to delete coupon');
+        }
+
+        if (result.success) {
+          alert('Coupon deleted successfully');
+          fetchCoupons();
+        }
+      } catch (error) {
+        console.error('Error deleting coupon:', error);
         alert(`Error: ${error.message}`);
-      } else {
-        alert('Coupon deleted successfully');
-        fetchCoupons();
+      } finally {
+        setLoading(false);
       }
     }
   };
@@ -137,11 +168,17 @@ export default function CouponsPage() {
               <h1 className='text-2xl font-semibold text-gray-900'>Coupons</h1>
               <button
                 onClick={handleAddNew}
-                className='bg-gray-200 hover:bg-[#601E8D] hover:text-white text-black px-4 py-2 rounded-lg transition text-xs font-medium flex items-center gap-2'
+                disabled={loading}
+                className='bg-gray-200 hover:bg-[#601E8D] hover:text-white text-black px-4 py-2 rounded-lg transition text-xs font-medium flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed'
               >
                 <Plus size={16} />
                 Create Coupon
               </button>
+            </div>
+
+            {/* Stats */}
+            <div className='mb-4 text-sm text-gray-600'>
+              Active Coupons: {activeCount} / {MAX_ACTIVE_COUPONS}
             </div>
 
             {/* Table */}

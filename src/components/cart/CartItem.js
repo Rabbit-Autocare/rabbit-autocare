@@ -11,44 +11,57 @@ export default function CartItem({ item, formatPrice, getVariantDisplayText }) {
   const handleIncrease = async () => {
     // Check stock before increasing
     const maxStock = item.variant?.stock || item.product?.stock || 999;
-    console.log('Attempting to increase quantity:', {
-      currentQty: item.quantity,
-      maxStock: maxStock,
-      itemId: item.id,
-    });
 
     if (item.quantity < maxStock) {
       setIsUpdating(true);
       try {
         const newQuantity = item.quantity + 1;
-        console.log('Increasing to:', newQuantity);
         const result = await updateCartItem(item.id, newQuantity);
-        console.log('Result of quantity update:', result);
 
         if (!result) {
-          console.error('Failed to update quantity');
-          // Here you could show a toast notification to the user
+          throw new Error('Failed to update quantity');
         }
       } catch (error) {
         console.error('Error increasing quantity:', error);
+        // You could add a toast notification here
       } finally {
         setIsUpdating(false);
       }
-    } else {
-      console.log('Cannot increase: max stock reached');
     }
   };
 
   const handleDecrease = async () => {
+    if (item.quantity <= 1) {
+      await handleRemove();
+      return;
+    }
+
     setIsUpdating(true);
     try {
-      if (item.quantity > 1) {
-        await updateCartItem(item.id, item.quantity - 1);
-      } else {
-        await removeFromCart(item.id);
+      const newQuantity = item.quantity - 1;
+      const result = await updateCartItem(item.id, newQuantity);
+
+      if (!result) {
+        throw new Error('Failed to update quantity');
       }
     } catch (error) {
       console.error('Error decreasing quantity:', error);
+      // You could add a toast notification here
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+
+  const handleRemove = async () => {
+    setIsUpdating(true);
+    try {
+      const result = await removeFromCart(item.id);
+      if (!result) {
+        throw new Error('Failed to remove item');
+      }
+    } catch (error) {
+      console.error('Error removing item:', error);
+      // You could add a toast notification here
     } finally {
       setIsUpdating(false);
     }
@@ -128,7 +141,7 @@ export default function CartItem({ item, formatPrice, getVariantDisplayText }) {
 
       {/* Remove button */}
       <button
-        onClick={() => removeFromCart(item.id)}
+        onClick={handleRemove}
         className='p-1 rounded-full hover:bg-gray-100 text-gray-500 hover:text-red-500 transition-colors'
         aria-label='Remove item'
       >

@@ -2,9 +2,11 @@
 import { useState, useEffect } from "react";
 import { useCart } from "@/hooks/useCart";
 import { Check, Ticket, X, Loader2, Tag } from "lucide-react";
+import { useAuth } from "@/contexts/AuthContext";
 
 export default function CouponSection() {
 	const { coupon, applyCoupon, couponLoading, couponError } = useCart();
+	const { user } = useAuth();
 
 	const [couponCode, setCouponCode] = useState("");
 	const [availableCoupons, setAvailableCoupons] = useState([]);
@@ -12,13 +14,43 @@ export default function CouponSection() {
 
 	// Fetch user coupons
 	const fetchUserCoupons = async () => {
+		if (!user) {
+			setAvailableCoupons([]);
+			return;
+		}
+
 		try {
 			setCouponsLoading(true);
-			const response = await fetch("/api/user/coupons");
-			if (response.ok) {
-				const data = await response.json();
-				setAvailableCoupons(data.coupons || []);
+			const response = await fetch("/api/user/coupons", {
+				method: "GET",
+				headers: {
+					"Content-Type": "application/json",
+				},
+			});
+
+			if (!response.ok) {
+				throw new Error('Failed to fetch coupons');
 			}
+
+			const data = await response.json();
+
+			if (!data.success) {
+				throw new Error(data.error || 'Failed to fetch coupons');
+			}
+
+			// Transform the coupons data from authusers table
+			const transformedCoupons = (data.coupons || []).map(coupon => ({
+				code: coupon.code,
+				description: coupon.description || `Get ${coupon.discount}% off`,
+				type: coupon.type || 'percentage',
+				value: coupon.discount || coupon.value,
+				minPurchase: coupon.min_purchase,
+				maxDiscount: coupon.max_discount,
+				validUntil: coupon.valid_until,
+				isActive: coupon.is_active
+			}));
+
+			setAvailableCoupons(transformedCoupons);
 		} catch (error) {
 			console.error("Error fetching user coupons:", error);
 			setAvailableCoupons([]);
@@ -29,7 +61,7 @@ export default function CouponSection() {
 
 	useEffect(() => {
 		fetchUserCoupons();
-	}, []);
+	}, [user]); // Refetch when user changes
 
 	// Refetch available coupons whenever the coupon state changes
 	useEffect(() => {
@@ -52,6 +84,18 @@ export default function CouponSection() {
 		setCouponCode(couponCodeToApply);
 		applyCoupon(couponCodeToApply);
 	};
+
+	if (!user) {
+		return (
+			<div className="bg-gray-50 rounded-lg p-4">
+				<h4 className="text-sm font-medium flex items-center gap-2 mb-3">
+					<Ticket size={16} className="text-blue-600" />
+					Apply Coupon
+				</h4>
+				<p className="text-sm text-gray-600">Please login to use coupons</p>
+			</div>
+		);
+	}
 
 	return (
 		<div className="bg-gray-50 rounded-lg p-4">

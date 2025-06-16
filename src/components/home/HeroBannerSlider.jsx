@@ -392,7 +392,7 @@ const HeroBannerSlider = () => {
         <DetailingToolsBanner />
         <LuxuryAccessoriesBanner />
       </BannerSlider>
-      <div style={{ height: "500px" }}></div>
+      <div style={{ height: "700px" }}></div>
     </>
   )
 }

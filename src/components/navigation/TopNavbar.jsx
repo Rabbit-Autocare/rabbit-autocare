@@ -8,6 +8,7 @@ import Image from 'next/image';
 const topNavLinks = [
   { name: 'HOME', href: '/' },
   { name: 'ABOUT US', href: '/about' },
+  { name: 'PRODUCTS', href: '/products' },
   { name: 'BLOGS', href: '/blog' },
   { name: 'GET IN TOUCH', href: '/contact' },
 ];

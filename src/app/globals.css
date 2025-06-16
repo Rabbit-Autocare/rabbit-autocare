@@ -1,4 +1,4 @@
-@import 'tailwindcss';
+@import "tailwindcss";
 /* @import "tw-animate-css"; */
 
 @custom-variant dark (&:is(.dark *));
@@ -118,22 +118,42 @@
   }
 }
 
-
-#smooth-wrapper {
-  /* position: fixed; */
+/* ✅ Updated smooth scroll styles - only apply to home page */
+body.smooth-scroll #smooth-wrapper {
+  position: fixed;
   top: 0;
   left: 0;
   right: 0;
   bottom: 0;
-  /* overflow: hidden; */
-  z-index: 0;
+  overflow: hidden;
+  z-index: 1;
 }
 
-#smooth-content {
+body.smooth-scroll #smooth-content {
   overflow: visible;
   width: 100%;
   height: auto;
   min-height: 100%;
   position: relative;
   will-change: transform;
+}
+
+/* ✅ Default body scroll for non-home pages */
+body:not(.smooth-scroll) {
+  overflow-x: hidden;
+  overflow-y: auto;
+}
+
+/* ✅ Ensure fixed elements work properly */
+#navbar-portal {
+  position: fixed !important;
+  top: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  z-index: 99999 !important;
+  pointer-events: none;
+}
+
+#navbar-portal > * {
+  pointer-events: auto;
 }

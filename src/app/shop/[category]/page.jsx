@@ -155,8 +155,17 @@ export default function ShopPage() {
           KitsCombosService.getCombos().catch(() => ({ combos: [] })),
         ])
 
-        const kits = Array.isArray(kitsResponse.kits) ? kitsResponse.kits : []
-        const combos = Array.isArray(combosResponse.combos) ? combosResponse.combos : []
+        const kits = Array.isArray(kitsResponse.kits) ? kitsResponse.kits.map(kit => ({
+          ...kit,
+          image_url: kit.image_url || `/images/products/kits/${kit.id}.jpg`,
+          main_image_url: kit.main_image_url || `/images/products/kits/${kit.id}.jpg`
+        })) : []
+
+        const combos = Array.isArray(combosResponse.combos) ? combosResponse.combos.map(combo => ({
+          ...combo,
+          image_url: combo.image_url || `/images/products/combos/${combo.id}.jpg`,
+          main_image_url: combo.main_image_url || `/images/products/combos/${combo.id}.jpg`
+        })) : []
 
         productData = [...kits, ...combos]
         responseCount = productData.length
@@ -168,8 +177,17 @@ export default function ShopPage() {
           KitsCombosService.getCombos().catch(() => ({ combos: [] })),
         ])
 
-        const kits = Array.isArray(kitsResponse.kits) ? kitsResponse.kits : []
-        const combos = Array.isArray(combosResponse.combos) ? combosResponse.combos : []
+        const kits = Array.isArray(kitsResponse.kits) ? kitsResponse.kits.map(kit => ({
+          ...kit,
+          image_url: kit.image_url || `/images/products/kits/${kit.id}.jpg`,
+          main_image_url: kit.main_image_url || `/images/products/kits/${kit.id}.jpg`
+        })) : []
+
+        const combos = Array.isArray(combosResponse.combos) ? combosResponse.combos.map(combo => ({
+          ...combo,
+          image_url: combo.image_url || `/images/products/combos/${combo.id}.jpg`,
+          main_image_url: combo.main_image_url || `/images/products/combos/${combo.id}.jpg`
+        })) : []
 
         productData = [...(regularProducts.products || []), ...kits, ...combos]
         responseCount = productData.length

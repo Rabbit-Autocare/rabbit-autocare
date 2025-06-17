@@ -1,5 +1,9 @@
 // kitsCombosService.js - Handles API operations for Kits & Combos
 
+import { supabase } from '@/lib/supabaseClient';
+import { KitService } from './kitService';
+import { ComboService } from './comboService';
+
 const KITS_API = '/api/kits';
 const COMBOS_API = '/api/combos';
 
@@ -154,6 +158,138 @@ export class KitsCombosService {
       return await res.json();
     } catch (error) {
       console.error('Error in deleteCombo:', error);
+      throw error;
+    }
+  }
+
+  static async getRelatedProducts(productId, variantId = null) {
+    try {
+      // Get all kits and combos
+      const [kits, combos] = await Promise.all([
+        KitService.getKits(),
+        ComboService.getCombos()
+      ]);
+
+      // Filter kits that contain the product with matching variant
+      const matchingKits = kits.filter(kit =>
+        kit.kit_products.some(kp =>
+          kp.product_id === productId &&
+          (!variantId || kp.variant_id === variantId)
+        )
+      );
+
+      // Filter combos that contain the product with matching variant
+      const matchingCombos = combos.filter(combo =>
+        combo.combo_products.some(cp =>
+          cp.product_id === productId &&
+          (!variantId || cp.variant_id === variantId)
+        )
+      );
+
+      return {
+        kits: matchingKits,
+        combos: matchingCombos
+      };
+    } catch (error) {
+      console.error('Error getting related products:', error);
+      throw error;
+    }
+  }
+
+  static async getFrequentlyBoughtTogether(cartItems) {
+    try {
+      // Get all kits and combos
+      const [kits, combos] = await Promise.all([
+        KitService.getKits(),
+        ComboService.getCombos()
+      ]);
+
+      // Create a map of cart items for quick lookup
+      const cartItemMap = new Map(
+        cartItems.map(item => [`${item.product_id}-${item.variant?.id || 'default'}`, item])
+      );
+
+      // Filter kits that contain any product from the cart with matching variant
+      const matchingKits = kits.filter(kit =>
+        kit.kit_products.some(kp =>
+          cartItemMap.has(`${kp.product_id}-${kp.variant_id || 'default'}`)
+        )
+      );
+
+      // Filter combos that contain any product from the cart with matching variant
+      const matchingCombos = combos.filter(combo =>
+        combo.combo_products.some(cp =>
+          cartItemMap.has(`${cp.product_id}-${cp.variant_id || 'default'}`)
+        )
+      );
+
+      // Sort by number of matching products (descending)
+      const sortByMatchingProducts = (a, b) => {
+        const aMatches = a.kit_products?.length || a.combo_products?.length;
+        const bMatches = b.kit_products?.length || b.combo_products?.length;
+        return bMatches - aMatches;
+      };
+
+      return {
+        kits: matchingKits.sort(sortByMatchingProducts),
+        combos: matchingCombos.sort(sortByMatchingProducts)
+      };
+    } catch (error) {
+      console.error('Error getting frequently bought together:', error);
+      throw error;
+    }
+  }
+
+  static async getProductRecommendations(productId, variantId = null) {
+    try {
+      // Get all kits and combos
+      const [kits, combos] = await Promise.all([
+        KitService.getKits(),
+        ComboService.getCombos()
+      ]);
+
+      // Get products that are commonly bought together with the given product
+      const relatedProducts = new Set();
+
+      // Add products from matching kits
+      kits.forEach(kit => {
+        if (kit.kit_products.some(kp =>
+          kp.product_id === productId &&
+          (!variantId || kp.variant_id === variantId)
+        )) {
+          kit.kit_products.forEach(kp => {
+            if (kp.product_id !== productId) {
+              relatedProducts.add(kp.product_id);
+            }
+          });
+        }
+      });
+
+      // Add products from matching combos
+      combos.forEach(combo => {
+        if (combo.combo_products.some(cp =>
+          cp.product_id === productId &&
+          (!variantId || cp.variant_id === variantId)
+        )) {
+          combo.combo_products.forEach(cp => {
+            if (cp.product_id !== productId) {
+              relatedProducts.add(cp.product_id);
+            }
+          });
+        }
+      });
+
+      // Fetch the related products' details
+      const { data: products, error } = await supabase
+        .from('products')
+        .select('*')
+        .in('id', Array.from(relatedProducts));
+
+      if (error) throw error;
+
+      return products;
+    } catch (error) {
+      console.error('Error getting product recommendations:', error);
       throw error;
     }
   }

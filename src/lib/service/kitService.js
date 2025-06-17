@@ -2,6 +2,32 @@ import { supabase } from '@/lib/supabaseClient';
 import { StockService } from './stockService';
 
 export class KitService {
+  static async uploadKitImage(kitId, imageFile) {
+    try {
+      const fileExt = imageFile.name.split('.').pop();
+      const fileName = `${kitId}.${fileExt}`;
+      const filePath = `products/kits/${fileName}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from('product-images')
+        .upload(filePath, imageFile, {
+          cacheControl: '3600',
+          upsert: true
+        });
+
+      if (uploadError) throw uploadError;
+
+      const { data: { publicUrl } } = supabase.storage
+        .from('product-images')
+        .getPublicUrl(filePath);
+
+      return publicUrl;
+    } catch (error) {
+      console.error('Error uploading kit image:', error);
+      throw error;
+    }
+  }
+
   static async getKits(id = null) {
     try {
       const query = supabase
@@ -21,7 +47,13 @@ export class KitService {
 
       const { data, error } = await query;
       if (error) throw error;
-      return data;
+
+      // Transform image URLs to use consistent path
+      return data.map(kit => ({
+        ...kit,
+        image_url: kit.image_url || `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/product-images/products/kits/${kit.id}.jpg`,
+        main_image_url: kit.main_image_url || `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/product-images/products/kits/${kit.id}.jpg`
+      }));
     } catch (error) {
       console.error('Error fetching kits:', error);
       throw error;
@@ -30,23 +62,14 @@ export class KitService {
 
   static async createKit(kitData) {
     try {
-      // Ensure inventory defaults to 1 if not provided by the form
       const inventory = kitData.inventory || 1;
 
-      // Transform products for database insertion
-      const transformedProducts = kitData.products.map(p => ({
-        product_id: p.id,
-        variant_id: p.selected_variant?.id || null, // Handle cases where variant might not be selected
-        quantity: p.quantity || 1
-      }));
-
-      // Insert the new kit into the 'kits' table
+      // First create the kit without image
       const { data: newKit, error: kitError } = await supabase
         .from('kits')
         .insert({
           name: kitData.name,
           description: kitData.description,
-          image_url: kitData.image_url,
           original_price: kitData.original_price,
           price: kitData.price,
           discount_percent: kitData.discount_percentage,
@@ -57,12 +80,30 @@ export class KitService {
 
       if (kitError) throw kitError;
 
-      // Insert each product into the 'kit_products' table
-      const kitProductsData = transformedProducts.map(p => ({
+      // If there's an image file, upload it
+      let imageUrl = null;
+      if (kitData.image) {
+        imageUrl = await this.uploadKitImage(newKit.id, kitData.image);
+      }
+
+      // Update the kit with the image URL
+      if (imageUrl) {
+        const { error: updateError } = await supabase
+          .from('kits')
+          .update({
+            image_url: imageUrl,
+            main_image_url: imageUrl
+          })
+          .eq('id', newKit.id);
+
+        if (updateError) throw updateError;
+      }
+
+      const kitProductsData = kitData.products.map(p => ({
         kit_id: newKit.id,
-        product_id: p.product_id,
-        variant_id: p.variant_id,
-        quantity: p.quantity
+        product_id: p.id,
+        variant_id: p.selected_variant?.id || null,
+        quantity: p.quantity || 1
       }));
 
       const { error: kitProductsError } = await supabase
@@ -71,7 +112,11 @@ export class KitService {
 
       if (kitProductsError) throw kitProductsError;
 
-      return newKit;
+      return {
+        ...newKit,
+        image_url: imageUrl || `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/product-images/products/kits/${newKit.id}.jpg`,
+        main_image_url: imageUrl || `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/product-images/products/kits/${newKit.id}.jpg`
+      };
     } catch (error) {
       console.error('Error creating kit:', error);
       throw error;
@@ -80,91 +125,92 @@ export class KitService {
 
   static async updateKit(id, kitData) {
     try {
-      // Ensure inventory defaults to 1 if not provided by the form
       const inventory = kitData.inventory || 1;
 
-      // Transform products for database update (used for kit_products manipulation)
-      const transformedProducts = kitData.products.map(p => ({
-        product_id: p.id,
-        variant_id: p.selected_variant?.id || null,
-        quantity: p.quantity || 1
-      }));
+      // Handle image upload if provided
+      let imageUrl = null;
+      if (kitData.image) {
+        imageUrl = await this.uploadKitImage(id, kitData.image);
+      }
 
-      // First get the existing kit's products to compare (no stock return/reserve needed)
-      const { data: existingKitProducts, error: fetchError } = await supabase
+      // Get existing kit products
+      const { data: existingProducts, error: fetchError } = await supabase
         .from('kit_products')
         .select('*')
         .eq('kit_id', id);
 
       if (fetchError) throw fetchError;
 
-      const existingProductMap = new Map(existingKitProducts.map(p => [`${p.product_id}-${p.variant_id}`, p]));
-      const newProductMap = new Map(transformedProducts.map(p => [`${p.product_id}-${p.variant_id}`, p]));
+      // Determine which products to add, update, or delete
+      const existingProductIds = existingProducts.map(p => p.id);
+      const newProductIds = kitData.products.map(p => p.id);
 
-      const productsToAdd = [];
-      const productsToUpdate = [];
-      const productIdsToDelete = [];
+      const productsToAdd = kitData.products.filter(p => !existingProductIds.includes(p.id));
+      const productsToUpdate = existingProducts.filter(p => newProductIds.includes(p.id));
+      const productIdsToDelete = existingProductIds.filter(id => !newProductIds.includes(id));
 
-      // Determine products to add/update/delete
-      for (const [key, newProduct] of newProductMap.entries()) {
-        if (existingProductMap.has(key)) {
-          // Product exists, check if quantity changed (no stock update, just quantity change)
-          const existingProduct = existingProductMap.get(key);
-          if (existingProduct.quantity !== newProduct.quantity) {
-            productsToUpdate.push({
-              id: existingProduct.id,
-              quantity: newProduct.quantity
-            });
-          }
-          existingProductMap.delete(key); // Mark as processed
-        } else {
-          // New product to add
-          productsToAdd.push({
-            kit_id: id,
-            product_id: newProduct.product_id,
-            variant_id: newProduct.variant_id,
-            quantity: newProduct.quantity
-          });
-        }
-      }
-
-      // Remaining in existingProductMap are products to delete
-      for (const [key, existingProduct] of existingProductMap.entries()) {
-        productIdsToDelete.push(existingProduct.id);
-      }
-
-      // Perform database operations
+      // Add new products
       if (productsToAdd.length > 0) {
-        const { error } = await supabase.from('kit_products').insert(productsToAdd);
-        if (error) throw error;
+        const newProductsData = productsToAdd.map(p => ({
+          kit_id: id,
+          product_id: p.id,
+          variant_id: p.selected_variant?.id || null,
+          quantity: p.quantity || 1
+        }));
+
+        const { error: addError } = await supabase
+          .from('kit_products')
+          .insert(newProductsData);
+
+        if (addError) throw addError;
       }
+
+      // Update existing products
       if (productsToUpdate.length > 0) {
         for (const update of productsToUpdate) {
-          const { error } = await supabase.from('kit_products').update({ quantity: update.quantity }).eq('id', update.id);
+          const { error } = await supabase
+            .from('kit_products')
+            .update({ quantity: update.quantity })
+            .eq('id', update.id);
           if (error) throw error;
         }
       }
+
+      // Delete removed products
       if (productIdsToDelete.length > 0) {
-        const { error } = await supabase.from('kit_products').delete().in('id', productIdsToDelete);
+        const { error } = await supabase
+          .from('kit_products')
+          .delete()
+          .in('id', productIdsToDelete);
         if (error) throw error;
       }
 
-      // Update kit details (excluding stock-related fields)
+      const updateData = {
+        name: kitData.name,
+        description: kitData.description,
+        original_price: kitData.original_price,
+        price: kitData.price,
+        discount_percent: kitData.discount_percentage,
+        inventory: inventory
+      };
+
+      // Only update image URLs if a new image was uploaded
+      if (imageUrl) {
+        updateData.image_url = imageUrl;
+        updateData.main_image_url = imageUrl;
+      }
+
       const { data, error } = await supabase
         .from('kits')
-        .update({
-          name: kitData.name,
-          description: kitData.description,
-          image_url: kitData.image_url,
-          original_price: kitData.original_price,
-          price: kitData.price,
-          discount_percent: kitData.discount_percentage,
-          inventory: inventory
-        })
+        .update(updateData)
         .eq('id', id);
 
       if (error) throw error;
-      return data;
+      return {
+        ...data,
+        image_url: imageUrl || data.image_url || `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/product-images/products/kits/${id}.jpg`,
+        main_image_url: imageUrl || data.main_image_url || `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/product-images/products/kits/${id}.jpg`
+      };
     } catch (error) {
       console.error('Error updating kit:', error);
       throw error;
@@ -173,14 +219,22 @@ export class KitService {
 
   static async deleteKit(id) {
     try {
-      // Delete the kit (no stock return needed)
+      // Delete the kit image from storage
+      const { error: deleteImageError } = await supabase.storage
+        .from('product-images')
+        .remove([`products/kits/${id}.jpg`]);
+
+      if (deleteImageError) {
+        console.error('Error deleting kit image:', deleteImageError);
+      }
+
+      // Delete the kit and its related products
       const { error } = await supabase
         .from('kits')
         .delete()
         .eq('id', id);
 
       if (error) throw error;
-      return true;
     } catch (error) {
       console.error('Error deleting kit:', error);
       throw error;

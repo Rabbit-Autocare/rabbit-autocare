@@ -244,51 +244,7 @@ export class ProductService {
     }
   }
 
-  // ============= KITS & COMBOS =============
-
-  static async getKitsAndCombos({ limit, sort, filters = {} } = {}) {
-    try {
-      const params = new URLSearchParams()
-      if (limit) params.append("limit", limit)
-
-      const url = params.toString() ? `/api/products/kits?${params}` : `/api/products/kits`
-
-      const res = await fetch(url)
-
-      if (!res.ok) {
-        const errorText = await res.text()
-        try {
-          const errorJson = JSON.parse(errorText)
-          throw new Error(errorJson.error || `API error: ${res.status}`)
-        } catch (e) {
-          throw new Error(`API error: ${errorText || res.statusText || res.status}`)
-        }
-      }
-
-      const data = await res.json()
-
-      const products = Array.isArray(data.products)
-        ? data.products
-        : Array.isArray(data.data)
-          ? data.data
-          : Array.isArray(data)
-            ? data
-            : []
-      const total = data.total || products.length
-
-      const transformedProducts = products.map((product) => this.transformProductData(product))
-
-      return {
-        success: data.success || true,
-        products: transformedProducts,
-        total: total,
-      }
-    } catch (error) {
-      console.error("Error in getKitsAndCombos:", error)
-      throw error
-    }
-  }
-
+  
   // ============= DATA TRANSFORMATION =============
 
   static transformProductData(product) {

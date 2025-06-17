@@ -326,30 +326,30 @@ const BannerSlider = ({ children, autoSlideInterval = 5000, showControls = true,
       {showControls && totalSlides > 1 && (
         <>
           {/* Navigation Arrows */}
-          <button
+          {/* <button
             onClick={prevSlide}
             className="absolute left-4 top-1/2 transform -translate-y-1/2 z-20 bg-white bg-opacity-20 hover:bg-opacity-30 backdrop-blur-sm rounded-full p-3 transition-all duration-300 text-white hover:scale-110"
           >
             <ChevronLeft size={24} />
-          </button>
+          </button> */}
 
-          <button
+          {/* <button
             onClick={nextSlide}
             className="absolute right-4 top-1/2 transform -translate-y-1/2 z-20 bg-white bg-opacity-20 hover:bg-opacity-30 backdrop-blur-sm rounded-full p-3 transition-all duration-300 text-white hover:scale-110"
           >
             <ChevronRight size={24} />
-          </button>
+          </button> */}
 
           {/* Auto-play toggle */}
           <div className="absolute top-4 right-4 z-20">
-            <button
+            {/* <button
               onClick={() => setIsAutoPlaying(!isAutoPlaying)}
               className={`px-3 py-1 rounded-full text-sm font-medium transition-all duration-300 ${
                 isAutoPlaying ? "bg-green-500 text-white" : "bg-white bg-opacity-20 text-white hover:bg-opacity-30"
               }`}
             >
               {isAutoPlaying ? "Auto" : "Manual"}
-            </button>
+            </button> */}
           </div>
         </>
       )}

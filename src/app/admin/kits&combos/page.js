@@ -34,7 +34,14 @@ function getVariantFields(variants) {
 		"price", "stock", "compare_at_price", "sku", "barcode",
 		"weight", "dimensions", "material", "care_instructions"
 	];
-	return fields.filter(field => variants.some(v => v[field] !== undefined && v[field] !== null && v[field] !== ""));
+	// Filter to include fields if the property exists on at least one variant, regardless of its value
+	const includedFields = fields.filter(field => variants.some(v => Object.prototype.hasOwnProperty.call(v, field)));
+
+	// Add logging for debugging
+	console.log("getVariantFields - All included variants:", variants);
+	console.log("getVariantFields - Identified fields:", includedFields);
+
+	return includedFields;
 }
 
 function formatRupee(amount) {
@@ -262,15 +269,32 @@ export default function KitsAndCombosPage() {
       reader.readAsDataURL(file);
 
       const ext = file.name.split('.').pop();
-      const fileName = `${Math.random().toString(36).slice(2)}.${ext}`;
-      const filePath = `${activeTab}-images/${fileName}`;
+      const filePath = `products/${activeTab}/${Math.random().toString(36).slice(2)}.${ext}`;
 
-      const { error } = await supabase.storage
+      console.log("Attempting to upload file to path:", filePath); // Log 1
+
+      const { error, data } = await supabase.storage
         .from('product-images')
-        .upload(filePath, file);
+        .upload(filePath, file, {
+          cacheControl: '3600',
+          upsert: true
+        });
       if (error) throw error;
 
-      setItemData((prev) => ({ ...prev, image_url: filePath }));
+      console.log("File uploaded successfully, data:", data); // Log 2
+
+      // Construct the full public URL immediately after upload
+      const publicUrl = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/product-images/${filePath}`;
+
+      console.log("Generated public URL:", publicUrl); // Log 3
+
+      setItemData((prev) => ({
+        ...prev,
+        image_url: publicUrl, // Store the full public URL directly
+      }));
+
+      console.log("itemData.image_url after setting state:", publicUrl); // Log 4
+
     } catch (error) {
       console.error('Image upload error:', error);
       alert('Failed to upload image');
@@ -281,13 +305,15 @@ export default function KitsAndCombosPage() {
 
   const handleSubmit = async (formData) => {
     try {
+      // Ensure image_url from state is passed to formData if available
       const kitOrComboData = {
         ...formData,
+        image_url: itemData.image_url, // Ensure the image_url from state is included
         products: selectedProducts, // Attach the selectedProducts from state
         inventory: 1, // Default inventory to 1, as no input for it yet
       };
 
-      console.log('Submitting:', kitOrComboData);
+      console.log('Submitting kit/combo data:', kitOrComboData); // Log 5
 
       if (formData.id) { // Check if it's an update operation
         if (activeTab === 'kits') {
@@ -598,7 +624,7 @@ export default function KitsAndCombosPage() {
                                       }
 
                                       // Collect all unique variant fields across all included products
-                                      const allIncludedVariants = includedProducts.flatMap(p => p.product?.variants || []);
+                                      const allIncludedVariants = includedProducts.flatMap(p => p.variant ? [p.variant] : []);
                                       const fields = getVariantFields(allIncludedVariants);
 
                                       // Ensure core fields are always present if variants exist
@@ -618,6 +644,7 @@ export default function KitsAndCombosPage() {
                                               {fields.includes("size") && <th className="px-4 py-3 text-left font-medium text-gray-700 border-b">Size</th>}
                                               {fields.includes("color") && <th className="px-4 py-3 text-left font-medium text-gray-700 border-b">Color</th>}
                                               <th className="px-4 py-3 text-left font-medium text-gray-700 border-b">Quantity in {itemLabel}</th>
+                                              {fields.includes("quantity") && <th className="px-4 py-3 text-left font-medium text-gray-700 border-b">Variant Quantity</th>}
                                               {fields.includes("unit") && <th className="px-4 py-3 text-left font-medium text-gray-700 border-b">Unit</th>}
                                               <th className="px-4 py-3 text-left font-medium text-gray-700 border-b">Variant Price</th>
                                               {fields.includes("stock") && <th className="px-4 py-3 text-left font-medium text-gray-700 border-b">Available Stock</th>}
@@ -635,19 +662,35 @@ export default function KitsAndCombosPage() {
                                               const product = includedProduct.product;
                                               const availableStock = variant?.stock !== undefined ? variant.stock : 'N/A';
 
+                                              // Add logging for individual variant data
+                                              console.log(`Rendering included product ${product?.name} (ID: ${product?.id}) - Variant data:`, variant);
+
                                               return (
                                                 <tr key={includedProduct.id} className={index % 2 === 0 ? "bg-white" : "bg-gray-50"}>
                                                   <td className="px-4 py-3 border-b border-gray-100 font-medium text-gray-900">
-                                                    {product?.name || '—'}
+                                                    <div className="flex items-center gap-3">
+                                                      {product?.main_image_url && (
+                                                        <div className="w-10 h-10 rounded-lg overflow-hidden border border-gray-200 flex-shrink-0">
+                                                          <img
+                                                            src={getImageUrl(product.main_image_url)}
+                                                            alt={product.name}
+                                                            className="w-full h-full object-cover"
+                                                          />
+                                                        </div>
+                                                      )}
+                                                      <div>
+                                                        <div className="font-medium">{product?.name || '—'}</div>
+                                                      </div>
+                                                    </div>
                                                   </td>
                                                   {fields.includes("gsm") && (
                                                     <td className="px-4 py-3 border-b border-gray-100">
-                                                      {variant?.gsm ? `${variant.gsm} GSM` : "—"}
+                                                      {variant?.gsm !== undefined && variant?.gsm !== null ? `${variant.gsm} GSM` : "—"}
                                                     </td>
                                                   )}
                                                   {fields.includes("size") && (
                                                     <td className="px-4 py-3 border-b border-gray-100">
-                                                      {variant?.size ? `${variant.size} cm` : "—"}
+                                                      {variant?.size !== undefined && variant?.size !== null ? `${variant.size} cm` : "—"}
                                                     </td>
                                                   )}
                                                   {fields.includes("color") && (
@@ -682,6 +725,13 @@ export default function KitsAndCombosPage() {
                                                   <td className="px-4 py-3 border-b border-gray-100">
                                                     {includedProduct.quantity || "—"}
                                                   </td>
+                                                  {fields.includes("quantity") && (
+                                                    <td className="px-4 py-3 border-b border-gray-100">
+                                                      {variant?.quantity !== undefined && variant?.quantity !== null
+                                                        ? `${variant.quantity}${variant?.unit ? ` ${variant.unit}` : ''}`
+                                                        : "—"}
+                                                    </td>
+                                                  )}
                                                   {fields.includes("unit") && (
                                                     <td className="px-4 py-3 border-b border-gray-100">
                                                       {variant?.unit || "—"}

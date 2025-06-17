@@ -3,6 +3,7 @@ import { useState, useEffect } from "react";
 import { useCart } from "@/hooks/useCart";
 import { Package, Plus, ShoppingCart, Percent } from "lucide-react";
 import { motion } from "framer-motion";
+import { ComboService } from "@/lib/service/comboService";
 
 export default function FrequentlyBoughtTogether() {
 	const { cartItems } = useCart();
@@ -21,47 +22,45 @@ export default function FrequentlyBoughtTogether() {
 			setLoading(true);
 			setError(null);
 
-			// Get unique product IDs from cart
-			const cartProductIds = [...new Set(cartItems.map(item =>
-				item.product_id || item.product?.id || item.id
-			))];
+			// Get all combos
+			const allCombos = await ComboService.getCombos();
 
-			const response = await fetch("/api/combos/frequently-bought", {
-				method: "POST",
-				headers: {
-					"Content-Type": "application/json",
-				},
-				body: JSON.stringify({
-					cartItems,
-					productIds: cartProductIds
-				}),
+			// Filter combos that contain cart items with the same variant
+			const matchingCombos = allCombos.filter(combo => {
+				// Check if any product in the combo matches a cart item with the same variant
+				return combo.combo_products.some(comboProduct => {
+					return cartItems.some(cartItem => {
+						// Match product ID
+						const productMatch = cartItem.product_id === comboProduct.product_id ||
+							cartItem.product?.id === comboProduct.product_id;
+
+						// Match variant ID
+						const variantMatch = cartItem.variant?.id === comboProduct.variant_id;
+
+						return productMatch && variantMatch;
+					});
+				});
 			});
 
-			if (!response.ok) {
-				throw new Error(`API Error: ${response.status}`);
-			}
+			// Transform the combos to include necessary data
+			const transformedCombos = matchingCombos.map(combo => ({
+				id: combo.id,
+				name: combo.name,
+				description: combo.description,
+				image_url: combo.image_url,
+				original_price: combo.original_price,
+				price: combo.price,
+				discount_percent: combo.discount_percent,
+				products: combo.combo_products.map(cp => ({
+					product_id: cp.product_id,
+					variant_id: cp.variant_id,
+					quantity: cp.quantity,
+					product: cp.product,
+					variant: cp.variant
+				}))
+			}));
 
-			const data = await response.json();
-
-			if (data.error) {
-				throw new Error(data.error);
-			}
-
-			// Filter out combos that contain products already in cart
-			const filteredCombos = (data.combos || []).filter((combo) => {
-				const comboProductIds = combo.products.map((p) => p.product_id);
-				const cartProductIds = cartItems.map(
-					(item) => item.product_id || item.product?.id || item.id
-				);
-
-				// Only show combos that don't have ALL their products already in cart
-				const hasNewProducts = comboProductIds.some(
-					(id) => !cartProductIds.includes(id)
-				);
-				return hasNewProducts;
-			});
-
-			setFrequentlyBought(filteredCombos);
+			setFrequentlyBought(transformedCombos);
 		} catch (error) {
 			console.error("Error fetching combo products:", error);
 			setError(`Failed to load suggestions: ${error.message}`);

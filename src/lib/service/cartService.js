@@ -35,6 +35,7 @@ class CartService {
 
   // New method to find existing cart item with same product and variant
   async findExistingCartItem(productId, variant, userId) {
+    console.log('findExistingCartItem: Searching for existing item', { productId, variant, userId });
     try {
       // Query cart_items where user_id = userId AND product_id = productId
       const { data, error } = await supabase
@@ -45,35 +46,46 @@ class CartService {
 
       if (error) throw error;
 
-      if (!data || data.length === 0) return null;
+      if (!data || data.length === 0) {
+        console.log('findExistingCartItem: No items found for product ID', productId);
+        return null;
+      }
 
       // Filter results to find matching variant
       const existingItem = data.find((item) => {
-        // Strategy 1: If variant has ID, compare by ID
-        if (variant.id && item.variant?.id) {
-          return item.variant.id === variant.id;
-        }
+        // Normalize variants for comparison
+        const normalizeVariant = (v) => {
+          if (!v) return null;
+          const normalized = {};
+          if (v.id) normalized.id = v.id;
+          if (v.size) normalized.size = v.size;
+          if (v.color) normalized.color = v.color;
+          if (v.quantity_value) normalized.quantity_value = v.quantity_value; // Assuming 'quantity_value' is the numeric part of quantity
+          if (v.unit) normalized.unit = v.unit;
+          if (v.gsm) normalized.gsm = v.gsm;
+          if (v.is_package !== undefined) normalized.is_package = v.is_package;
+          if (v.package_quantity) normalized.package_quantity = v.package_quantity;
+          // Add other relevant variant attributes here
+          return normalized;
+        };
 
-        // Strategy 2: Compare key properties for microfiber products
-        if (variant.size && variant.color) {
-          return (
-            item.variant?.size === variant.size &&
-            item.variant?.color === variant.color
-          );
-        }
+        const normalizedItemVariant = normalizeVariant(item.variant);
+        const normalizedSearchVariant = normalizeVariant(variant);
 
-        // Strategy 3: Compare key properties for liquid products
-        if (variant.quantity && variant.unit) {
-          return (
-            item.variant?.quantity === variant.quantity &&
-            item.variant?.unit === variant.unit
-          );
-        }
+        const areVariantsEqual = JSON.stringify(normalizedItemVariant) === JSON.stringify(normalizedSearchVariant);
 
-        // Fallback: Compare stringified JSON (less reliable)
-        return JSON.stringify(item.variant) === JSON.stringify(variant);
+        console.log('findExistingCartItem: Comparing variants:', {
+          itemVariant: item.variant,
+          searchVariant: variant,
+          normalizedItemVariant,
+          normalizedSearchVariant,
+          areVariantsEqual
+        });
+
+        return areVariantsEqual;
       });
 
+      console.log('findExistingCartItem: Existing item found:', existingItem);
       return existingItem || null;
     } catch (error) {
       console.error('Error in findExistingCartItem:', error);
@@ -83,6 +95,7 @@ class CartService {
 
   // Smart add method that handles duplicates
   async addToCartSmart(productId, variant, quantity = 1, userId) {
+    console.log('addToCartSmart: Attempting to add item', { productId, variant, quantity, userId });
     try {
       // Step 1: Check if item exists
       const existingItem = await this.findExistingCartItem(
@@ -92,6 +105,7 @@ class CartService {
       );
 
       if (existingItem) {
+        console.log('addToCartSmart: Item already exists, updating quantity.', { existingItemId: existingItem.id, oldQuantity: existingItem.quantity, newQuantity: existingItem.quantity + quantity });
         // Step 2a: If exists, update quantity
         const newQuantity = existingItem.quantity + quantity;
 
@@ -102,9 +116,14 @@ class CartService {
           .select()
           .single();
 
-        if (error) throw error;
+        if (error) {
+          console.error('addToCartSmart: Error updating existing item quantity:', error);
+          throw error;
+        }
+        console.log('addToCartSmart: Successfully updated existing item.', data);
         return { success: true, cartItem: data, updated: true };
       } else {
+        console.log('addToCartSmart: Item does not exist, creating new cart item.');
         // Step 2b: If not exists, create new cart item
         const cartItem = {
           user_id: userId,
@@ -120,7 +139,11 @@ class CartService {
           .select()
           .single();
 
-        if (error) throw error;
+        if (error) {
+          console.error('addToCartSmart: Error inserting new cart item:', error);
+          throw error;
+        }
+        console.log('addToCartSmart: Successfully created new cart item.', data);
         return { success: true, cartItem: data, created: true };
       }
     } catch (error) {

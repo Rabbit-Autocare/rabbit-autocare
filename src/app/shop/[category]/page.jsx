@@ -10,10 +10,10 @@ import ProductGrid from "@/components/shop/ProductGrid"
 import { Filter, ArrowUpDown, X } from "lucide-react"
 
 export default function ShopPage() {
-  const params = useParams()
   const router = useRouter()
+  const { category: categoryParam } = useParams()
+  const [currentCategory, setCurrentCategory] = useState(categoryParam)
   const searchParams = useSearchParams()
-  const category = params.category || "all"
 
   // State for products and loading
   const [products, setProducts] = useState([])
@@ -87,10 +87,10 @@ export default function ShopPage() {
     if (selectedGsm.length > 0) params.set("gsm", selectedGsm.join(","))
     if (selectedQuantity.length > 0) params.set("quantity", selectedQuantity.join(","))
 
-    const newUrl = `/shop/${category}${params.toString() ? `?${params.toString()}` : ""}`
+    const newUrl = `/shop/${currentCategory}${params.toString() ? `?${params.toString()}` : ""}`
     router.replace(newUrl, { scroll: false })
   }, [
-    category,
+    currentCategory,
     sort,
     selectedSize,
     minPrice,
@@ -138,135 +138,68 @@ export default function ShopPage() {
 
   // Fetch products function - Updated to handle new API response structure
   const fetchProducts = useCallback(async () => {
-    setLoading(true)
-    setError(null)
+    setLoading(true);
+    setError(null);
 
     try {
-      let response
-      let productData = []
-      let responseCount = 0
+      console.log("Normalized category:", currentCategory);
+      let products = [];
 
-      // Handle different category cases with proper service calls
-      if (category === "kits-combos") {
+      if (currentCategory === "kits-combos") {
         // Use KitsCombosService for kits and combos
-        console.log("Fetching kits and combos...")
-        const [kitsResponse, combosResponse] = await Promise.all([
-          KitsCombosService.getKits().catch(() => ({ kits: [] })),
-          KitsCombosService.getCombos().catch(() => ({ combos: [] })),
-        ])
+        console.log("Fetching kits and combos...");
+        try {
+          const kitsAndCombos = await KitsCombosService.getKitsAndCombos();
+          console.log("Raw Kits and Combos data:", kitsAndCombos);
 
-        const kits = Array.isArray(kitsResponse.kits) ? kitsResponse.kits : []
-        const combos = Array.isArray(combosResponse.combos) ? combosResponse.combos : []
+          if (Array.isArray(kitsAndCombos)) {
+            products = kitsAndCombos;
+          }
 
-        productData = [...kits, ...combos]
-        responseCount = productData.length
-      } else if (category === "all") {
-        // Get all products including kits and combos
-        const [regularProducts, kitsResponse, combosResponse] = await Promise.all([
-          ProductService.getProducts({ limit: 50, sort }),
-          KitsCombosService.getKits().catch(() => ({ kits: [] })),
-          KitsCombosService.getCombos().catch(() => ({ combos: [] })),
-        ])
-
-        const kits = Array.isArray(kitsResponse.kits) ? kitsResponse.kits : []
-        const combos = Array.isArray(combosResponse.combos) ? combosResponse.combos : []
-
-        productData = [...(regularProducts.products || []), ...kits, ...combos]
-        responseCount = productData.length
+          console.log("Transformed product data:", products);
+        } catch (error) {
+          console.error("Error fetching kits and combos:", error);
+          throw error;
+        }
       } else {
         // Get products by category
-        response = await ProductService.getProductsByCategory(category, { limit: 50, sort })
+        console.log("Fetching products for category:", currentCategory);
+        const response = await ProductService.getProductsByCategory(currentCategory, {
+          limit: 1000,
+          sort,
+          filters: {
+            size: selectedSize,
+            color: selectedColor,
+            gsm: selectedGsm,
+            quantity: selectedQuantity,
+            minPrice: parseFloat(minPrice),
+            maxPrice: parseFloat(maxPrice),
+            rating: selectedRating,
+            inStock: inStockOnly
+          }
+        });
 
         if (response?.success && Array.isArray(response.products)) {
-          productData = response.products
-          responseCount = response.total || response.products.length
+          products = response.products;
         } else if (Array.isArray(response)) {
-          productData = response
-          responseCount = response.length
+          products = response;
         } else if (response?.data) {
-          productData = Array.isArray(response.data) ? response.data : []
-          responseCount = response.total || response.count || productData.length
+          products = Array.isArray(response.data) ? response.data : [];
         }
       }
 
-      console.log("Raw product data:", productData.length)
-
-      // Apply client-side filtering for variant-specific filters
-      const filteredProducts = productData
-        .map((product) => ProductService.formatProductForDisplay(product))
-        .filter((product) => {
-          // Skip if product is null
-          if (!product) return false
-
-          // Rating filter
-          if (selectedRating > 0) {
-            const productRating = product.averageRating || 0
-            if (productRating < selectedRating) return false
-          }
-
-          // Filter by variants
-          if (product.variants && product.variants.length > 0) {
-            // Check if any variant matches all selected filters
-            const hasMatchingVariant = product.variants.some((variant) => {
-              // Size filter
-              const sizeMatch =
-                selectedSize.length === 0 ||
-                selectedSize.some((size) => variant.size === size || variant.size_cm === size)
-
-              // Color filter
-              const colorMatch = selectedColor.length === 0 || selectedColor.includes(variant.color)
-
-              // GSM filter (for microfiber)
-              const gsmMatch = selectedGsm.length === 0 || selectedGsm.includes(variant.gsm)
-
-              // Quantity filter (for non-microfiber)
-              const quantityMatch = selectedQuantity.length === 0 || selectedQuantity.includes(variant.quantity)
-
-              // Stock filter
-              const stockMatch = !inStockOnly || variant.stock > 0
-
-              // Price range filter
-              const priceMatch =
-                (!minPrice || variant.price >= Number.parseFloat(minPrice)) &&
-                (!maxPrice || variant.price <= Number.parseFloat(maxPrice))
-
-              return sizeMatch && colorMatch && gsmMatch && quantityMatch && stockMatch && priceMatch
-            })
-
-            return hasMatchingVariant
-          }
-
-          // If no variants, apply basic filters
-          const stockMatch = !inStockOnly || (product.totalStock && product.totalStock > 0)
-          const priceMatch =
-            (!minPrice || product.minPrice >= Number.parseFloat(minPrice)) &&
-            (!maxPrice || product.maxPrice <= Number.parseFloat(maxPrice))
-
-          return stockMatch && priceMatch
-        })
-
-      setProducts(filteredProducts)
-      setTotalCount(filteredProducts.length)
+      console.log("Final product data:", products);
+      setProducts(products);
+      setTotalCount(products.length);
     } catch (err) {
-      console.error("Error fetching products:", err)
-      setError(err.message || "Failed to load products")
-      setProducts([])
-      setTotalCount(0)
+      console.error("Error fetching products:", err);
+      setError(err.message || "Failed to load products");
+      setProducts([]);
+      setTotalCount(0);
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }, [
-    category,
-    sort,
-    selectedSize,
-    minPrice,
-    maxPrice,
-    selectedRating,
-    inStockOnly,
-    selectedColor,
-    selectedGsm,
-    selectedQuantity,
-  ])
+  }, [currentCategory, sort, selectedSize, selectedColor, selectedGsm, selectedQuantity, minPrice, maxPrice, selectedRating, inStockOnly])
 
   // Fetch all products for filter options on mount
   useEffect(() => {
@@ -295,7 +228,15 @@ export default function ShopPage() {
     setPriceRange([0, 1000])
     setMinPrice("")
     setMaxPrice("")
-  }, [category])
+  }, [currentCategory])
+
+  // Update the useEffect to handle initial load and category changes
+  useEffect(() => {
+    console.log("Initial category load:", currentCategory);
+    if (currentCategory) {
+      fetchProducts();
+    }
+  }, [currentCategory]);
 
   // Handler functions
   const handleSortChange = (newSort) => {
@@ -303,10 +244,39 @@ export default function ShopPage() {
     setSort(newSort)
   }
 
-  const handleCategoryChange = (newCategory) => {
-    console.log("Category changed to:", newCategory)
-    router.push(`/shop/${newCategory}`)
-  }
+  const handleCategoryChange = async (newCategory) => {
+    console.log("Handling category change:", {
+      from: currentCategory,
+      to: newCategory
+    });
+
+    // Clear all filters when changing category
+    setSelectedSize([]);
+    setSelectedColor([]);
+    setSelectedGsm([]);
+    setSelectedQuantity([]);
+    setMinPrice("0");
+    setMaxPrice("1000");
+    setPriceRange([0, 1000]);
+    setSelectedRating(0);
+    setInStockOnly(false);
+    setSort("popularity");
+
+    // Update URL with the new category
+    const normalizedCategory = newCategory.toLowerCase().replace(/[^a-z0-9-]/g, '-');
+
+    try {
+      // Update the current category state
+      setCurrentCategory(normalizedCategory);
+
+      // Update the URL
+      await router.push(`/shop/${normalizedCategory}`, undefined, {
+        shallow: true
+      });
+    } catch (error) {
+      console.error("Error changing category:", error);
+    }
+  };
 
   const handleClearFilters = () => {
     console.log("Clearing all filters")
@@ -340,7 +310,7 @@ export default function ShopPage() {
     }
 
     return (
-      categoryNames[category] || category?.replace(/-/g, " ").replace(/\b\w/g, (l) => l.toUpperCase()) || "Products"
+      categoryNames[currentCategory] || currentCategory?.replace(/-/g, " ").replace(/\b\w/g, (l) => l.toUpperCase()) || "Products"
     )
   }
 
@@ -471,7 +441,7 @@ export default function ShopPage() {
                 setMaxPrice={setMaxPrice}
                 priceRange={priceRange}
                 setPriceRange={setPriceRange}
-                category={category}
+                category={currentCategory}
                 selectedRating={selectedRating}
                 setSelectedRating={setSelectedRating}
                 inStockOnly={inStockOnly}
@@ -556,7 +526,7 @@ export default function ShopPage() {
                   setMaxPrice={setMaxPrice}
                   priceRange={priceRange}
                   setPriceRange={setPriceRange}
-                  category={category}
+                  category={currentCategory}
                   selectedRating={selectedRating}
                   setSelectedRating={setSelectedRating}
                   inStockOnly={inStockOnly}

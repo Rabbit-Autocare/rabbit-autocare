@@ -106,20 +106,20 @@ export default function ClientLayout({ children }) {
       }
       // ✅ When NOT actually scrolling (scrolling stopped), do NOTHING - navbar stays in current state
 
-      console.log(
-        "Scroll:",
-        scrollY,
-        "Last:",
-        lastScrollY,
-        "Difference:",
-        scrollDifference,
-        "Actually Scrolling:",
-        isActuallyScrolling,
-        "Direction:",
-        currentScrollDirection,
-        "MainNavbar:",
-        showMainNavbar,
-      )
+      // console.log(
+      //   "Scroll:",
+      //   scrollY,
+      //   "Last:",
+      //   lastScrollY,
+      //   "Difference:",
+      //   scrollDifference,
+      //   "Actually Scrolling:",
+      //   isActuallyScrolling,
+      //   "Direction:",
+      //   currentScrollDirection,
+      //   "MainNavbar:",
+      //   showMainNavbar,
+      // )
     }
 
     const scrollHandler = () => {
@@ -223,16 +223,16 @@ export default function ClientLayout({ children }) {
     )
   }
 
-  console.log(
-    "🎯 NAVBAR STATE - Page:",
-    pathname,
-    "Extra:",
-    showExtraNavbar,
-    "Main:",
-    showMainNavbar,
-    "Direction:",
-    scrollDirection,
-  )
+  // console.log(
+  //   "🎯 NAVBAR STATE - Page:",
+  //   pathname,
+  //   "Extra:",
+  //   showExtraNavbar,
+  //   "Main:",
+  //   showMainNavbar,
+  //   "Direction:",
+  //   scrollDirection,
+  // )
 
   return (
     <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>

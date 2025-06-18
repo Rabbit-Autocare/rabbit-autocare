@@ -64,7 +64,7 @@ export class ComboService {
     try {
       const inventory = comboData.inventory || 1;
 
-      // First create the combo without image
+      // Create the combo with the image URLs
       const { data: newCombo, error: comboError } = await supabase
         .from('combos')
         .insert({
@@ -73,31 +73,15 @@ export class ComboService {
           original_price: comboData.original_price,
           price: comboData.price,
           discount_percent: comboData.discount_percentage,
-          inventory: inventory
+          inventory: inventory,
+          image_url: comboData.image_url,
+          main_image_url: comboData.image_url, // Set the first image as main
+          images: comboData.images || [comboData.image_url].filter(Boolean) // Store all images
         })
         .select()
         .single();
 
       if (comboError) throw comboError;
-
-      // If there's an image file, upload it
-      let imageUrl = null;
-      if (comboData.image) {
-        imageUrl = await this.uploadComboImage(newCombo.id, comboData.image);
-      }
-
-      // Update the combo with the image URL
-      if (imageUrl) {
-        const { error: updateError } = await supabase
-          .from('combos')
-          .update({
-            image_url: imageUrl,
-            main_image_url: imageUrl
-          })
-          .eq('id', newCombo.id);
-
-        if (updateError) throw updateError;
-      }
 
       const comboProductsData = comboData.products.map(p => ({
         combo_id: newCombo.id,
@@ -114,8 +98,9 @@ export class ComboService {
 
       return {
         ...newCombo,
-        image_url: imageUrl || `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/product-images/products/combos/${newCombo.id}.jpg`,
-        main_image_url: imageUrl || `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/product-images/products/combos/${newCombo.id}.jpg`
+        image_url: comboData.image_url || `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/product-images/products/combos/${newCombo.id}.jpg`,
+        main_image_url: comboData.image_url || `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/product-images/products/combos/${newCombo.id}.jpg`,
+        images: comboData.images || [comboData.image_url].filter(Boolean)
       };
     } catch (error) {
       console.error('Error creating combo:', error);
@@ -127,10 +112,22 @@ export class ComboService {
     try {
       const inventory = comboData.inventory || 1;
 
-      // Handle image upload if provided
-      let imageUrl = null;
-      if (comboData.image) {
-        imageUrl = await this.uploadComboImage(id, comboData.image);
+      const updateData = {
+        name: comboData.name,
+        description: comboData.description,
+        original_price: comboData.original_price,
+        price: comboData.price,
+        discount_percent: comboData.discount_percentage,
+        inventory: inventory
+      };
+
+      // Update image URLs if provided
+      if (comboData.image_url) {
+        updateData.image_url = comboData.image_url;
+        updateData.main_image_url = comboData.image_url;
+      }
+      if (comboData.images) {
+        updateData.images = comboData.images;
       }
 
       // Get existing combo products
@@ -185,21 +182,6 @@ export class ComboService {
         if (error) throw error;
       }
 
-      const updateData = {
-        name: comboData.name,
-        description: comboData.description,
-        original_price: comboData.original_price,
-        price: comboData.price,
-        discount_percent: comboData.discount_percentage,
-        inventory: inventory
-      };
-
-      // Only update image URLs if a new image was uploaded
-      if (imageUrl) {
-        updateData.image_url = imageUrl;
-        updateData.main_image_url = imageUrl;
-      }
-
       const { data, error } = await supabase
         .from('combos')
         .update(updateData)
@@ -208,8 +190,9 @@ export class ComboService {
       if (error) throw error;
       return {
         ...data,
-        image_url: imageUrl || data.image_url || `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/product-images/products/combos/${id}.jpg`,
-        main_image_url: imageUrl || data.main_image_url || `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/product-images/products/combos/${id}.jpg`
+        image_url: updateData.image_url || data.image_url || `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/product-images/products/combos/${id}.jpg`,
+        main_image_url: updateData.main_image_url || data.main_image_url || `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/product-images/products/combos/${id}.jpg`,
+        images: updateData.images || data.images || [data.image_url].filter(Boolean)
       };
     } catch (error) {
       console.error('Error updating combo:', error);

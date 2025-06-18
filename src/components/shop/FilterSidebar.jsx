@@ -82,7 +82,8 @@ const FilterSidebar = ({
             { value: "all", label: "All Products" },
             ...(categoriesRes.data || []).map(cat => ({
               value: cat.name.toLowerCase().replace(/\s+/g, '-'),
-              label: cat.name
+              label: cat.name,
+              is_microfiber: cat.is_microfiber || false
             }))
           ],
           sizes: (sizesRes.data || []).map(size => ({
@@ -191,19 +192,38 @@ const FilterSidebar = ({
         <div>
           <h3 className="text-lg md:text-xs font-medium text-gray-900 mb-2 uppercase">CATEGORY</h3>
           <div className="space-y-1">
-            {filterOptions.categories.map((cat) => (
-              <label key={cat.value} className="ml-2 flex items-center">
-                <input
-                  type="radio"
-                  name="category"
-                  checked={category === cat.value}
-                  onChange={() => onCategoryChange(cat.value)}
-                  className="h-5 w-5 md:h-3 md:w-3 border-gray-300 focus:ring-purple-500"
-                  style={{ accentColor: '#601e8d' }}
-                />
-                <span className="ml-2 text-lg md:text-xs text-gray-700">{cat.label}</span>
-              </label>
-            ))}
+            {filterOptions.categories.map((cat) => {
+              // Normalize both the current category and the category value for comparison
+              const normalizedCurrentCategory = category.toLowerCase().replace(/[^a-z0-9-]/g, '-');
+              const normalizedCatValue = cat.value.toLowerCase().replace(/[^a-z0-9-]/g, '-');
+              const isSelected = normalizedCurrentCategory === normalizedCatValue;
+
+              return (
+                <label key={cat.value} className="ml-2 flex items-center">
+                  <input
+                    type="radio"
+                    name="category"
+                    checked={isSelected}
+                    onChange={() => {
+                      console.log("Category radio changed:", {
+                        from: normalizedCurrentCategory,
+                        to: cat.value,
+                        normalizedTo: normalizedCatValue,
+                        isSelected
+                      });
+
+                      // Only trigger change if it's a different category
+                      if (onCategoryChange && normalizedCurrentCategory !== normalizedCatValue) {
+                        onCategoryChange(cat.value);
+                      }
+                    }}
+                    className="h-5 w-5 md:h-3 md:w-3 border-gray-300 focus:ring-purple-500"
+                    style={{ accentColor: '#601e8d' }}
+                  />
+                  <span className="ml-2 text-lg md:text-xs text-gray-700">{cat.label}</span>
+                </label>
+              );
+            })}
           </div>
         </div>
 

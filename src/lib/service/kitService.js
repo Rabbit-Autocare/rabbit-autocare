@@ -64,7 +64,7 @@ export class KitService {
     try {
       const inventory = kitData.inventory || 1;
 
-      // First create the kit without image
+      // Create the kit with the image URLs
       const { data: newKit, error: kitError } = await supabase
         .from('kits')
         .insert({
@@ -73,31 +73,15 @@ export class KitService {
           original_price: kitData.original_price,
           price: kitData.price,
           discount_percent: kitData.discount_percentage,
-          inventory: inventory
+          inventory: inventory,
+          image_url: kitData.image_url,
+          main_image_url: kitData.image_url, // Set the first image as main
+          images: kitData.images || [kitData.image_url].filter(Boolean) // Store all images
         })
         .select()
         .single();
 
       if (kitError) throw kitError;
-
-      // If there's an image file, upload it
-      let imageUrl = null;
-      if (kitData.image) {
-        imageUrl = await this.uploadKitImage(newKit.id, kitData.image);
-      }
-
-      // Update the kit with the image URL
-      if (imageUrl) {
-        const { error: updateError } = await supabase
-          .from('kits')
-          .update({
-            image_url: imageUrl,
-            main_image_url: imageUrl
-          })
-          .eq('id', newKit.id);
-
-        if (updateError) throw updateError;
-      }
 
       const kitProductsData = kitData.products.map(p => ({
         kit_id: newKit.id,
@@ -114,8 +98,9 @@ export class KitService {
 
       return {
         ...newKit,
-        image_url: imageUrl || `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/product-images/products/kits/${newKit.id}.jpg`,
-        main_image_url: imageUrl || `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/product-images/products/kits/${newKit.id}.jpg`
+        image_url: kitData.image_url || `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/product-images/products/kits/${newKit.id}.jpg`,
+        main_image_url: kitData.image_url || `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/product-images/products/kits/${newKit.id}.jpg`,
+        images: kitData.images || [kitData.image_url].filter(Boolean)
       };
     } catch (error) {
       console.error('Error creating kit:', error);
@@ -127,10 +112,22 @@ export class KitService {
     try {
       const inventory = kitData.inventory || 1;
 
-      // Handle image upload if provided
-      let imageUrl = null;
-      if (kitData.image) {
-        imageUrl = await this.uploadKitImage(id, kitData.image);
+      const updateData = {
+        name: kitData.name,
+        description: kitData.description,
+        original_price: kitData.original_price,
+        price: kitData.price,
+        discount_percent: kitData.discount_percentage,
+        inventory: inventory
+      };
+
+      // Update image URLs if provided
+      if (kitData.image_url) {
+        updateData.image_url = kitData.image_url;
+        updateData.main_image_url = kitData.image_url;
+      }
+      if (kitData.images) {
+        updateData.images = kitData.images;
       }
 
       // Get existing kit products
@@ -185,21 +182,6 @@ export class KitService {
         if (error) throw error;
       }
 
-      const updateData = {
-        name: kitData.name,
-        description: kitData.description,
-        original_price: kitData.original_price,
-        price: kitData.price,
-        discount_percent: kitData.discount_percentage,
-        inventory: inventory
-      };
-
-      // Only update image URLs if a new image was uploaded
-      if (imageUrl) {
-        updateData.image_url = imageUrl;
-        updateData.main_image_url = imageUrl;
-      }
-
       const { data, error } = await supabase
         .from('kits')
         .update(updateData)
@@ -208,8 +190,9 @@ export class KitService {
       if (error) throw error;
       return {
         ...data,
-        image_url: imageUrl || data.image_url || `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/product-images/products/kits/${id}.jpg`,
-        main_image_url: imageUrl || data.main_image_url || `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/product-images/products/kits/${id}.jpg`
+        image_url: updateData.image_url || data.image_url || `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/product-images/products/kits/${id}.jpg`,
+        main_image_url: updateData.main_image_url || data.main_image_url || `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/product-images/products/kits/${id}.jpg`,
+        images: updateData.images || data.images || [data.image_url].filter(Boolean)
       };
     } catch (error) {
       console.error('Error updating kit:', error);

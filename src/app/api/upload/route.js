@@ -1,10 +1,16 @@
 import { NextResponse } from "next/server";
-import { supabase } from "@/lib/supabaseClient";
+import { createClient } from '@supabase/supabase-js';
+
+// Use the service role key for admin-only operations (like uploads)
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
 export async function POST(request) {
   try {
     const formData = await request.formData();
     const file = formData.get("file");
+    const type = formData.get("type") || "products"; // Default to "products" if not specified
 
     if (!file) {
       return NextResponse.json(
@@ -20,9 +26,9 @@ export async function POST(request) {
     // Generate a unique filename
     const timestamp = Date.now();
     const filename = `${timestamp}-${file.name}`;
-    const filePath = `products/${filename}`;
+    const filePath = `${type}/${filename}`; // Use the type in the path
 
-    // Upload to Supabase Storage
+    // Upload to Supabase Storage using the service role key
     const { data, error } = await supabase.storage
       .from("product-images")
       .upload(filePath, buffer, {

@@ -268,32 +268,30 @@ export default function KitsAndCombosPage() {
       reader.onload = (event) => setPreviewImage(event.target.result);
       reader.readAsDataURL(file);
 
-      const ext = file.name.split('.').pop();
-      const filePath = `products/${activeTab}/${Math.random().toString(36).slice(2)}.${ext}`;
+      // Create FormData and append the file and type
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('type', `products/${activeTab}`); // 'products/kits' or 'products/combos'
 
-      console.log("Attempting to upload file to path:", filePath); // Log 1
+      // Use the /api/upload endpoint which now uses the service role key
+      const response = await fetch('/api/upload', {
+        method: 'POST',
+        body: formData,
+      });
 
-      const { error, data } = await supabase.storage
-        .from('product-images')
-        .upload(filePath, file, {
-          cacheControl: '3600',
-          upsert: true
-        });
-      if (error) throw error;
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Upload failed');
+      }
 
-      console.log("File uploaded successfully, data:", data); // Log 2
+      const data = await response.json();
+      const publicUrl = data.url;
 
-      // Construct the full public URL immediately after upload
-      const publicUrl = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/product-images/${filePath}`;
-
-      console.log("Generated public URL:", publicUrl); // Log 3
-
+      // Update the itemData with the new image URL
       setItemData((prev) => ({
         ...prev,
-        image_url: publicUrl, // Store the full public URL directly
+        image_url: publicUrl,
       }));
-
-      console.log("itemData.image_url after setting state:", publicUrl); // Log 4
 
     } catch (error) {
       console.error('Image upload error:', error);

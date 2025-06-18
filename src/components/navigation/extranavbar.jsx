@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { Search } from "lucide-react"
+import { Search, User } from "lucide-react"
 import Link from "next/link"
 import Image from "next/image"
 import { CategoryService } from "@/lib/service/microdataService"
@@ -67,12 +67,24 @@ export default function ExtraNavbar() {
         console.log("CategoryService result:", result)
 
         if (result.success && Array.isArray(result.data)) {
-          const transformedCategories = result.data.map((cat) => ({
-            name: cat.name,
-            href: `/shop/${cat.name.toLowerCase().replace(/\s+/g, "-")}`,
-            image: cat.image || `/images/categories/${cat.id}.jpg`,
-            is_microfiber: cat.is_microfiber || false,
-          }))
+          const transformedCategories = result.data.map((cat) => {
+            // Special handling for Kits & Combos
+            if (cat.name.toLowerCase().includes("kits") && cat.name.toLowerCase().includes("combos")) {
+              return {
+                name: cat.name,
+                href: "/shop/kits-combos",
+                image: cat.image || `/images/categories/${cat.id}.jpg`,
+                is_microfiber: cat.is_microfiber || false,
+              };
+            }
+            // For other categories
+            return {
+              name: cat.name,
+              href: `/shop/${cat.name.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`,
+              image: cat.image || `/images/categories/${cat.id}.jpg`,
+              is_microfiber: cat.is_microfiber || false,
+            };
+          });
           console.log("Setting categories:", transformedCategories)
           setCategories(transformedCategories)
         } else {
@@ -236,20 +248,21 @@ export default function ExtraNavbar() {
 
           {/* User Icon and Cart */}
           <div className="flex items-center space-x-4">
-            {/* {isLoggedIn ? (
+            {isLoggedIn ? (
               <Link href="/profile">
                 <button className="h-auto w-auto p-0 hover:bg-transparent bg-transparent border-none cursor-pointer transition-colors">
-                  <Image src="/assets/account.svg" alt="user" width={20} height={20} />
+                  <User className="w-5 h-5" />
                   <span className="sr-only">User Profile</span>
                 </button>
               </Link>
             ) : (
               <Link href="/login">
-                <button className="px-4 py-1 border-2 border-black rounded-full text-sm font-semibold hover:bg-black hover:text-white transition">
-                  Login
+                <button className="h-auto w-auto p-0 hover:bg-transparent bg-transparent border-none cursor-pointer transition-colors">
+                  <User className="w-5 h-5" />
+                  <span className="sr-only">User account</span>
                 </button>
               </Link>
-            )} */}
+            )}
 
             {/* Cart Icon - Always visible */}
             <button
@@ -285,13 +298,13 @@ export default function ExtraNavbar() {
       {/* SHOP Dropdown with lower z-index */}
       <div
         className={`absolute left-0 right-0 bg-white shadow-lg border-b border-gray-200 overflow-hidden transition-all duration-300 ease-in-out ${
-          isShopOpen ? "max-h-[350px] opacity-100" : "max-h-0 opacity-0"
+          isShopOpen ? "max-h-96 opacity-100" : "max-h-0 opacity-0"
         }`}
         style={{ zIndex: 50 }} // Much lower than cart
         onMouseEnter={() => setIsShopOpen(true)}
         onMouseLeave={() => setIsShopOpen(false)}
       >
-        <div className="w-full py-8 px-6">
+        <div className="container mx-auto py-8 px-6">
           {loading ? (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
               {[...Array(4)].map((_, index) => (

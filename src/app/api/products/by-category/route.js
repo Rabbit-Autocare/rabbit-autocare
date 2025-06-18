@@ -29,11 +29,30 @@ export async function GET(request) {
         created_at,
         updated_at,
         main_category_id,
+        product_code,
+        is_microfiber,
+        main_image_url,
+        images,
+        key_features,
+        taglines,
+        subcategory_names,
         categories!main_category_id (
           id,
           name,
           slug,
           description
+        ),
+        product_variants (
+          id,
+          gsm,
+          size,
+          color,
+          color_hex,
+          quantity,
+          unit,
+          price,
+          stock,
+          compare_at_price
         )
       `)
       .eq("categories.slug", categorySlug)
@@ -111,4 +130,3 @@ export async function GET_ALTERNATIVE(request) {
     return errorResponse(error.message);
   }
 }
-

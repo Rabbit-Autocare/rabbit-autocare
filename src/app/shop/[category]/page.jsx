@@ -142,11 +142,21 @@ export default function ShopPage() {
     setError(null);
 
     try {
-      console.log("Normalized category:", currentCategory);
+      console.log("Starting fetchProducts for category:", currentCategory);
+      console.log("Current filters:", {
+        size: selectedSize,
+        color: selectedColor,
+        gsm: selectedGsm,
+        quantity: selectedQuantity,
+        minPrice: minPrice,
+        maxPrice: maxPrice,
+        rating: selectedRating,
+        inStock: inStockOnly
+      });
+
       let products = [];
 
       if (currentCategory === "kits-combos") {
-        // Use KitsCombosService for kits and combos
         console.log("Fetching kits and combos...");
         try {
           const kitsAndCombos = await KitsCombosService.getKitsAndCombos();
@@ -154,52 +164,167 @@ export default function ShopPage() {
 
           if (Array.isArray(kitsAndCombos)) {
             products = kitsAndCombos;
+          } else {
+            console.error("Kits and combos data is not an array:", kitsAndCombos);
+            throw new Error("Invalid kits and combos data format");
           }
-
-          console.log("Transformed product data:", products);
         } catch (error) {
           console.error("Error fetching kits and combos:", error);
-          throw error;
+          throw new Error(`Failed to fetch kits and combos: ${error.message}`);
         }
       } else {
-        // Get products by category
         console.log("Fetching products for category:", currentCategory);
-        const response = await ProductService.getProductsByCategory(currentCategory, {
-          limit: 1000,
-          sort,
-          filters: {
-            size: selectedSize,
-            color: selectedColor,
-            gsm: selectedGsm,
-            quantity: selectedQuantity,
-            minPrice: parseFloat(minPrice),
-            maxPrice: parseFloat(maxPrice),
-            rating: selectedRating,
-            inStock: inStockOnly
-          }
-        });
+        try {
+          // Prepare filter parameters
+          const filterParams = {
+            limit: 1000,
+            sort,
+            filters: {
+              size: selectedSize.length > 0 ? selectedSize : undefined,
+              color: selectedColor.length > 0 ? selectedColor : undefined,
+              gsm: selectedGsm.length > 0 ? selectedGsm : undefined,
+              quantity: selectedQuantity.length > 0 ? selectedQuantity : undefined,
+              minPrice: minPrice ? parseFloat(minPrice) : undefined,
+              maxPrice: maxPrice ? parseFloat(maxPrice) : undefined,
+              rating: selectedRating > 0 ? selectedRating : undefined,
+              inStock: inStockOnly ? true : undefined
+            }
+          };
 
-        if (response?.success && Array.isArray(response.products)) {
-          products = response.products;
-        } else if (Array.isArray(response)) {
-          products = response;
-        } else if (response?.data) {
-          products = Array.isArray(response.data) ? response.data : [];
+          // Remove undefined filters
+          Object.keys(filterParams.filters).forEach(key => {
+            if (filterParams.filters[key] === undefined) {
+              delete filterParams.filters[key];
+            }
+          });
+
+          console.log("Filter parameters:", filterParams);
+          const response = await ProductService.getProductsByCategory(currentCategory, filterParams);
+          console.log("Raw API Response:", response);
+
+          if (response?.success && Array.isArray(response.products)) {
+            products = response.products;
+          } else if (Array.isArray(response)) {
+            products = response;
+          } else if (response?.data) {
+            products = Array.isArray(response.data) ? response.data : [];
+          } else {
+            console.error("Invalid API response format:", response);
+            throw new Error("Invalid API response format");
+          }
+        } catch (error) {
+          console.error("Error fetching products by category:", error);
+          throw new Error(`Failed to fetch products: ${error.message}`);
         }
       }
 
-      console.log("Final product data:", products);
-      setProducts(products);
-      setTotalCount(products.length);
+      console.log("Products before transformation:", products);
+
+      if (!Array.isArray(products) || products.length === 0) {
+        console.log("No products found or invalid products array");
+        setProducts([]);
+        setTotalCount(0);
+        setError("No products available in this category. Please try another category or check back later.");
+        return;
+      }
+
+      // Transform all products using ProductService.formatProductForDisplay
+      const transformedProducts = products
+        .map(product => {
+          try {
+            console.log("Transforming product:", product);
+            const transformed = ProductService.formatProductForDisplay(product);
+            console.log("Transformed result:", transformed);
+            return transformed;
+          } catch (error) {
+            console.error("Error transforming product:", error, product);
+            return null;
+          }
+        })
+        .filter(product => {
+          if (!product) {
+            console.log("Filtered out null product");
+            return false;
+          }
+
+          // Special handling for kits and combos
+          if (currentCategory === "kits-combos") {
+            // For kits and combos, only check basic validity
+            const isValid = product.price > 0 && product.name && product.description;
+            if (!isValid) {
+              console.log(`Kit/Combo "${product.name}" filtered out - missing required fields`);
+            }
+            return isValid;
+          }
+
+          // Regular product filtering
+          const matchesSize = selectedSize.length === 0 ||
+            (product.variants && product.variants.some(v => selectedSize.includes(v.size)));
+
+          const matchesColor = selectedColor.length === 0 ||
+            (product.variants && product.variants.some(v => selectedColor.includes(v.color)));
+
+          const matchesGsm = selectedGsm.length === 0 ||
+            (product.variants && product.variants.some(v => selectedGsm.includes(v.gsm)));
+
+          const matchesQuantity = selectedQuantity.length === 0 ||
+            (product.variants && product.variants.some(v => selectedQuantity.includes(v.quantity)));
+
+          const matchesPrice = (!minPrice || product.minPrice >= parseFloat(minPrice)) &&
+            (!maxPrice || product.maxPrice <= parseFloat(maxPrice));
+
+          const matchesRating = !selectedRating || product.rating >= selectedRating;
+
+          const matchesStock = !inStockOnly || product.totalStock > 0;
+
+          const hasValidVariants = Array.isArray(product.variants) &&
+            product.variants.length > 0 &&
+            product.variants.some(variant => variant.price > 0);
+
+          const hasValidPrice = product.minPrice > 0 || product.maxPrice > 0;
+
+          // Calculate matches
+          const matches = matchesSize && matchesColor && matchesGsm && matchesQuantity &&
+            matchesPrice && matchesRating && matchesStock && hasValidVariants && hasValidPrice;
+
+          // Log detailed filter information
+          if (!matches) {
+            console.log(`Product "${product.name}" filtered out because:`, {
+              size: !matchesSize ? `No variants match selected sizes: ${selectedSize.join(', ')}` : 'matches',
+              color: !matchesColor ? `No variants match selected colors: ${selectedColor.join(', ')}` : 'matches',
+              gsm: !matchesGsm ? `No variants match selected GSM: ${selectedGsm.join(', ')}` : 'matches',
+              quantity: !matchesQuantity ? `No variants match selected quantities: ${selectedQuantity.join(', ')}` : 'matches',
+              price: !matchesPrice ? `Price ${product.minPrice}-${product.maxPrice} outside range ${minPrice}-${maxPrice}` : 'matches',
+              rating: !matchesRating ? `Rating ${product.rating} below selected ${selectedRating}` : 'matches',
+              stock: !matchesStock ? 'No stock available' : 'matches',
+              variants: !hasValidVariants ? 'No valid variants' : 'has valid variants',
+              price: !hasValidPrice ? 'No valid price' : 'has valid price'
+            });
+          }
+
+          return matches;
+        });
+
+      console.log("Final transformed product data:", transformedProducts);
+
+      if (transformedProducts.length > 0) {
+        setProducts(transformedProducts);
+        setTotalCount(transformedProducts.length);
+      } else {
+        console.log("No valid products found after transformation and filtering");
+        setProducts([]);
+        setTotalCount(0);
+        setError("No products match your selected filters. Please try adjusting your filters.");
+      }
     } catch (err) {
-      console.error("Error fetching products:", err);
-      setError(err.message || "Failed to load products");
+      console.error("Error in fetchProducts:", err);
+      setError(err.message || "Failed to load products. Please try again later.");
       setProducts([]);
       setTotalCount(0);
     } finally {
       setLoading(false);
     }
-  }, [currentCategory, sort, selectedSize, selectedColor, selectedGsm, selectedQuantity, minPrice, maxPrice, selectedRating, inStockOnly])
+  }, [currentCategory, sort, selectedSize, selectedColor, selectedGsm, selectedQuantity, minPrice, maxPrice, selectedRating, inStockOnly]);
 
   // Fetch all products for filter options on mount
   useEffect(() => {
@@ -278,24 +403,34 @@ export default function ShopPage() {
     }
   };
 
-  const handleClearFilters = () => {
-    console.log("Clearing all filters")
-    setSelectedSize([])
-    setSelectedColor([])
-    setSelectedGsm([])
-    setSelectedQuantity([])
-    setSelectedRating(0)
-    setInStockOnly(false)
-    setPriceRange([0, 1000])
-    setMinPrice("")
-    setMaxPrice("")
-  }
+  const handleClearFilters = useCallback(() => {
+    console.log("Clearing all filters");
+    setSelectedSize([]);
+    setSelectedColor([]);
+    setSelectedGsm([]);
+    setSelectedQuantity([]);
+    setSelectedRating(0);
+    setInStockOnly(false);
+    setPriceRange([0, 1000]);
+    setMinPrice("");
+    setMaxPrice("");
+    fetchProducts();
+  }, [fetchProducts]);
 
-  const handleApplyFilters = () => {
-    console.log("Applying filters manually")
-    setShowMobileFilter(false)
-    fetchProducts()
-  }
+  const handleApplyFilters = useCallback(() => {
+    console.log("Applying filters:", {
+      size: selectedSize,
+      color: selectedColor,
+      gsm: selectedGsm,
+      quantity: selectedQuantity,
+      minPrice,
+      maxPrice,
+      rating: selectedRating,
+      inStock: inStockOnly
+    });
+    setShowMobileFilter(false);
+    fetchProducts();
+  }, [selectedSize, selectedColor, selectedGsm, selectedQuantity, minPrice, maxPrice, selectedRating, inStockOnly, fetchProducts]);
 
   // Helper functions
   const getCategoryDisplayName = () => {
@@ -371,7 +506,9 @@ export default function ShopPage() {
         {/* Page Header */}
         <div className="mb-6">
           <div className="flex items-center justify-between mb-4">
-            <p className="text-sm text-gray-600">{loading ? "Loading..." : `${totalCount} products found`}</p>
+            <p className="text-sm text-gray-600">
+              {loading ? "Loading products..." : error ? "Error loading products" : `${totalCount} products found`}
+            </p>
 
             {/* Mobile Filter/Sort Buttons */}
             {isMobile && (
@@ -462,7 +599,22 @@ export default function ShopPage() {
 
           {/* Products Grid Container */}
           <div className="flex-1">
-            {error ? (
+            {loading ? (
+              <div className="text-center py-12">
+                <div className="animate-pulse space-y-4">
+                  <div className="h-4 bg-gray-200 rounded w-3/4 mx-auto"></div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {[1, 2, 3, 4, 5, 6].map((i) => (
+                      <div key={i} className="bg-white p-4 rounded-lg shadow">
+                        <div className="h-48 bg-gray-200 rounded mb-4"></div>
+                        <div className="h-4 bg-gray-200 rounded w-3/4 mb-2"></div>
+                        <div className="h-4 bg-gray-200 rounded w-1/2"></div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            ) : error ? (
               <div className="text-center py-12">
                 <div className="text-red-500 text-lg font-medium mb-2">Error Loading Products</div>
                 <p className="text-gray-600 mb-4">{error}</p>
@@ -538,9 +690,7 @@ export default function ShopPage() {
                   selectedQuantity={selectedQuantity}
                   setSelectedQuantity={setSelectedQuantity}
                   onClearFilters={handleClearFilters}
-                  onApplyFilters={() => {
-                    handleApplyFilters();
-                  }}
+                  onApplyFilters={handleApplyFilters}
                   onCategoryChange={handleCategoryChange}
                   products={allProducts}
                   isMobile={true}
@@ -551,5 +701,5 @@ export default function ShopPage() {
         )}
       </div>
     </div>
-  )
+  );
 }

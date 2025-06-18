@@ -36,7 +36,9 @@
     "react-dropzone": "^14.3.8",
     "react-icon": "^1.0.0",
     "react-icons": "^5.5.0",
+    "react-slick": "^0.30.3",
     "recharts": "^2.15.3",
+    "slick-carousel": "^1.8.1",
     "tailwind-merge": "^3.3.0"
   },
   "devDependencies": {

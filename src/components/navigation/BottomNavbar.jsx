@@ -60,18 +60,30 @@ export default function BottomNavbar() {
     const fetchCategories = async () => {
       setLoading(true)
       try {
-        console.log("Fetching categories from CategoryService...")
+        // console.log("Fetching categories from CategoryService...")
         const result = await CategoryService.getCategories()
-        console.log("CategoryService result:", result)
+        // console.log("CategoryService result:", result)
 
         if (result.success && Array.isArray(result.data)) {
-          const transformedCategories = result.data.map((cat) => ({
-            name: cat.name,
-            href: `/shop/${cat.name.toLowerCase().replace(/\s+/g, "-")}`,
-            image: cat.image || `/images/categories/${cat.id}.jpg`,
-            is_microfiber: cat.is_microfiber || false,
-          }))
-          console.log("Setting categories:", transformedCategories)
+          const transformedCategories = result.data.map((cat) => {
+            // Special handling for Kits & Combos
+            if (cat.name.toLowerCase().includes("kits") && cat.name.toLowerCase().includes("combos")) {
+              return {
+                name: cat.name,
+                href: "/shop/kits-combos",
+                image: cat.image || `/images/categories/${cat.id}.jpg`,
+                is_microfiber: cat.is_microfiber || false,
+              };
+            }
+            // For other categories
+            return {
+              name: cat.name,
+              href: `/shop/${cat.name.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`,
+              image: cat.image || `/images/categories/${cat.id}.jpg`,
+              is_microfiber: cat.is_microfiber || false,
+            };
+          });
+          // console.log("Setting categories:", transformedCategories)
           setCategories(transformedCategories)
         } else {
           console.error("Failed to fetch categories:", result.error || "No data")

@@ -244,15 +244,20 @@ export class ProductService {
     }
   }
 
-  
+
   // ============= DATA TRANSFORMATION =============
 
   static transformProductData(product) {
+    if (!product) return null;
+
+    // Use product_variants if available, otherwise use variants
+    const variants = product.product_variants || product.variants || [];
+
     const transformedData = {
       ...product,
       category: product.category_name,
       subcategory: product.subcategory_name,
-      variants: (product.variants || []).map(variant => {
+      variants: variants.map(variant => {
         if (product.is_microfiber) {
           return {
             id: variant.id,
@@ -268,7 +273,7 @@ export class ProductService {
           return {
             id: variant.id,
             quantity: variant.quantity,
-            unit: variant.unit,
+            unit: variant.unit || 'ml',
             color: variant.color,
             color_hex: variant.color_hex || null,
             stock: variant.stock || 0,
@@ -289,16 +294,22 @@ export class ProductService {
   // ============= UTILITY METHODS =============
 
   static formatProductForDisplay(product) {
-    if (!product) return null
+    if (!product) return null;
 
-    const transformedProduct = this.transformProductData(product)
-    if (!transformedProduct || !transformedProduct.id) return null
+    const transformedProduct = this.transformProductData(product);
+    if (!transformedProduct || !transformedProduct.id) return null;
 
-    const variants = transformedProduct.variants || []
-    const totalStock = variants.reduce((sum, variant) => sum + (variant.stock || 0), 0)
-    const availableVariants = variants.filter((v) => (v.stock || 0) > 0).length
-    const minPrice = variants.length > 0 ? Math.min(...variants.map((v) => v.price || 0)) : 0
-    const maxPrice = variants.length > 0 ? Math.max(...variants.map((v) => v.price || 0)) : 0
+    const variants = transformedProduct.variants || [];
+    const totalStock = variants.reduce((sum, variant) => sum + (variant.stock || 0), 0);
+    const availableVariants = variants.filter((v) => (v.stock || 0) > 0).length;
+    const minPrice = variants.length > 0 ? Math.min(...variants.map((v) => v.price || 0)) : 0;
+    const maxPrice = variants.length > 0 ? Math.max(...variants.map((v) => v.price || 0)) : 0;
+
+    // Ensure we have valid price data
+    if (minPrice === 0 && maxPrice === 0) {
+      console.log("Product has no valid price data:", product.name);
+      return null;
+    }
 
     return {
       ...transformedProduct,
@@ -306,7 +317,7 @@ export class ProductService {
       availableVariants,
       minPrice,
       maxPrice,
-    }
+    };
   }
 
   static extractProducts(response) {

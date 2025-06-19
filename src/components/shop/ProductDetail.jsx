@@ -2,11 +2,16 @@
 
 import { useState } from "react"
 import FeaturedProductCard from "@/components/ui/FeaturedProductCard"
+import KitComboCard from "@/components/ui/KitComboCard"
 import ProductTabs from "@/components/shop/ProductTabs"
 import RelatedProducts from "@/components/shop/RelatedProducts"
 
 export default function ProductDetail({ product }) {
   const [addedToCart, setAddedToCart] = useState(false)
+
+  // Check if the product is a kit or combo
+  const isKitOrCombo = product?.category_name?.toLowerCase().includes("kits") ||
+                      product?.category_name?.toLowerCase().includes("combos")
 
   // This handleAddToCart logic is removed as FeaturedProductCard now manages its own cart actions.
   // It will be removed entirely, or moved to a more appropriate context if needed elsewhere.
@@ -26,8 +31,12 @@ export default function ProductDetail({ product }) {
 
       {/* Product main section */}
       <div className="flex flex-col md:flex-row items-start gap-8">
-        <div className="w-full ">
-          <FeaturedProductCard product={product} />
+        <div className="w-full">
+          {isKitOrCombo ? (
+            <KitComboCard product={product} />
+          ) : (
+            <FeaturedProductCard product={product} />
+          )}
         </div>
       </div>
 

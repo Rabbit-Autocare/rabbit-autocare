@@ -62,9 +62,9 @@ export default function ExtraNavbar() {
     const fetchCategories = async () => {
       setLoading(true)
       try {
-        console.log("Fetching categories from CategoryService...")
+        // console.log("Fetching categories from CategoryService...")
         const result = await CategoryService.getCategories()
-        console.log("CategoryService result:", result)
+        // console.log("CategoryService result:", result)
 
         if (result.success && Array.isArray(result.data)) {
           const transformedCategories = result.data.map((cat) => {
@@ -85,7 +85,7 @@ export default function ExtraNavbar() {
               is_microfiber: cat.is_microfiber || false,
             };
           });
-          console.log("Setting categories:", transformedCategories)
+          // console.log("Setting categories:", transformedCategories)
           setCategories(transformedCategories)
         } else {
           console.error("Failed to fetch categories:", result.error || "No data")

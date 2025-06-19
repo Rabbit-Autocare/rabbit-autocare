@@ -2,8 +2,10 @@
 
 import { useState, useEffect } from "react"
 import { ProductService } from "@/lib/service/productService"
+import { KitService } from "@/lib/service/kitService"
+import { ComboService } from "@/lib/service/comboService"
 import ProductDetail from "@/components/shop/ProductDetail"
-import { usePathname } from "next/navigation"
+import { usePathname, useRouter } from "next/navigation"
 import { Loader2 } from "lucide-react"
 
 export default function ProductPage() {
@@ -12,6 +14,7 @@ export default function ProductPage() {
 	const [product, setProduct] = useState(null)
 	const [loading, setLoading] = useState(true)
 	const [error, setError] = useState(null)
+	const router = useRouter()
 
 	useEffect(() => {
 		const fetchProduct = async () => {
@@ -23,24 +26,24 @@ export default function ProductPage() {
 
 			setLoading(true)
 			setError(null)
+			let productData = null
 			try {
-				console.log("Fetching product with code:", productCode)
-				const productData = await ProductService.getProduct(productCode)
-
-				if (productData) {
+				// Try fetching as a product
+				productData = await ProductService.getProduct(productCode)
+				if (productData && productData.id) {
 					setProduct(productData)
-				} else {
-					setError("Product not found")
+					setLoading(false)
+					return
 				}
 			} catch (err) {
-				console.error("Error fetching product:", err)
-				setError(err.message || "Failed to fetch product")
-			} finally {
-				setLoading(false)
+				// Ignore error, try as kit/combo
 			}
-		}
 
+			// If not a product, redirect to /kitcombo/[id]
+			router.replace(`/kitcombo/${productCode}`)
+		}
 		fetchProduct()
+		// eslint-disable-next-line
 	}, [productCode])
 
 	if (loading) {

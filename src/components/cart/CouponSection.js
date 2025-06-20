@@ -1,8 +1,10 @@
 "use client";
 import { useState, useEffect } from "react";
 import { useCart } from "@/hooks/useCart";
-import { Check, Ticket, X, Loader2, Tag } from "lucide-react";
+import { Check, Ticket, X, Loader2, Tag, ChevronLeft, ChevronRight } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
+import CouponCard from "@/components/ui/CouponCard";
+import { UserService } from "@/lib/service/userService";
 
 export default function CouponSection() {
 	const { coupon, applyCoupon, couponLoading, couponError } = useCart();
@@ -11,8 +13,9 @@ export default function CouponSection() {
 	const [couponCode, setCouponCode] = useState("");
 	const [availableCoupons, setAvailableCoupons] = useState([]);
 	const [couponsLoading, setCouponsLoading] = useState(false);
+	const [currentIndex, setCurrentIndex] = useState(0);
 
-	// Fetch user coupons
+	// Fetch user coupons using UserService
 	const fetchUserCoupons = async () => {
 		if (!user) {
 			setAvailableCoupons([]);
@@ -21,36 +24,12 @@ export default function CouponSection() {
 
 		try {
 			setCouponsLoading(true);
-			const response = await fetch("/api/user/coupons", {
-				method: "GET",
-				headers: {
-					"Content-Type": "application/json",
-				},
-			});
-
-			if (!response.ok) {
-				throw new Error('Failed to fetch coupons');
+			const result = await UserService.getUserCoupons(user.id);
+			if (result.success) {
+				setAvailableCoupons(result.data);
+			} else {
+				setAvailableCoupons([]);
 			}
-
-			const data = await response.json();
-
-			if (!data.success) {
-				throw new Error(data.error || 'Failed to fetch coupons');
-			}
-
-			// Transform the coupons data from authusers table
-			const transformedCoupons = (data.coupons || []).map(coupon => ({
-				code: coupon.code,
-				description: coupon.description || `Get ${coupon.discount}% off`,
-				type: coupon.type || 'percentage',
-				value: coupon.discount || coupon.value,
-				minPurchase: coupon.min_purchase,
-				maxDiscount: coupon.max_discount,
-				validUntil: coupon.valid_until,
-				isActive: coupon.is_active
-			}));
-
-			setAvailableCoupons(transformedCoupons);
 		} catch (error) {
 			console.error("Error fetching user coupons:", error);
 			setAvailableCoupons([]);
@@ -80,9 +59,22 @@ export default function CouponSection() {
 		setCouponCode("");
 	};
 
-	const handleApplyAvailableCoupon = (couponCodeToApply) => {
-		setCouponCode(couponCodeToApply);
-		applyCoupon(couponCodeToApply);
+	const handleCouponCardClick = async (coupon) => {
+		try {
+			await navigator.clipboard.writeText(coupon.code);
+			setCouponCode(coupon.code);
+			applyCoupon(coupon.code);
+		} catch (err) {
+			// fallback or error handling
+		}
+	};
+
+	const handlePrev = () => {
+		setCurrentIndex((prev) => (prev === 0 ? availableCoupons.length - 1 : prev - 1));
+	};
+
+	const handleNext = () => {
+		setCurrentIndex((prev) => (prev === availableCoupons.length - 1 ? 0 : prev + 1));
 	};
 
 	if (!user) {
@@ -153,35 +145,37 @@ export default function CouponSection() {
 			<div>
 				<p className="text-sm font-medium mb-2">Available Coupons</p>
 				{couponsLoading ? (
-					<div className="flex items-center justify-center py-4">
+					<div className="flex items-center justify-center ">
 						<div className="animate-spin rounded-full h-6 w-6 border-b-2 border-gray-900"></div>
 					</div>
 				) : availableCoupons.length > 0 ? (
-					<div className="space-y-2 max-h-32 overflow-y-auto">
-						{availableCoupons.map((availableCoupon) => (
-							<div
-								key={availableCoupon.code}
-								className="flex items-center justify-between bg-blue-50 border border-blue-200 rounded px-3 py-2"
-							>
-								<div className="flex-1">
-									<span className="text-sm font-medium text-blue-800">
-										{availableCoupon.code}
-									</span>
-									<p className="text-xs text-blue-600">
-										{availableCoupon.description}
-									</p>
-								</div>
-								<button
-									onClick={() =>
-										handleApplyAvailableCoupon(availableCoupon.code)
-									}
-									disabled={coupon?.code === availableCoupon.code}
-									className="text-blue-600 text-xs hover:text-blue-800 border border-blue-300 px-2 py-1 rounded disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-								>
-									{coupon?.code === availableCoupon.code ? "Applied" : "Apply"}
-								</button>
-							</div>
-						))}
+					<div className="flex items-center justify-center gap-4">
+						<button
+							onClick={handlePrev}
+							className="p-2 h-full  "
+							aria-label="Previous coupon"
+							disabled={availableCoupons.length <= 1}
+						>
+							<ChevronLeft size={24} />
+						</button>
+						<div className="relative  w-[300px] flex-shrink-0" onClick={() => handleCouponCardClick(availableCoupons[currentIndex])}>
+							<CouponCard
+								code={availableCoupons[currentIndex].code}
+								discount={availableCoupons[currentIndex].discount}
+								validUpto={availableCoupons[currentIndex].expiry}
+							/>
+							{coupon?.code === availableCoupons[currentIndex].code && (
+								<div className="absolute top-2 right-2 bg-green-500 text-white text-xs px-2 py-1 rounded">Applied</div>
+							)}
+						</div>
+						<button
+							onClick={handleNext}
+							className="p-2 rounded-full bg-gray-100 hover:bg-gray-200 border border-gray-300"
+							aria-label="Next coupon"
+							disabled={availableCoupons.length <= 1}
+						>
+							<ChevronRight size={24} />
+						</button>
 					</div>
 				) : (
 					<div className="flex flex-col items-center justify-center py-6 text-center bg-white rounded border border-dashed border-gray-300">

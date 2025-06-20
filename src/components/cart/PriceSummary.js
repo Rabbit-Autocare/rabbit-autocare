@@ -7,29 +7,44 @@ export default function PriceSummary({ formatPrice }) {
 		cartItems,
 	} = useCart();
 
+	const hasComboOrKit = cartItems.some(item => item.combo_id || item.kit_id);
+
 	const getSubtotal = () => {
 		return cartItems.reduce((total, item) => {
-			const price = item.variant?.price || 0;
+			const price = (item.combo_id && item.combo_price)
+				? item.combo_price
+				: (item.kit_id && item.kit_price)
+				? item.kit_price
+				: item.variant?.price || 0;
 			return total + price * item.quantity;
 		}, 0);
 	};
 
-	const getDiscount = () => {
-		if (!coupon) return 0;
-		const subtotal = getSubtotal();
-		if (coupon.type === "percentage") {
-			return (subtotal * coupon.value) / 100;
-		}
-		return coupon.value || 0;
-	};
-
-	const getTotal = () => {
-		return Math.max(0, getSubtotal() - getDiscount());
-	};
-
 	const subtotal = getSubtotal();
-	const discount = getDiscount();
-	const total = getTotal();
+
+	// Coupon logic: only apply if no combo/kit and subtotal >= coupon.applicable_upto
+	function applyCouponAndCalculateDiscount() {
+		if (!coupon || hasComboOrKit) {
+			return { discount: 0, message: hasComboOrKit ? 'Coupons are not applicable when combos or kits are in the cart.' : '' };
+		}
+		const minValue = coupon.applicable_upto || 0;
+		if (subtotal < minValue) {
+			return {
+				discount: 0,
+				message: `Cart value must be at least ${formatPrice(minValue)} to use this coupon.`
+			};
+		}
+		let discount = 0;
+		if (coupon.type === 'percentage') {
+			discount = (subtotal * coupon.value) / 100;
+		} else {
+			discount = coupon.value || 0;
+		}
+		return { discount, message: '' };
+	}
+
+	const { discount, message: couponMessage } = applyCouponAndCalculateDiscount();
+	const total = Math.max(0, subtotal - discount);
 
 	if (cartItems.length === 0) {
 		return null;
@@ -44,6 +59,14 @@ export default function PriceSummary({ formatPrice }) {
 					<span className="text-gray-600">Subtotal</span>
 					<span>{formatPrice(subtotal)}</span>
 				</div>
+
+				{hasComboOrKit && (
+					<p className="text-red-500 text-xs mb-2">Coupons are not applicable when combos or kits are in the cart.</p>
+				)}
+
+				{couponMessage && (
+					<p className={`text-xs mb-2 ${hasComboOrKit ? 'text-red-500' : 'text-orange-500'}`}>{couponMessage}</p>
+				)}
 
 				{discount > 0 && (
 					<div className="flex justify-between text-green-600">

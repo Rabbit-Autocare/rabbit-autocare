@@ -6,10 +6,12 @@ import { motion } from "framer-motion";
 import { ComboService } from "@/lib/service/comboService";
 
 export default function FrequentlyBoughtTogether() {
-	const { cartItems } = useCart();
+	const { cartItems, clearCart, removeFromCart, addToCart } = useCart();
 	const [frequentlyBought, setFrequentlyBought] = useState([]);
 	const [loading, setLoading] = useState(false);
 	const [error, setError] = useState(null);
+	const [showComboModal, setShowComboModal] = useState(false);
+	const [pendingCombo, setPendingCombo] = useState(null);
 
 	// Fetch combo products based on cart items
 	const fetchComboProducts = async () => {
@@ -76,28 +78,45 @@ export default function FrequentlyBoughtTogether() {
 		fetchComboProducts();
 	}, [cartItems]);
 
-	const addComboToCart = async (comboItem) => {
-		try {
-			const response = await fetch("/api/cart/add", {
-				method: "POST",
-				headers: {
-					"Content-Type": "application/json",
-				},
-				body: JSON.stringify({
-					productId: comboItem.id,
-					quantity: 1,
-					isCombo: true,
-				}),
-			});
+	const handleAddComboClick = (comboItem) => {
+		setPendingCombo(comboItem);
+		setShowComboModal(true);
+	};
 
-			if (response.ok) {
-				// You might want to update cart state here instead of reloading
+	const handleAddCombo = async (keepOnlyCombo) => {
+		setShowComboModal(false);
+		if (!pendingCombo) return;
+		if (keepOnlyCombo) {
+			// Remove all related products (products in the combo) from the cart
+			const comboProductIds = pendingCombo.products.map(p => p.product_id);
+			const comboVariantIds = pendingCombo.products.map(p => p.variant_id);
+			const removals = cartItems
+				.filter(cartItem =>
+					comboProductIds.includes(cartItem.product_id || cartItem.product?.id) &&
+					comboVariantIds.includes(cartItem.variant?.id)
+				)
+				.map(cartItem => removeFromCart(cartItem.id));
+			await Promise.all(removals);
+		}
+		try {
+			// Use addToCart from context for combos
+			const includedVariants = pendingCombo.products.map(item => ({
+				product_id: item.product_id,
+				variant_id: item.variant_id,
+				quantity: item.quantity
+			}));
+			const comboObj = { combo_id: pendingCombo.id, ...pendingCombo };
+			console.log('FrequentlyBoughtTogether: Adding COMBO to cart:', { comboObj, includedVariants, quantity: 1 });
+			const success = await addToCart(comboObj, includedVariants, 1);
+			if (success) {
 				window.location.reload();
 			} else {
 				console.error("Failed to add combo to cart");
 			}
 		} catch (error) {
 			console.error("Error adding combo to cart:", error);
+		} finally {
+			setPendingCombo(null);
 		}
 	};
 
@@ -115,11 +134,11 @@ export default function FrequentlyBoughtTogether() {
 		return null;
 	}
 
-	console.log("Component: Rendering with state:", {
-		loading,
-		error,
-		combosCount: frequentlyBought.length,
-	});
+	// console.log("Component: Rendering with state:", {
+	// 	loading,
+	// 	error,
+	// 	combosCount: frequentlyBought.length,
+	// });
 
 	return (
 		<div className="bg-gray-50 rounded-lg p-4">
@@ -213,7 +232,7 @@ export default function FrequentlyBoughtTogether() {
 											</div>
 										</div>
 										<button
-											onClick={() => addComboToCart(item)}
+											onClick={() => handleAddComboClick(item)}
 											className="w-full bg-black text-white text-xs py-2 rounded hover:bg-gray-800 transition-colors flex items-center justify-center gap-1"
 										>
 											<Plus size={12} />
@@ -236,6 +255,33 @@ export default function FrequentlyBoughtTogether() {
 					<p className="text-gray-500 text-xs mt-1">
 						Add more items to see personalized recommendations
 					</p>
+				</div>
+			)}
+
+			{/* Combo Modal */}
+			{showComboModal && (
+				<div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40">
+					<div className="bg-white rounded-lg shadow-lg p-6 w-full max-w-xs flex flex-col items-center">
+						<h3 className="text-lg font-semibold mb-4 text-center">How do you want to add this combo?</h3>
+						<button
+							className="w-full mb-2 bg-purple-600 hover:bg-purple-700 text-white py-2 rounded font-medium"
+							onClick={() => handleAddCombo(true)}
+						>
+							Keep only combo (remove other items)
+						</button>
+						<button
+							className="w-full mb-2 bg-gray-200 hover:bg-gray-300 text-gray-800 py-2 rounded font-medium"
+							onClick={() => handleAddCombo(false)}
+						>
+							Keep combo and existing products
+						</button>
+						<button
+							className="w-full mt-2 text-xs text-gray-500 hover:text-gray-700"
+							onClick={() => setShowComboModal(false)}
+						>
+							Cancel
+						</button>
+					</div>
 				</div>
 			)}
 		</div>

@@ -94,67 +94,94 @@ class CartService {
   }
 
   // Smart add method that handles duplicates
-  async addToCartSmart(productId, variant, quantity = 1, userId) {
-    console.log('addToCartSmart: Attempting to add item', { productId, variant, quantity, userId });
-    try {
-      // Step 1: Check if item exists
-      const existingItem = await this.findExistingCartItem(
-        productId,
-        variant,
-        userId
-      );
+  async addToCartSmart(productOrComboOrKit, variant, quantity = 1, userId) {
+    console.log('addToCartSmart input:', productOrComboOrKit, variant, quantity, userId);
+    let isCombo = false;
+    let isKit = false;
+    let comboId = null;
+    let kitId = null;
+    let productId = null;
+    let variantToStore = null;
 
-      if (existingItem) {
-        console.log('addToCartSmart: Item already exists, updating quantity.', { existingItemId: existingItem.id, oldQuantity: existingItem.quantity, newQuantity: existingItem.quantity + quantity });
-        // Step 2a: If exists, update quantity
-        const newQuantity = existingItem.quantity + quantity;
-
-        const { data, error } = await supabase
-          .from('cart_items')
-          .update({ quantity: newQuantity })
-          .eq('id', existingItem.id)
-          .select()
-          .single();
-
-        if (error) {
-          console.error('addToCartSmart: Error updating existing item quantity:', error);
-          throw error;
-        }
-        console.log('addToCartSmart: Successfully updated existing item.', data);
-        return { success: true, cartItem: data, updated: true };
-      } else {
-        console.log('addToCartSmart: Item does not exist, creating new cart item.');
-        // Step 2b: If not exists, create new cart item
-        const cartItem = {
-          user_id: userId,
-          product_id: productId,
-          variant: variant,
-          quantity: quantity,
-          created_at: new Date().toISOString(),
-        };
-
-        const { data, error } = await supabase
-          .from('cart_items')
-          .insert([cartItem])
-          .select()
-          .single();
-
-        if (error) {
-          console.error('addToCartSmart: Error inserting new cart item:', error);
-          throw error;
-        }
-        console.log('addToCartSmart: Successfully created new cart item.', data);
-        return { success: true, cartItem: data, created: true };
-      }
-    } catch (error) {
-      console.error('Error in addToCartSmart:', error);
-      return { error: error.message };
+    if (productOrComboOrKit && productOrComboOrKit.combo_id) {
+      isCombo = true;
+      comboId = productOrComboOrKit.combo_id; // always use UUID
+      variantToStore = Array.isArray(variant) ? variant : null;
+    } else if (productOrComboOrKit && productOrComboOrKit.kit_id) {
+      isKit = true;
+      kitId = productOrComboOrKit.kit_id; // always use UUID
+      variantToStore = Array.isArray(variant) ? variant : null;
+    } else if (productOrComboOrKit && productOrComboOrKit.id) {
+      productId = productOrComboOrKit.id; // integer for products
+      variantToStore = variant;
     }
+
+    // Check if this item already exists in the cart
+    let existingItem = null;
+    if (isCombo) {
+      // Only query by combo_id for combos
+      const { data, error } = await supabase
+        .from('cart_items')
+        .select('*')
+        .eq('user_id', userId)
+        .eq('combo_id', comboId)
+        .single();
+      if (!error && data) existingItem = data;
+    } else if (isKit) {
+      // Only query by kit_id for kits
+      const { data, error } = await supabase
+        .from('cart_items')
+        .select('*')
+        .eq('user_id', userId)
+        .eq('kit_id', kitId)
+        .single();
+      if (!error && data) existingItem = data;
+    } else if (productId) {
+      // Only query by product_id for products
+      existingItem = await this.findExistingCartItem(productId, variantToStore, userId);
+    }
+
+    if (existingItem) {
+      // Update quantity if already in cart
+      const newQuantity = existingItem.quantity + quantity;
+      const { data, error } = await supabase
+        .from('cart_items')
+        .update({ quantity: newQuantity })
+        .eq('id', existingItem.id)
+        .select()
+        .single();
+      if (error) throw error;
+      return { success: true, cartItem: data, updated: true };
+    }
+
+    // Insert new cart item
+    const cartItem = {
+      user_id: userId,
+      product_id: productId || null, // integer or null
+      variant: (productId && variantToStore) ? variantToStore : ((isCombo || isKit) ? variantToStore : null),
+      quantity: quantity,
+      combo_id: isCombo ? comboId : null, // uuid or null
+      kit_id: isKit ? kitId : null,       // uuid or null
+      created_at: new Date().toISOString(),
+    };
+    // Defensive: never allow product_id to be a string/uuid
+    if (cartItem.product_id && typeof cartItem.product_id !== 'number') {
+      console.warn('cartService.js - product_id is not a number, setting to null:', cartItem.product_id);
+      cartItem.product_id = null;
+    }
+    console.log('cartService.js - cartItem to insert:', cartItem);
+    const { data, error } = await supabase
+      .from('cart_items')
+      .insert([cartItem])
+      .select()
+      .single();
+    if (error) throw error;
+    return { success: true, cartItem: data, created: true };
   }
 
   // Add item to cart
-  async addToCart(productId, variant, quantity = 1, userId) {
-    return this.addToCartSmart(productId, variant, quantity, userId);
+  async addToCart(productOrComboOrKit, variant, quantity = 1, userId) {
+    return this.addToCartSmart(productOrComboOrKit, variant, quantity, userId);
   }
 
   // Update cart item quantity

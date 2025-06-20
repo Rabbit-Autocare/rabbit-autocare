@@ -1,9 +1,12 @@
 "use client"
 
 import Image from "next/image"
+import { useState } from "react"
 
 export default function CouponCard({ code, discount, validUpto }) {
-  console.log("CouponCard props:", { code, discount, validUpto })
+  const [copied, setCopied] = useState(false)
+
+  // console.log("CouponCard props:", { code, discount, validUpto })
 
   // Format expiry date or show permanent
   const getExpiryText = () => {
@@ -13,12 +16,25 @@ export default function CouponCard({ code, discount, validUpto }) {
     return "Permanent"
   }
 
+  const handleCopy = async () => {
+    try {
+      await navigator.clipboard.writeText(code)
+      setCopied(true)
+      setTimeout(() => setCopied(false), 1200)
+    } catch (err) {
+      // fallback or error handling
+    }
+  }
+
   return (
-    <div className="relative w-full h-[150px] md:h-[100px]">
+    <div
+      className="relative w-full h-[150px] md:h-[100px] cursor-pointer group"
+      onClick={handleCopy}
+      title="Click to copy coupon code"
+    >
       {/* Background SVG */}
       <Image
-
-        src="/assets/adminsvgs/coupenCard.svg"
+        src="/assets/adminsvgs/couponsvg.svg"
         alt="Coupon"
         fill
         style={{ objectFit: "cover" }}
@@ -31,7 +47,9 @@ export default function CouponCard({ code, discount, validUpto }) {
         <div className="flex-1 flex flex-col justify-center  text-white">
           {/* <div className="text-sm font-medium mb-1 opacity-90">Coupon</div> */}
           <div className="text-2xl md:text-xl font-bold mb-1 tracking-wider">{code}</div>
-          <div className="text-sm md:text-xs opacity-80">Click to APPLY</div>
+          <div className="text-sm md:text-xs opacity-80">
+            {copied ? "Copied!" : "Click to copy"}
+          </div>
           <div className="text-xl md:text-xs opacity-70 mt-1">
             {getExpiryText()}
           </div>

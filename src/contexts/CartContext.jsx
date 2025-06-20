@@ -18,6 +18,10 @@ export function CartProvider({ children }) {
   const [mounted, setMounted] = useState(false)
   const [isCartOpen, setIsCartOpen] = useState(false)
   const [cartCount, setCartCount] = useState(0)
+  // Coupon state and logic
+  const [coupon, setCoupon] = useState(null);
+  const [couponLoading, setCouponLoading] = useState(false);
+  const [couponError, setCouponError] = useState("");
 
   // Function to open the cart drawer
   const openCart = () => setIsCartOpen(true)
@@ -61,15 +65,32 @@ export function CartProvider({ children }) {
     initializeCart()
   }, [user])
 
-  const addToCart = async (product, variant, quantity = 1) => {
+  const addToCart = async (productOrComboOrKit, variant, quantity = 1) => {
     if (!user) {
       router.push("/login")
       return false
     }
 
     try {
-      // Use the CartService.addToCartSmart method
-      const result = await CartService.addToCartSmart(product.id, variant, quantity, user.id)
+      let result;
+      // Edge case handling: pass correct object for combos/kits/products
+      if (productOrComboOrKit && productOrComboOrKit.combo_id) {
+        // Combo
+        console.log("CartContext: Adding combo to cart", productOrComboOrKit, variant, quantity);
+        result = await CartService.addToCartSmart(productOrComboOrKit, variant, quantity, user.id);
+      } else if (productOrComboOrKit && productOrComboOrKit.kit_id) {
+        // Kit
+        console.log("CartContext: Adding kit to cart", productOrComboOrKit, variant, quantity);
+        result = await CartService.addToCartSmart(productOrComboOrKit, variant, quantity, user.id);
+      } else if (productOrComboOrKit && productOrComboOrKit.id) {
+        // Product
+        console.log("CartContext: Adding product to cart", productOrComboOrKit, variant, quantity);
+        result = await CartService.addToCartSmart(productOrComboOrKit, variant, quantity, user.id);
+      } else {
+        // Fallback: try to pass as product id (legacy)
+        console.warn("CartContext: Unknown addToCart type, passing as id", productOrComboOrKit, variant, quantity);
+        result = await CartService.addToCartSmart(productOrComboOrKit, variant, quantity, user.id);
+      }
 
       if (result.error) {
         console.error("Database error:", result.error)
@@ -80,10 +101,8 @@ export function CartProvider({ children }) {
       const updatedCartItems = await CartService.getCartItems(user.id)
       if (!updatedCartItems.error) {
         setCartItems(updatedCartItems.cartItems || [])
-
         // Calculate total items count (sum of all quantities)
         const totalItemsCount = (updatedCartItems.cartItems || []).reduce((sum, item) => sum + (item.quantity || 1), 0)
-
         setCartCount(totalItemsCount)
       }
 
@@ -191,6 +210,27 @@ export function CartProvider({ children }) {
     }
   }
 
+  const applyCoupon = async (code) => {
+    setCouponLoading(true);
+    setCouponError("");
+    try {
+      if (!code) {
+        setCoupon(null);
+        setCouponLoading(false);
+        return;
+      }
+      // Simulate coupon validation (replace with real API if needed)
+      // For now, just set the coupon as an object with code and dummy values
+      // You can replace this with a real API call to validate the coupon
+      setCoupon({ code, type: "percentage", value: 10, applicable_upto: 500 });
+    } catch (err) {
+      setCouponError("Invalid coupon code");
+      setCoupon(null);
+    } finally {
+      setCouponLoading(false);
+    }
+  };
+
   const value = {
     cartItems,
     loading,
@@ -203,6 +243,10 @@ export function CartProvider({ children }) {
     openCart,
     closeCart,
     cartCount,
+    coupon,
+    applyCoupon,
+    couponLoading,
+    couponError,
   }
 
   return (

@@ -6,30 +6,9 @@ import Link from "next/link"
 import Image from "next/image"
 import { CategoryService } from "@/lib/service/microdataService"
 import { useCart } from "@/hooks/useCart"
-
-// Coupons data
-const coupons = [
-  {
-    code: "WELCOME20",
-    description: "20% off on first order",
-    discount: "20% OFF",
-  },
-  {
-    code: "BULK50",
-    description: "50% off on bulk orders",
-    discount: "50% OFF",
-  },
-  {
-    code: "FREESHIP",
-    description: "Free shipping on orders above ₹999",
-    discount: "FREE SHIPPING",
-  },
-  {
-    code: "SAVE30",
-    description: "30% off on car care combo",
-    discount: "30% OFF",
-  },
-]
+import { UserService } from "@/lib/service/userService"
+import { useAuth } from "@/hooks/useAuth"
+import CouponCard from "@/components/ui/CouponCard"
 
 export default function ExtraNavbar() {
   const [isLoggedIn, setIsLoggedIn] = useState(false)
@@ -38,7 +17,9 @@ export default function ExtraNavbar() {
   const [categories, setCategories] = useState([])
   const [loading, setLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState("")
+  const [userCoupons, setUserCoupons] = useState([])
   const { openCart, cartCount } = useCart()
+  const { user, loading: authLoading } = useAuth()
 
   // Check login status on mount and when localStorage changes
   useEffect(() => {
@@ -101,6 +82,22 @@ export default function ExtraNavbar() {
 
     fetchCategories()
   }, [])
+
+  // Fetch user's coupons
+  useEffect(() => {
+    const fetchUserCoupons = async () => {
+      if (user?.id) {
+        const result = await UserService.getUserCoupons(user.id);
+        if (result.success) {
+          setUserCoupons(result.data);
+        }
+      }
+    };
+
+    if (!authLoading) {
+      fetchUserCoupons();
+    }
+  }, [user?.id, authLoading]);
 
   const handleSearch = (e) => {
     e.preventDefault()
@@ -350,23 +347,36 @@ export default function ExtraNavbar() {
         onMouseLeave={() => setIsCouponsOpen(false)}
       >
         <div className="p-4">
-          <h3 className="font-semibold text-lg mb-4">Available Coupons</h3>
-          <div className="space-y-3">
-            {coupons.map((coupon, index) => (
-              <div
-                key={index}
-                className="flex items-center justify-between p-3 border border-gray-200 rounded-lg hover:bg-gray-50"
-              >
-                <div className="flex-1">
-                  <div className="font-medium text-sm">{coupon.code}</div>
-                  <div className="text-xs text-gray-600">{coupon.description}</div>
-                </div>
-                <div className="bg-green-100 text-green-800 px-2 py-1 rounded text-xs font-medium">
-                  {coupon.discount}
-                </div>
+          <h3 className="font-semibold text-lg mb-4">Your Available Coupons</h3>
+          {authLoading ? (
+            <div className="text-center py-4">
+              <p className="text-gray-500">Loading...</p>
+            </div>
+          ) : user ? (
+            userCoupons.length > 0 ? (
+              <div className="space-y-3">
+                {userCoupons.map((coupon) => (
+                  <CouponCard
+                    key={coupon.id}
+                    code={coupon.code}
+                    discount={coupon.discount}
+                    validUpto={coupon.expiry}
+                  />
+                ))}
               </div>
-            ))}
-          </div>
+            ) : (
+              <div className="text-center py-4 text-gray-500">
+                No coupons available
+              </div>
+            )
+          ) : (
+            <div className="text-center py-4">
+              <p className="text-gray-500 mb-2">Please log in to view your coupons</p>
+              <Link href="/login" className="text-blue-600 hover:underline">
+                Login
+              </Link>
+            </div>
+          )}
         </div>
       </div>
     </header>

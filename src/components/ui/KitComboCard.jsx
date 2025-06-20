@@ -280,8 +280,8 @@ export default function KitComboCard({ product, className = "", isLastCard = fal
             {product.name}
           </h2>
 
-          {/* Rating - Kit/Combo might not have ratings, so we'll show a default or hide */}
-          <div className="flex items-center gap-1 text-[11px] xs:text-[12px] md:text-sm xl:text-[12px] font-extralight text-black">
+          {/* Rating */}
+          <div className="flex items-center gap-2 text-sm font-extralight text-black ">
             {[...Array(5)].map((_, i) => (
               <img
                 key={i}
@@ -291,14 +291,14 @@ export default function KitComboCard({ product, className = "", isLastCard = fal
                     : "/assets/featured/ratingstar2.svg"
                 }
                 alt="star"
-                className="w-3 h-3 xs:w-4 xs:h-4"
+                className="w-5 h-5 sm:w-6 sm:h-6"
               />
             ))}
-            <span className="ml-1">| Bundle Deal</span>
+            <span className="ml-2 text-sm">| Bundle Deal</span>
           </div>
 
           {/* Price/Discount Section */}
-          <div className="space-y-1">
+          <div className="">
             <div className="flex items-center gap-2 text-[18px] xs:text-[20px] sm:text-[28px] md:text-[32px] font-medium tracking-wide">
               <span className="font-extralight">Price:</span>
               <span className="font-bold text-green-600">{formatPrice(currentPrice)}</span>
@@ -324,56 +324,62 @@ export default function KitComboCard({ product, className = "", isLastCard = fal
           </div>
 
           {/* Description */}
-          <div className="xl:flex-grow">
+          {/* <div className="xl:flex-grow">
             <p className="text-[13px] xs:text-[14px] sm:text-[15px] xl:text-[16px] text-black font-light tracking-wider whitespace-pre-line line-clamp-2 xs:line-clamp-2 sm:line-clamp-3 md:line-clamp-4 lg:line-clamp-4 xl:line-clamp-none">
               {product.description}
             </p>
-          </div>
+          </div> */}
 
           {/* Included Products & Variants */}
           {includedProducts.length > 0 && (
-            <div className="space-y-6 mt-6">
-              <h4 className="font-semibold text-base">Included Products & Variants</h4>
-              {includedProducts.map((includedProduct, idx) => {
-                const product = includedProduct.product;
-                const variant = includedProduct.variant;
-                const isMicrofiber = product?.is_microfiber === true || (typeof product?.category_name === "string" && product?.category_name?.toLowerCase()?.includes("microfiber"));
-                return (
-                  <div key={idx} className="p-4 mb-4 bg-gray-50 rounded-lg border">
-                    <div className="flex items-center gap-4 mb-2">
-                      <img
-                        src={product?.main_image_url || product?.image_url || "/placeholder.svg"}
-                        alt={product?.name}
-                        className="w-16 h-16 object-contain rounded"
-                      />
-                      <div>
-                        <div className="font-bold text-lg">{product?.name}</div>
-                        {/* Variant details */}
-                        {isMicrofiber ? (
-                          <div className="text-xs text-gray-700 mt-1">
-                            {variant?.color && <span>Color: {variant.color} | </span>}
-                            {variant?.size && <span>Size: {variant.size} | </span>}
-                            {variant?.gsm && <span>GSM: {variant.gsm} | </span>}
-                            <span>Qty: {includedProduct.quantity}</span>
-                          </div>
-                        ) : (
-                          <div className="text-xs text-gray-700 mt-1">
-                            {variant?.size && <span>Size: {variant.size} | </span>}
-                            {variant?.color && <span>Color: {variant.color} | </span>}
-                            {variant?.quantity && <span>Qty: {variant.quantity}{variant.unit || ""} | </span>}
-                            <span>Included Qty: {includedProduct.quantity}</span>
-                          </div>
-                        )}
+            <div className="mt-2">
+              <h4 className="font-semibold text-lg mb-4">Included Products & Variants</h4>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {includedProducts.map((includedProduct, idx) => {
+                  const product = includedProduct.product;
+                  const variant = includedProduct.variant;
+                  const isMicrofiber = product?.is_microfiber === true || (typeof product?.category_name === "string" && product?.category_name?.toLowerCase()?.includes("microfiber"));
+                  return (
+                    <div key={idx} className="p-3 bg-gray-50 rounded-lg border">
+                      <div className="flex items-center gap-3">
+                        <img
+                          src={product?.main_image_url || product?.image_url || "/placeholder.svg"}
+                          alt={product?.name}
+                          className="w-14 h-14 object-contain rounded"
+                        />
+                        <div className="flex-1 min-w-0">
+                          <div className="font-bold text-base truncate">{product?.name}</div>
+                          {/* Variant details */}
+                          {isMicrofiber ? (
+                            <div className="text-xs text-gray-700 mt-1">
+                              <div className="flex flex-wrap gap-x-2">
+                                {variant?.color && <span>Color: {variant.color}</span>}
+                                {variant?.size && <span>• Size: {variant.size}</span>}
+                                {variant?.gsm && <span>• GSM: {variant.gsm}</span>}
+                                <span>• Qty: {includedProduct.quantity}</span>
+                              </div>
+                            </div>
+                          ) : (
+                            <div className="text-xs text-gray-700 mt-1">
+                              <div className="flex flex-wrap gap-x-2">
+                                {variant?.size && <span>Size: {variant.size}</span>}
+                                {variant?.color && <span>• Color: {variant.color}</span>}
+                                {variant?.quantity && <span>• {variant.quantity}{variant.unit || ""}</span>}
+                                <span>• Qty: {includedProduct.quantity}</span>
+                              </div>
+                            </div>
+                          )}
+                        </div>
                       </div>
                     </div>
-                  </div>
-                );
-              })}
+                  );
+                })}
+              </div>
             </div>
           )}
 
           {/* Stock Status */}
-          <div className="mt-2">
+          <div className="mt-6">
             {isAvailable ? (
               <div className="flex items-center gap-2">
                 <div className="w-2 h-2 bg-green-500 rounded-full"></div>

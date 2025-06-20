@@ -5,30 +5,9 @@ import Link from "next/link"
 import Image from "next/image"
 import { useCart } from "@/hooks/useCart"
 import { CategoryService } from "@/lib/service/microdataService"
-
-// Coupons data
-const coupons = [
-  {
-    code: "WELCOME20",
-    description: "20% off on first order",
-    discount: "20% OFF",
-  },
-  {
-    code: "BULK50",
-    description: "50% off on bulk orders",
-    discount: "50% OFF",
-  },
-  {
-    code: "FREESHIP",
-    description: "Free shipping on orders above ₹999",
-    discount: "FREE SHIPPING",
-  },
-  {
-    code: "SAVE30",
-    description: "30% off on car care combo",
-    discount: "30% OFF",
-  },
-]
+import { UserService } from "@/lib/service/userService"
+import { useAuth } from "@/hooks/useAuth"
+import CouponCard from "@/components/ui/CouponCard"
 
 export default function BottomNavbar() {
   const [isShopOpen, setIsShopOpen] = useState(false)
@@ -36,37 +15,34 @@ export default function BottomNavbar() {
   const [categories, setCategories] = useState([])
   const [loading, setLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState("")
-  const [isLoggedIn, setIsLoggedIn] = useState(false)
+  const [userCoupons, setUserCoupons] = useState([])
   const { openCart, cartCount } = useCart()
+  const { user, loading: authLoading } = useAuth()
 
-  // Check login status on mount and when localStorage changes
+  // Fetch user's coupons
   useEffect(() => {
-    const checkLoginStatus = () => {
-      const loggedIn = localStorage.getItem("isLoggedIn") === "true"
-      setIsLoggedIn(loggedIn)
+    const fetchUserCoupons = async () => {
+      if (user?.id) {
+        const result = await UserService.getUserCoupons(user.id);
+        if (result.success) {
+          setUserCoupons(result.data);
+        }
+      }
+    };
+
+    if (!authLoading) {
+      fetchUserCoupons();
     }
-
-    // Initial check
-    checkLoginStatus()
-
-    // Listen for storage changes
-    window.addEventListener("storage", checkLoginStatus)
-
-    // Cleanup
-    return () => window.removeEventListener("storage", checkLoginStatus)
-  }, [])
+  }, [user?.id, authLoading]);
 
   useEffect(() => {
     const fetchCategories = async () => {
       setLoading(true)
       try {
-        // console.log("Fetching categories from CategoryService...")
         const result = await CategoryService.getCategories()
-        // console.log("CategoryService result:", result)
 
         if (result.success && Array.isArray(result.data)) {
           const transformedCategories = result.data.map((cat) => {
-            // Special handling for Kits & Combos
             if (cat.name.toLowerCase().includes("kits") && cat.name.toLowerCase().includes("combos")) {
               return {
                 name: cat.name,
@@ -75,7 +51,6 @@ export default function BottomNavbar() {
                 is_microfiber: cat.is_microfiber || false,
               };
             }
-            // For other categories
             return {
               name: cat.name,
               href: `/shop/${cat.name.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`,
@@ -83,7 +58,6 @@ export default function BottomNavbar() {
               is_microfiber: cat.is_microfiber || false,
             };
           });
-          // console.log("Setting categories:", transformedCategories)
           setCategories(transformedCategories)
         } else {
           console.error("Failed to fetch categories:", result.error || "No data")
@@ -111,12 +85,14 @@ export default function BottomNavbar() {
     <div style={{ position: "relative", zIndex: 10 }}>
       <div className="border-b border-gray-200 py-3 bg-white relative">
         <div className="container mx-auto flex justify-between items-center px-6">
-          {/* Desktop Shop Button */}
-          <div className="relative">
+          {/* Desktop Shop Button and Dropdown */}
+          <div
+            className="relative"
+            onMouseEnter={() => setIsShopOpen(true)}
+            onMouseLeave={() => setIsShopOpen(false)}
+          >
             <button
               className="flex items-center gap-1 font-medium text-sm hover:bg-transparent p-0 h-auto bg-transparent border-none cursor-pointer transition-colors"
-              onMouseEnter={() => setIsShopOpen(true)}
-              onMouseLeave={() => setIsShopOpen(false)}
             >
               SHOP
               <svg
@@ -134,9 +110,50 @@ export default function BottomNavbar() {
                 <polyline points="6 9 12 15 18 9" />
               </svg>
             </button>
+            {/* Shop Dropdown */}
+            <div
+              className={`absolute left-0 right-0 bg-white shadow-lg border-b border-gray-200 overflow-hidden transition-all duration-300 ease-in-out ${isShopOpen ? "max-h-96 opacity-100" : "max-h-0 opacity-0"}`}
+              style={{ zIndex: 50 }}
+            >
+              <div className="container mx-auto py-8 px-6">
+                {loading ? (
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                    {[...Array(4)].map((_, index) => (
+                      <div key={index} className="animate-pulse">
+                        <div className="bg-gray-200 aspect-[3/2] rounded-lg"></div>
+                        <div className="h-8 bg-gray-200 mt-2 rounded"></div>
+                      </div>
+                    ))}
+                  </div>
+                ) : categories.length > 0 ? (
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                    {categories.map((category, index) => (
+                      <Link key={index} href={category.href} className="block group" onClick={() => setIsShopOpen(false)}>
+                        <div className="overflow-hidden rounded-lg shadow-sm hover:shadow-md transition-shadow duration-200">
+                          <div className="relative aspect-[3/2] bg-gray-100">
+                            <img
+                              src={category.image || "/placeholder.svg"}
+                              alt={category.name}
+                              className="object-cover w-full h-full group-hover:scale-105 transition-transform duration-200"
+                            />
+                          </div>
+                          <div className="bg-black text-white py-3 px-4 text-center">
+                            <span className="font-medium text-sm">{category.name}</span>
+                          </div>
+                        </div>
+                      </Link>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center py-8">
+                    <p className="text-gray-500">No categories available</p>
+                  </div>
+                )}
+              </div>
+            </div>
           </div>
 
-          {/* Search Bar with bottom border only */}
+          {/* Search Bar */}
           <div className="flex-1 max-w-md mx-8">
             <form onSubmit={handleSearch} className="relative">
               <input
@@ -254,23 +271,6 @@ export default function BottomNavbar() {
               <span className="sr-only">Shine List</span>
             </button>
 
-            {/* User Icon - Show based on login status */}
-            {/* {isLoggedIn ? (
-              <Link href="/profile">
-                <button className="h-auto w-auto p-0 hover:bg-transparent bg-transparent border-none cursor-pointer transition-colors">
-                  <Image src="/assets/account.svg" alt="user" width={20} height={20} />
-                  <span className="sr-only">User Profile</span>
-                </button>
-              </Link>
-            ) : (
-              <Link href="/login">
-                <button className="h-auto w-auto p-0 hover:bg-transparent bg-transparent border-none cursor-pointer transition-colors">
-                  <Image src="/assets/account.svg" alt="user" width={20} height={20} />
-                  <span className="sr-only">User account</span>
-                </button>
-              </Link>
-            )} */}
-
             {/* Cart icon */}
             <button
               onClick={openCart}
@@ -302,77 +302,52 @@ export default function BottomNavbar() {
         </div>
       </div>
 
-      {/* Desktop Shop dropdown with lower z-index than cart */}
-      <div
-        className={`absolute left-0 right-0 bg-white shadow-lg border-b border-gray-200 overflow-hidden transition-all duration-300 ease-in-out ${
-          isShopOpen ? "max-h-96 opacity-100" : "max-h-0 opacity-0"
-        }`}
-        style={{ zIndex: 50 }} // Much lower than cart
-        onMouseEnter={() => setIsShopOpen(true)}
-        onMouseLeave={() => setIsShopOpen(false)}
-      >
-        <div className="container mx-auto py-8 px-6">
-          {loading ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-              {[...Array(4)].map((_, index) => (
-                <div key={index} className="animate-pulse">
-                  <div className="bg-gray-200 aspect-[3/2] rounded-lg"></div>
-                  <div className="h-8 bg-gray-200 mt-2 rounded"></div>
-                </div>
-              ))}
-            </div>
-          ) : categories.length > 0 ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-              {categories.map((category, index) => (
-                <Link key={index} href={category.href} className="block group" onClick={() => setIsShopOpen(false)}>
-                  <div className="overflow-hidden rounded-lg shadow-sm hover:shadow-md transition-shadow duration-200">
-                    <div className="relative aspect-[3/2] bg-gray-100">
-                      <img
-                        src={category.image || "/placeholder.svg"}
-                        alt={category.name}
-                        className="object-cover w-full h-full group-hover:scale-105 transition-transform duration-200"
-                      />
-                    </div>
-                    <div className="bg-black text-white py-3 px-4 text-center">
-                      <span className="font-medium text-sm">{category.name}</span>
-                    </div>
-                  </div>
-                </Link>
-              ))}
-            </div>
-          ) : (
-            <div className="text-center py-8">
-              <p className="text-gray-500">No categories available</p>
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* Coupons dropdown with hover */}
+      {/* Coupons dropdown - FIXED STYLING */}
       <div
         className={`absolute right-6 top-full bg-white shadow-lg z-30 border border-gray-200 rounded-lg overflow-hidden transition-all duration-300 ease-in-out w-80 ${
-          isCouponsOpen ? "max-h-96 opacity-100" : "max-h-0 opacity-0"
+          isCouponsOpen ? "max-h-[400px] opacity-100" : "max-h-0 opacity-0"
         }`}
         onMouseEnter={() => setIsCouponsOpen(true)}
         onMouseLeave={() => setIsCouponsOpen(false)}
       >
         <div className="p-4">
-          <h3 className="font-semibold text-lg mb-4">Available Coupons</h3>
-          <div className="space-y-3">
-            {coupons.map((coupon, index) => (
-              <div
-                key={index}
-                className="flex items-center justify-between p-3 border border-gray-200 rounded-lg hover:bg-gray-50"
-              >
-                <div className="flex-1">
-                  <div className="font-medium text-sm">{coupon.code}</div>
-                  <div className="text-xs text-gray-600">{coupon.description}</div>
-                </div>
-                <div className="bg-green-100 text-green-800 px-2 py-1 rounded text-xs font-medium">
-                  {coupon.discount}
-                </div>
+          {/* <h3 className="font-semibold text-lg mb-4 text-gray-800">Your Available Coupons</h3> */}
+          <div className="max-h-[300px] overflow-y-auto">
+            {authLoading ? (
+              <div className="text-center py-4">
+                <p className="text-gray-500">Loading...</p>
               </div>
-            ))}
+            ) : user ? (
+              userCoupons.length > 0 ? (
+                <div className="space-y-0">
+                  {userCoupons.map((coupon) => (
+                    <CouponCard
+                      key={coupon.id}
+                      code={coupon.code}
+                      discount={coupon.discount}
+                      validUpto={coupon.expiry}
+                    />
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-8 text-gray-500">
+                  <svg className="mx-auto mb-3 w-12 h-12 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  <p>No coupons available</p>
+                </div>
+              )
+            ) : (
+              <div className="text-center py-8">
+                <svg className="mx-auto mb-3 w-12 h-12 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                </svg>
+                <p className="text-gray-500 mb-3">Please log in to view your coupons</p>
+                <Link href="/login" className="inline-block bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition-colors">
+                  Login
+                </Link>
+              </div>
+            )}
           </div>
         </div>
       </div>

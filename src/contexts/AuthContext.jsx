@@ -3,7 +3,7 @@
 import { createContext, useContext, useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabaseClient'
 
-const AuthContext = createContext()
+export const AuthContext = createContext()
 
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null)
@@ -49,15 +49,17 @@ export function AuthProvider({ children }) {
 
   const checkUserRole = async (user) => {
     try {
+      // Get all user data from auth_users table
       const { data, error } = await supabase
         .from('auth_users')
-        .select('is_admin')
+        .select('*')
         .eq('id', user.id)
         .single()
 
       if (error) throw error
 
-      setUser(user)
+      // Merge auth user data with auth_users table data
+      setUser({ ...user, ...data })
       setIsAdmin(data?.is_admin || false)
     } catch (error) {
       console.error('Error checking user role:', error)

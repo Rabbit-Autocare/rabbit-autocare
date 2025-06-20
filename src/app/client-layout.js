@@ -9,6 +9,7 @@ import { CartProvider } from "@/contexts/CartContext"
 import { ThemeProvider } from "@/contexts/ThemeContext"
 import ExtraNavbar from "@/components/navigation/extranavbar"
 import { createPortal } from "react-dom"
+import MobileNavbar from "@/components/navigation/MobileNavbar"
 
 export default function ClientLayout({ children }) {
   const router = useRouter()
@@ -237,6 +238,9 @@ export default function ClientLayout({ children }) {
   return (
     <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
       <CartProvider>
+        <div className="md:hidden">
+          <MobileNavbar />
+        </div>
         <div style={{ position: "relative" }}>
           {/* ✅ ExtraNavbar - Unchanged behavior */}
           <div
@@ -261,7 +265,7 @@ export default function ClientLayout({ children }) {
         {portalContainer &&
           createPortal(
             <div
-              className={`hidden md:block ${showMainNavbar ? "animate-in slide-in-from-top duration-300" : ""}`}
+              className={` ${showMainNavbar ? "animate-in slide-in-from-top duration-300" : ""}`}
               style={{
                 opacity: showMainNavbar ? 1 : 0,
                 transform: `translateY(${showMainNavbar ? "0" : "-100%"})`,

@@ -15,22 +15,22 @@ const shopCategories = [
   {
     name: "Car Interior",
     href: "/shop/car-interior",
-    image: "/placeholder.svg?height=200&width=300",
+    image: "/assets/images/banner.png",
   },
   {
     name: "Car Exterior",
     href: "/shop/car-exterior",
-    image: "/placeholder.svg?height=200&width=300",
+    image: "/assets/images/banner.png",
   },
   {
     name: "Microfibers",
     href: "/shop/microfibers",
-    image: "/placeholder.svg?height=200&width=300",
+    image: "/assets/images/banner.png",
   },
   {
     name: "Bestsellers",
     href: "/shop/bestsellers",
-    image: "/placeholder.svg?height=200&width=300",
+    image: "/assets/images/banner.png",
   },
 ]
 
@@ -344,131 +344,174 @@ export default function MobileNavbar() {
         </div>
       )}
 
-      {/* Mobile Menu Overlay - Full Screen with Right Margin Only */}
+      {/* Mobile Menu Overlay - Redesigned */}
       {isMobileMenuOpen && (
-        <div className="fixed inset-0 bg-white z-50 overflow-y-auto" style={{ right: "20px", top: "0" }}>
-          {/* Menu Header with Logo and Close Button */}
-          <div className="flex justify-between items-center py-4 px-6 border-b border-gray-200 bg-white">
-            {/* Logo */}
-            <Link href="/" onClick={() => setIsMobileMenuOpen(false)}>
-              <Image
-                src="/assets/RabbitLogo.png"
-                alt="Rabbit Autocare"
-                width={120}
-                height={40}
-                className="h-8 w-auto"
-              />
-            </Link>
+        <>
+          {/* Backdrop */}
+          <div
+            className="fixed inset-0 bg-black/60 z-[999998]"
+            onClick={() => setIsMobileMenuOpen(false)}
+            aria-hidden="true"
+          />
 
-            {/* Close Button */}
-            <button
-              className="h-auto w-auto p-0 hover:bg-transparent bg-transparent border-none cursor-pointer transition-colors"
-              onClick={() => setIsMobileMenuOpen(false)}
-            >
-              <X size={24} className="text-gray-600" strokeWidth={1.5} />
-            </button>
-          </div>
+          {/* Menu Panel */}
+          <div className="fixed top-0 left-0 right-0 z-[999999] bg-white h-screen overflow-y-auto shadow-xl">
+            {/* Menu Header with Logo and Close Button */}
+            <div className="flex justify-between items-center py-4 px-6 border-b border-gray-200 bg-white sticky top-0 z-[10000]">
+              {/* Logo */}
+              <Link href="/" onClick={() => setIsMobileMenuOpen(false)}>
+                <Image
+                  src="/assets/RabbitLogo.png"
+                  alt="Rabbit Autocare"
+                  width={120}
+                  height={40}
+                  className="h-8 w-auto"
+                />
+              </Link>
 
-          {/* Menu Content */}
-          <div className="px-6 py-4 min-h-full">
-            {/* Categories Section */}
-            <div className="mb-6">
-              <h3 className="font-semibold text-lg mb-4 text-gray-800">Categories</h3>
-              <div className="grid grid-cols-2 gap-4">
-                {categories.map((category, index) => (
-                  <Link
-                    key={index}
-                    href={category.href}
-                    className="block group"
-                    onClick={() => setIsMobileMenuOpen(false)}
-                  >
-                    <div className="overflow-hidden rounded-lg shadow-sm hover:shadow-md transition-shadow duration-200 border border-gray-200">
-                      <div className="relative aspect-[3/2] bg-gray-100">
-                        <img
-                          src={category.image || "/placeholder.svg"}
-                          alt={category.name}
-                          className="object-cover w-full h-full group-hover:scale-105 transition-transform duration-200"
-                        />
-                      </div>
-                      <div className="bg-black text-white py-2 px-3 text-center">
-                        <span className="font-medium text-xs">{category.name}</span>
-                      </div>
-                    </div>
-                  </Link>
-                ))}
-              </div>
-            </div>
-
-            {/* Horizontal Separator */}
-            <div className="border-t border-gray-200 my-6"></div>
-
-            {/* Navigation Links */}
-            <div className="mb-6">
-              <div className="space-y-0">
-                {navLinks.map((link, index) => (
-                  <Link
-                    key={link.name}
-                    href={link.href}
-                    className="block py-4 text-base font-medium text-gray-800 hover:text-gray-600 transition-colors border-b border-gray-100 last:border-b-0"
-                    onClick={() => setIsMobileMenuOpen(false)}
-                  >
-                    {link.name}
-                  </Link>
-                ))}
-              </div>
-            </div>
-
-            {/* Theme Toggle */}
-            <div className="pt-4 border-t border-gray-200">
+              {/* Close Button */}
               <button
-                className="flex items-center gap-3 hover:bg-gray-50 w-full justify-start p-3 rounded-lg bg-transparent border-none cursor-pointer transition-colors"
-                onClick={toggleTheme}
+                className="h-auto w-auto p-2 hover:bg-gray-100 bg-transparent border-none cursor-pointer transition-colors rounded-full"
+                onClick={() => setIsMobileMenuOpen(false)}
               >
-                {theme === "dark" ? (
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    width="18"
-                    height="18"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  >
-                    <circle cx="12" cy="12" r="5" />
-                    <line x1="12" y1="1" x2="12" y2="3" />
-                    <line x1="12" y1="21" x2="12" y2="23" />
-                    <line x1="4.22" y1="4.22" x2="5.64" y2="5.64" />
-                    <line x1="18.36" y1="18.36" x2="19.78" y2="19.78" />
-                    <line x1="1" y1="12" x2="3" y2="12" />
-                    <line x1="21" y1="12" x2="23" y2="12" />
-                    <line x1="4.22" y1="19.78" x2="5.64" y2="18.36" />
-                    <line x1="18.36" y1="5.64" x2="19.78" y2="4.22" />
-                  </svg>
-                ) : (
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    width="18"
-                    height="18"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  >
-                    <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
-                  </svg>
-                )}
-                <span className="text-sm font-medium">{theme === "dark" ? "Light Mode" : "Dark Mode"}</span>
+                <X size={24} className="text-gray-600" strokeWidth={1.5} />
               </button>
             </div>
 
-            {/* Extra padding at bottom for scrolling */}
-            <div className="h-20"></div>
+            {/* Menu Content */}
+            <div className="px-6 py-4 bg-white">
+              {/* Categories Section */}
+              <div className="mb-6">
+                <h3 className="font-semibold text-lg mb-4 text-gray-800">Categories</h3>
+
+                {loading ? (
+                  <div className="flex justify-center items-center py-8">
+                    <div className="text-gray-500">Loading categories...</div>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-2 gap-4">
+                    {categories.length > 0 ? (
+                      categories.map((category, index) => (
+                        <Link
+                          key={index}
+                          href={category.href}
+                          className="block group"
+                          onClick={() => setIsMobileMenuOpen(false)}
+                        >
+                          <div className="overflow-hidden rounded-lg shadow-sm hover:shadow-md transition-shadow duration-200 border border-gray-200 bg-white">
+                            <div className="relative aspect-[3/2] bg-gray-100">
+                              <img
+                                src={category.image || "/placeholder.svg"}
+                                alt={category.name}
+                                className="object-cover w-full h-full group-hover:scale-105 transition-transform duration-200"
+                                onError={(e) => {
+                                  e.target.src = "/placeholder.svg?height=200&width=300"
+                                }}
+                              />
+                            </div>
+                            <div className="bg-black text-white py-2 px-3 text-center">
+                              <span className="font-medium text-xs">{category.name}</span>
+                            </div>
+                          </div>
+                        </Link>
+                      ))
+                    ) : (
+                      // Fallback categories if API fails
+                      shopCategories.map((category, index) => (
+                        <Link
+                          key={index}
+                          href={category.href}
+                          className="block group"
+                          onClick={() => setIsMobileMenuOpen(false)}
+                        >
+                          <div className="overflow-hidden rounded-lg shadow-sm hover:shadow-md transition-shadow duration-200 border border-gray-200 bg-white">
+                            <div className="relative aspect-[3/2] bg-gray-100">
+                              <img
+                                src={category.image}
+                                alt={category.name}
+                                className="object-cover w-full h-full group-hover:scale-105 transition-transform duration-200"
+                              />
+                            </div>
+                            <div className="bg-black text-white py-2 px-3 text-center">
+                              <span className="font-medium text-xs">{category.name}</span>
+                            </div>
+                          </div>
+                        </Link>
+                      ))
+                    )}
+                  </div>
+                )}
+              </div>
+
+              {/* Horizontal Separator */}
+              <div className="border-t border-gray-200 my-6"></div>
+
+              {/* Navigation Links */}
+              <div className="mb-6">
+                <h3 className="font-semibold text-lg mb-4 text-gray-800">Navigation</h3>
+                <div className="space-y-0 bg-white">
+                  {navLinks.map((link, index) => (
+                    <Link
+                      key={link.name}
+                      href={link.href}
+                      className="block py-4 text-base font-medium text-gray-800 hover:text-gray-600 hover:bg-gray-50 px-3 rounded-lg transition-colors border-b border-gray-100 last:border-b-0"
+                      onClick={() => setIsMobileMenuOpen(false)}
+                    >
+                      {link.name}
+                    </Link>
+                  ))}
+                </div>
+              </div>
+
+              {/* Theme Toggle */}
+              <div className="pt-4 border-t border-gray-200">
+                <button
+                  className="flex items-center gap-3 hover:bg-gray-50 w-full justify-start p-3 rounded-lg bg-transparent border-none cursor-pointer transition-colors"
+                  onClick={toggleTheme}
+                >
+                  {theme === "dark" ? (
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      width="18"
+                      height="18"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    >
+                      <circle cx="12" cy="12" r="5" />
+                      <line x1="12" y1="1" x2="12" y2="3" />
+                      <line x1="12" y1="21" x2="12" y2="23" />
+                      <line x1="4.22" y1="4.22" x2="5.64" y2="5.64" />
+                      <line x1="18.36" y1="18.36" x2="19.78" y2="19.78" />
+                      <line x1="1" y1="12" x2="3" y2="12" />
+                      <line x1="21" y1="12" x2="23" y2="12" />
+                      <line x1="4.22" y1="19.78" x2="5.64" y2="18.36" />
+                      <line x1="18.36" y1="5.64" x2="19.78" y2="4.22" />
+                    </svg>
+                  ) : (
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      width="18"
+                      height="18"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    >
+                      <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
+                    </svg>
+                  )}
+                  <span className="text-sm font-medium">{theme === "dark" ? "Light Mode" : "Dark Mode"}</span>
+                </button>
+              </div>
+            </div>
           </div>
-        </div>
+        </>
       )}
     </>
   )

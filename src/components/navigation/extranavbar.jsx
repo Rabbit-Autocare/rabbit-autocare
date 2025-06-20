@@ -338,45 +338,53 @@ export default function ExtraNavbar() {
         </div>
       </div>
 
-      {/* Coupons dropdown with hover */}
+      {/* Coupons dropdown - FIXED STYLING */}
       <div
         className={`absolute right-6 top-full bg-white shadow-lg z-30 border border-gray-200 rounded-lg overflow-hidden transition-all duration-300 ease-in-out w-80 ${
-          isCouponsOpen ? "max-h-96 opacity-100" : "max-h-0 opacity-0"
+          isCouponsOpen ? "max-h-[400px] opacity-100" : "max-h-0 opacity-0"
         }`}
         onMouseEnter={() => setIsCouponsOpen(true)}
         onMouseLeave={() => setIsCouponsOpen(false)}
       >
-        <div className="p-4">
-          <h3 className="font-semibold text-lg mb-4">Your Available Coupons</h3>
-          {authLoading ? (
-            <div className="text-center py-4">
-              <p className="text-gray-500">Loading...</p>
-            </div>
-          ) : user ? (
-            userCoupons.length > 0 ? (
-              <div className="space-y-3">
-                {userCoupons.map((coupon) => (
-                  <CouponCard
-                    key={coupon.id}
-                    code={coupon.code}
-                    discount={coupon.discount}
-                    validUpto={coupon.expiry}
-                  />
-                ))}
+        <div className="p-2">
+          {/* <h3 className="font-semibold text-lg mb-4 text-gray-800">Your Available Coupons</h3> */}
+          <div className="coupon-scroll-area">
+            {authLoading ? (
+              <div className="text-center ">
+                <p className="text-gray-500">Loading...</p>
               </div>
+            ) : user ? (
+              userCoupons.length > 0 ? (
+                <div className="space-y-3 mb-3">
+                  {userCoupons.map((coupon) => (
+                    <CouponCard
+                      key={coupon.id}
+                      code={coupon.code}
+                      discount={coupon.discount}
+                      validUpto={coupon.expiry}
+                    />
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-8 text-gray-500">
+                  <svg className="mx-auto mb-3 w-12 h-12 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  <p>No coupons available</p>
+                </div>
+              )
             ) : (
-              <div className="text-center py-4 text-gray-500">
-                No coupons available
+              <div className="text-center py-8">
+                <svg className="mx-auto mb-3 w-12 h-12 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                </svg>
+                <p className="text-gray-500 mb-3">Please log in to view your coupons</p>
+                <Link href="/login" className="inline-block bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition-colors">
+                  Login
+                </Link>
               </div>
-            )
-          ) : (
-            <div className="text-center py-4">
-              <p className="text-gray-500 mb-2">Please log in to view your coupons</p>
-              <Link href="/login" className="text-blue-600 hover:underline">
-                Login
-              </Link>
-            </div>
-          )}
+            )}
+          </div>
         </div>
       </div>
     </header>

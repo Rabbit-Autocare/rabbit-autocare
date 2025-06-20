@@ -310,16 +310,16 @@ export default function BottomNavbar() {
         onMouseEnter={() => setIsCouponsOpen(true)}
         onMouseLeave={() => setIsCouponsOpen(false)}
       >
-        <div className="p-4">
+        <div className="p-2">
           {/* <h3 className="font-semibold text-lg mb-4 text-gray-800">Your Available Coupons</h3> */}
-          <div className="max-h-[300px] overflow-y-auto">
+          <div className="coupon-scroll-area">
             {authLoading ? (
-              <div className="text-center py-4">
+              <div className="text-center ">
                 <p className="text-gray-500">Loading...</p>
               </div>
             ) : user ? (
               userCoupons.length > 0 ? (
-                <div className="space-y-0">
+                <div className="space-y-3 mb-3">
                   {userCoupons.map((coupon) => (
                     <CouponCard
                       key={coupon.id}

@@ -157,3 +157,11 @@ body:not(.smooth-scroll) {
 #navbar-portal > * {
   pointer-events: auto;
 }
+
+.coupon-scroll-area {
+  max-height: 400px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 0.5rem 0;
+  scroll-behavior: smooth;
+}

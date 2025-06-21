@@ -329,10 +329,22 @@ export default function CheckoutPage() {
 
 	if (cartLoading || loading) {
 		return (
-			<div className="max-w-7xl mx-auto p-6">
-				<div className="flex items-center justify-center h-64">
-					<div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900"></div>
-					<span className="ml-3">Loading checkout...</span>
+			<div className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-purple-50">
+				<div className="container mx-auto px-4 py-8">
+					<div className="flex items-center justify-center h-96">
+						<div className="text-center">
+							<div className="relative">
+								<div className="w-20 h-20 mx-auto mb-6">
+									<div className="absolute inset-0 bg-gradient-to-r from-indigo-600 to-purple-600 rounded-full animate-pulse"></div>
+									<div className="absolute inset-2 bg-white rounded-full flex items-center justify-center">
+										<div className="w-8 h-8 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin"></div>
+									</div>
+								</div>
+							</div>
+							<h2 className="text-2xl font-semibold text-gray-800 mb-2">Loading Checkout</h2>
+							<p className="text-gray-600">Preparing your order details...</p>
+						</div>
+					</div>
 				</div>
 			</div>
 		);
@@ -344,36 +356,186 @@ export default function CheckoutPage() {
 	}
 
 	return (
-		<div className="max-w-7xl mx-auto p-6">
-			<h1 className="text-3xl font-bold mb-8">Checkout</h1>
-
-			{transformedItems.length === 0 ? (
-				<div className="text-center py-12">
-					<h2 className="text-xl font-semibold mb-4">Your cart is empty</h2>
-					<p className="text-gray-600 mb-6">Add some items to your cart to proceed with checkout.</p>
-					<button
-						onClick={() => router.push("/shop")}
-						className="bg-blue-600 text-white px-6 py-3 rounded hover:bg-blue-700"
-					>
-						Continue Shopping
-					</button>
+		<div className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-purple-50">
+			{/* Header Section */}
+			<div className="bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 shadow-2xl">
+				<div className="container mx-auto px-4 py-8">
+					<div className="text-center text-white">
+						<div className="flex items-center justify-center gap-4 mb-4">
+							<div className="w-12 h-12 bg-white/20 rounded-full flex items-center justify-center backdrop-blur-sm">
+								<span className="text-2xl">🛒</span>
+							</div>
+							<h1 className="text-4xl md:text-5xl font-bold">
+								Secure Checkout
+							</h1>
+						</div>
+						<p className="text-indigo-100 text-lg max-w-2xl mx-auto">
+							Complete your purchase with our secure and streamlined checkout process
+						</p>
+					</div>
 				</div>
-			) : (
-				<div className="grid md:grid-cols-2 gap-6">
-					<AddressSection
-						userId={userId}
-						selectedAddressId={selectedAddressId}
-						setSelectedAddressId={setSelectedAddressId}
-					/>
+			</div>
 
-					<OrderSummary
-						items={transformedItems}
-						updateItemQuantity={updateItemQuantity}
-						coupon={coupon}
-						orderTotals={orderTotals}
-						loading={loading}
-						onPlaceOrder={() => setShowConfirmModal(true)}
-					/>
+			{/* Breadcrumb */}
+			<div className="container mx-auto px-4 py-4">
+				<div className="flex items-center gap-2 text-sm text-gray-600">
+					<button 
+						onClick={() => router.push("/shop")}
+						className="hover:text-indigo-600 transition-colors"
+					>
+						Shop
+					</button>
+					<span className="text-gray-400">→</span>
+					<button 
+						onClick={() => router.push("/cart")}
+						className="hover:text-indigo-600 transition-colors"
+					>
+						Cart
+					</button>
+					<span className="text-gray-400">→</span>
+					<span className="text-indigo-600 font-medium">Checkout</span>
+				</div>
+			</div>
+
+			<div className="container mx-auto px-4 pb-12">
+				{transformedItems.length === 0 ? (
+					<div className="max-w-2xl mx-auto">
+						<div className="bg-white rounded-3xl shadow-2xl p-12 text-center border border-gray-200">
+							<div className="w-24 h-24 mx-auto mb-6 bg-gradient-to-br from-gray-100 to-gray-200 rounded-full flex items-center justify-center">
+								<span className="text-4xl">🛒</span>
+							</div>
+							<h2 className="text-3xl font-bold text-gray-900 mb-4">Your Cart is Empty</h2>
+							<p className="text-gray-600 text-lg mb-8 leading-relaxed">
+								Looks like you havent added any items to your cart yet. 
+								Discover our amazing products and start shopping!
+							</p>
+							<button
+								onClick={() => router.push("/shop")}
+								className="bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white px-8 py-4 rounded-2xl font-semibold text-lg shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105"
+							>
+								<span className="flex items-center gap-3">
+									<span>🛍️</span>
+									<span>Continue Shopping</span>
+								</span>
+							</button>
+						</div>
+					</div>
+				) : (
+					<div className="max-w-7xl mx-auto">
+						{/* Progress Indicator */}
+						<div className="mb-8">
+							<div className="bg-white rounded-2xl p-6 shadow-lg border border-gray-200">
+								<div className="flex items-center justify-center gap-8">
+									<div className="flex items-center gap-3">
+										<div className="w-10 h-10 bg-gradient-to-r from-green-500 to-emerald-500 rounded-full flex items-center justify-center text-white font-bold">
+											✓
+										</div>
+										<span className="font-medium text-gray-700">Cart Review</span>
+									</div>
+									<div className="w-16 h-1 bg-gradient-to-r from-green-500 to-indigo-500 rounded-full"></div>
+									<div className="flex items-center gap-3">
+										<div className="w-10 h-10 bg-gradient-to-r from-indigo-500 to-purple-500 rounded-full flex items-center justify-center text-white font-bold">
+											2
+										</div>
+										<span className="font-medium text-indigo-600">Checkout</span>
+									</div>
+									<div className="w-16 h-1 bg-gray-200 rounded-full"></div>
+									<div className="flex items-center gap-3">
+										<div className="w-10 h-10 bg-gray-200 rounded-full flex items-center justify-center text-gray-500 font-bold">
+											3
+										</div>
+										<span className="font-medium text-gray-500">Confirmation</span>
+									</div>
+								</div>
+							</div>
+						</div>
+
+						{/* Main Checkout Content */}
+						<div className="grid lg:grid-cols-5 gap-8">
+							{/* Address Section - Left Side */}
+							<div className="lg:col-span-3">
+								<div className="bg-white rounded-3xl shadow-2xl border border-gray-200 overflow-hidden">
+									<div className="bg-gradient-to-r from-indigo-500 to-purple-500 p-6 text-white">
+										<h2 className="text-2xl font-bold flex items-center gap-3">
+											<span className="text-2xl">📍</span>
+											Delivery Address
+										</h2>
+										<p className="text-indigo-100 mt-2">Where should we deliver your order?</p>
+									</div>
+									<div className="p-6">
+										<AddressSection
+											userId={userId}
+											selectedAddressId={selectedAddressId}
+											setSelectedAddressId={setSelectedAddressId}
+										/>
+									</div>
+								</div>
+							</div>
+
+							{/* Order Summary - Right Side */}
+							<div className="lg:col-span-2">
+								<div className="sticky top-6">
+									<OrderSummary
+										items={transformedItems}
+										updateItemQuantity={updateItemQuantity}
+										coupon={coupon}
+										orderTotals={orderTotals}
+										loading={loading}
+										onPlaceOrder={() => setShowConfirmModal(true)}
+									/>
+
+									{/* Security Badges */}
+									<div className="mt-6 bg-white rounded-2xl p-4 shadow-lg border border-gray-200">
+										<div className="text-center">
+											<h3 className="font-semibold text-gray-800 mb-3">Secure Checkout</h3>
+											<div className="flex justify-center items-center gap-4 text-sm text-gray-600">
+												<div className="flex items-center gap-2">
+													<span className="text-green-500">🔒</span>
+													<span>SSL Encrypted</span>
+												</div>
+												<div className="flex items-center gap-2">
+													<span className="text-blue-500">🛡️</span>
+													<span>Safe & Secure</span>
+												</div>
+											</div>
+										</div>
+									</div>
+								</div>
+							</div>
+						</div>
+					</div>
+				)}
+			</div>
+
+			{/* Confirmation Modal */}
+			{showConfirmModal && (
+				<div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+					<div className="bg-white rounded-3xl shadow-2xl max-w-md w-full p-8 transform scale-100 transition-all duration-300">
+						<div className="text-center">
+							<div className="w-20 h-20 mx-auto mb-6 bg-gradient-to-r from-indigo-500 to-purple-500 rounded-full flex items-center justify-center">
+								<span className="text-3xl text-white">🛒</span>
+							</div>
+							<h3 className="text-2xl font-bold text-gray-900 mb-4">Confirm Your Order</h3>
+							<p className="text-gray-600 mb-6 leading-relaxed">
+								Are you sure you want to place this order? This action cannot be undone.
+							</p>
+							<div className="flex gap-4">
+								<button
+									onClick={() => setShowConfirmModal(false)}
+									className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-800 py-3 px-6 rounded-xl font-semibold transition-colors"
+								>
+									Cancel
+								</button>
+								<button
+									onClick={placeOrder}
+									disabled={loading}
+									className="flex-1 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white py-3 px-6 rounded-xl font-semibold disabled:opacity-50 transition-all duration-300"
+								>
+									{loading ? "Processing..." : "Confirm Order"}
+								</button>
+							</div>
+						</div>
+					</div>
 				</div>
 			)}
 		</div>

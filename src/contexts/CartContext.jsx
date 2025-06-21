@@ -219,16 +219,68 @@ export function CartProvider({ children }) {
         setCouponLoading(false);
         return;
       }
-      // Simulate coupon validation (replace with real API if needed)
-      // For now, just set the coupon as an object with code and dummy values
-      // You can replace this with a real API call to validate the coupon
-      setCoupon({ code, type: "percentage", value: 10, applicable_upto: 500 });
+
+      // Calculate cart subtotal for coupon validation
+      const subtotal = cartItems.reduce((total, item) => {
+        const price = (item.combo_id && item.combo_price)
+          ? item.combo_price
+          : (item.kit_id && item.kit_price)
+          ? item.kit_price
+          : item.variant?.price || 0;
+        return total + price * item.quantity;
+      }, 0);
+
+      console.log('Applying coupon:', { code, userId: user.id, subtotal, cartItems });
+
+      // Call the coupon validation API
+      const response = await fetch('/api/coupons/validate', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          couponCode: code,
+          userId: user.id,
+          orderAmount: subtotal
+        }),
+      });
+
+      const result = await response.json();
+      console.log('Coupon validation result:', result);
+
+      if (!response.ok) {
+        setCouponError(result.error || "Invalid coupon code");
+        setCoupon(null);
+        return;
+      }
+
+      if (result.success) {
+        const couponData = {
+          code: result.coupon.code,
+          type: "percentage",
+          value: result.coupon.discount_percent,
+          applicable_upto: 0, // This will be handled by the backend validation
+          description: result.coupon.description || `${result.coupon.discount_percent}% off`,
+          discount: result.discount
+        };
+        console.log('Setting coupon data:', couponData);
+        setCoupon(couponData);
+      } else {
+        setCouponError(result.error || "Invalid coupon code");
+        setCoupon(null);
+      }
     } catch (err) {
-      setCouponError("Invalid coupon code");
+      console.error("Error applying coupon:", err);
+      setCouponError("Failed to apply coupon. Please try again.");
       setCoupon(null);
     } finally {
       setCouponLoading(false);
     }
+  };
+
+  const clearCoupon = () => {
+    setCoupon(null);
+    setCouponError("");
   };
 
   const value = {
@@ -245,6 +297,7 @@ export function CartProvider({ children }) {
     cartCount,
     coupon,
     applyCoupon,
+    clearCoupon,
     couponLoading,
     couponError,
   }

@@ -70,23 +70,53 @@ export default function AddressSection({ userId, selectedAddressId, setSelectedA
   const handleAddressSubmit = async (e) => {
     e.preventDefault();
     if (!validateAddressForm()) return;
+
     setAddressLoading(true);
     try {
+      let result;
+
       if (selectedAddressId && !isEditing) {
-        await supabase
+        // Update existing address
+        const { data, error } = await supabase
           .from('addresses')
-          .update({ ...addressForm })
-          .eq('id', selectedAddressId);
-      } else {
-        const { data } = await supabase
-          .from('addresses')
-          .insert([{ ...addressForm, user_id: userId }])
+          .update({
+            ...addressForm,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', selectedAddressId)
           .select()
           .single();
-        setSelectedAddressId(data.id);
+
+        if (error) throw error;
+        result = data;
+      } else {
+        // Create new address
+        const { data, error } = await supabase
+          .from('addresses')
+          .insert([{
+            ...addressForm,
+            user_id: userId,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+          }])
+          .select()
+          .single();
+
+        if (error) throw error;
+        result = data;
+        setSelectedAddressId(result.id);
       }
-      fetchAddresses();
+
+      // Refresh addresses list
+      await fetchAddresses();
       setIsEditing(false);
+
+      // Show success message
+      alert('Address saved successfully!');
+
+    } catch (error) {
+      console.error('Error saving address:', error);
+      alert(`Error saving address: ${error.message}`);
     } finally {
       setAddressLoading(false);
     }

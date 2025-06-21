@@ -24,22 +24,16 @@ export default function PriceSummary({ formatPrice }) {
 
 	// Coupon logic: only apply if no combo/kit and subtotal >= coupon.applicable_upto
 	function applyCouponAndCalculateDiscount() {
+		console.log('PriceSummary - applyCouponAndCalculateDiscount called with:', { coupon, hasComboOrKit, subtotal });
+
 		if (!coupon || hasComboOrKit) {
 			return { discount: 0, message: hasComboOrKit ? 'Coupons are not applicable when combos or kits are in the cart.' : '' };
 		}
-		const minValue = coupon.applicable_upto || 0;
-		if (subtotal < minValue) {
-			return {
-				discount: 0,
-				message: `Cart value must be at least ${formatPrice(minValue)} to use this coupon.`
-			};
-		}
-		let discount = 0;
-		if (coupon.type === 'percentage') {
-			discount = (subtotal * coupon.value) / 100;
-		} else {
-			discount = coupon.value || 0;
-		}
+
+		// Use the pre-calculated discount from the coupon object
+		const discount = coupon.discount || 0;
+		console.log('PriceSummary - calculated discount:', discount);
+
 		return { discount, message: '' };
 	}
 

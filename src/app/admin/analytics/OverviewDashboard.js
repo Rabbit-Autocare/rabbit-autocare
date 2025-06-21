@@ -1,180 +1,114 @@
 // components/admin/analytics/OverviewDashboard.js
 'use client';
 
-import React, { useEffect, useState } from 'react';
-import {
-  ResponsiveContainer,
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip as ReTooltip,
-  Cell,
-} from 'recharts';
-import { supabase } from '../../../lib/supabaseClient';
-import "../../../app/globals.css";
-const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#A020F0', '#FF1493'];
+import React, { useEffect, useState, useMemo } from 'react';
+import { supabase } from '@/lib/supabaseClient';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+
+const ChevronDown = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5 transition-transform"><path d="m6 9 6 6 6-6"/></svg>
+);
+
+const ChevronUp = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5 transition-transform"><path d="m18 15-6-6-6 6"/></svg>
+);
+
+const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#AF19FF', '#FF4560', '#FF66C3', '#82ca9d', '#ffc658'];
 
 export default function OverviewDashboard() {
-  const [darkMode, setDarkMode] = useState(false);
-  const [filterMonth, setFilterMonth] = useState('');
-  const [products, setProducts] = useState([]);
-  const [loading, setLoading] = useState(true);
+    const [overviewData, setOverviewData] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [expandedCategory, setExpandedCategory] = useState(null);
 
-  useEffect(() => {
-    async function fetchProducts() {
-      setLoading(true);
-      const { data, error } = await supabase
-        .from('products')
-        .select('id, name, variants, created_at');
+    useEffect(() => {
+        const fetchStockOverview = async () => {
+            setLoading(true);
+            try {
+                const { data, error } = await supabase.rpc('get_category_stock_overview');
+                if (error) throw error;
+                setOverviewData(data || []);
+            } catch (error) {
+                console.error('Error fetching stock overview:', error);
+                alert('Failed to fetch stock overview: ' + error.message);
+            } finally {
+                setLoading(false);
+            }
+        };
 
-      if (error) {
-        console.error('Error fetching products:', error);
-        setProducts([]);
-      } else {
-        setProducts(data);
-      }
-      setLoading(false);
+        fetchStockOverview();
+    }, []);
+
+    const toggleCategory = (categoryName) => {
+        if (expandedCategory === categoryName) {
+            setExpandedCategory(null);
+        } else {
+            setExpandedCategory(categoryName);
+        }
+    };
+
+    // Transform data for the stacked bar chart
+    const { chartData, productKeys } = useMemo(() => {
+        if (!overviewData || overviewData.length === 0) {
+            return { chartData: [], productKeys: [] };
+        }
+
+        const productKeysSet = new Set();
+        const transformedData = overviewData.map(category => {
+            const categoryData = { name: category.category_name };
+            category.products_stock.forEach(product => {
+                categoryData[product.name] = product.total_stock;
+                productKeysSet.add(product.name);
+            });
+            return categoryData;
+        });
+
+        // Sort by total stock per category
+        transformedData.sort((a, b) => {
+            const totalA = Object.values(a).reduce((sum, val) => (typeof val === 'number' ? sum + val : sum), 0);
+            const totalB = Object.values(b).reduce((sum, val) => (typeof val === 'number' ? sum + val : sum), 0);
+            return totalB - totalA;
+        });
+
+        return { chartData: transformedData, productKeys: Array.from(productKeysSet) };
+    }, [overviewData]);
+
+    if (loading) {
+        return <div className="flex items-center justify-center h-full"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900"></div></div>;
     }
-    fetchProducts();
-  }, []);
 
-  useEffect(() => {
-    document.body.classList.toggle('dark', darkMode);
-  }, [darkMode]);
+    return (
+        <div className="p-6">
+            <div className="flex justify-between items-center mb-6">
+                <h2 className="text-3xl font-bold">Inventory Overview by Category</h2>
+            </div>
 
-  const filteredProducts = filterMonth
-    ? products.filter((p) => {
-        if (!p.created_at) return false;
-        const productMonth = new Date(p.created_at).toISOString().slice(0, 7);
-        return productMonth === filterMonth;
-      })
-    : products;
-
-  const categoryMap = {};
-  filteredProducts.forEach((p) => {
-    categoryMap[p.category] = (categoryMap[p.category] || 0) + 1;
-  });
-  const categoryData = Object.entries(categoryMap).map(([name, value]) => ({
-    name,
-    value,
-  }));
-
-  const topSellingData = [...filteredProducts]
-    .map((p) => ({ name: p.name, sold: p.sold || 0 }))
-    .sort((a, b) => b.sold - a.sold)
-    .slice(0, 5);
-
-  const totalStock = filteredProducts.reduce((acc, p) => acc + (p.stock || 0), 0);
-  const totalSold = filteredProducts.reduce((acc, p) => acc + (p.sold || 0), 0);
-
-  return (
-    <div className="dashboard-container">
-      <div className="header">
-        <h1>Overview Dashboard</h1>
-        <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
-          <label htmlFor="monthFilter">Filter by Month:</label>
-          <select
-            id="monthFilter"
-            value={filterMonth}
-            onChange={(e) => setFilterMonth(e.target.value)}
-          >
-            <option value="">All</option>
-            <option value="2025-03">March 2025</option>
-            <option value="2025-04">April 2025</option>
-            <option value="2025-05">May 2025</option>
-          </select>
-          <button
-            onClick={() => setDarkMode(!darkMode)}
-            className="toggle-button"
-            aria-label="Toggle Dark Mode"
-          >
-            {darkMode ? 'Light Mode' : 'Dark Mode'}
-          </button>
+            {chartData.length === 0 ? (
+                <div className="text-center py-10 bg-white rounded-lg shadow-sm">
+                    <p className="text-gray-500">No inventory data found to display.</p>
+                </div>
+            ) : (
+                <div className="bg-white p-6 rounded-lg shadow-sm">
+                     <ResponsiveContainer width="100%" height={500}>
+                        <BarChart
+                            data={chartData}
+                            layout="vertical"
+                            margin={{ top: 5, right: 30, left: 50, bottom: 5, }}
+                        >
+                            <CartesianGrid strokeDasharray="3 3" />
+                            <XAxis type="number" />
+                            <YAxis type="category" dataKey="name" width={150} interval={0} />
+                            <Tooltip
+                                cursor={{fill: 'rgba(240, 240, 240, 0.5)'}}
+                                contentStyle={{ backgroundColor: '#fff', border: '1px solid #ccc' }}
+                            />
+                            <Legend />
+                            {productKeys.map((key, index) => (
+                                <Bar key={key} dataKey={key} stackId="a" fill={COLORS[index % COLORS.length]} />
+                            ))}
+                        </BarChart>
+                    </ResponsiveContainer>
+                </div>
+            )}
         </div>
-      </div>
-
-      {loading ? (
-        <p>Loading products...</p>
-      ) : (
-        <>
-          <div className="summary-cards">
-            <div className="card">
-              <h3>{totalStock}</h3>
-              <p>Total Stock</p>
-            </div>
-            <div className="card">
-              <h3>{totalSold}</h3>
-              <p>Total Sold</p>
-            </div>
-            <div className="card">
-              <h3>{filteredProducts.length}</h3>
-              <p>Products</p>
-            </div>
-          </div>
-
-          <div className="charts">
-            <div className="chart-wrapper">
-              <h3>Product Category Distribution</h3>
-              <ResponsiveContainer width="100%" height="90%">
-                <BarChart data={categoryData}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="name" angle={-45} textAnchor="end" interval={0} />
-                  <YAxis />
-                  <ReTooltip />
-                  <Bar dataKey="value">
-                    {categoryData.map((entry, index) => (
-                      <Cell
-                        key={`bar-cat-${index}`}
-                        fill={COLORS[index % COLORS.length]}
-                      />
-                    ))}
-                  </Bar>
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
-
-            <div className="chart-wrapper">
-              <h3>Top Selling Products</h3>
-              <ResponsiveContainer width="100%" height="90%">
-                <BarChart data={topSellingData}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="name" />
-                  <YAxis />
-                  <ReTooltip />
-                  <Bar dataKey="sold" fill="#82ca9d" />
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
-
-            <div className="chart-wrapper">
-              <h3>Product Stock Levels</h3>
-              <ResponsiveContainer width="100%" height="90%">
-                <BarChart
-                  data={filteredProducts.map((p) => ({
-                    name: p.name,
-                    stock: p.stock,
-                  }))}
-                >
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="name" angle={-45} textAnchor="end" interval={0} />
-                  <YAxis />
-                  <ReTooltip />
-                  <Bar dataKey="stock">
-                    {filteredProducts.map((entry, index) => (
-                      <Cell
-                        key={`bar-stock-${index}`}
-                        fill={entry.stock <= 10 ? '#FF4C4C' : '#8884d8'}
-                      />
-                    ))}
-                  </Bar>
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
-          </div>
-        </>
-      )}
-    </div>
-  );
+    );
 }

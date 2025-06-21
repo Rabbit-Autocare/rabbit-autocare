@@ -12,6 +12,34 @@ import OrderSummary from "@/components/checkout-order/OrderSummary";
 import { transformCartForCheckout, calculateOrderTotals, formatPrice } from "@/lib/utils/cartTransformUtils";
 import { StockService } from '@/lib/service/stockService';
 
+const getVariantIdsFromItem = async (item) => {
+	if (item.type === 'product' && item.variant_id) {
+		return [{ variant_id: item.variant_id, quantity: item.quantity }];
+	}
+
+	if (item.type === 'kit' || item.type === 'combo') {
+		const sourceTable = item.type === 'kit' ? 'kit_products' : 'combo_products';
+		const sourceIdColumn = item.type === 'kit' ? 'kit_id' : 'combo_id';
+		const sourceId = item.type === 'kit' ? item.kit_id : item.combo_id;
+
+		const { data: relatedItems, error } = await supabase
+			.from(sourceTable)
+			.select('variant_id, quantity')
+			.eq(sourceIdColumn, sourceId);
+
+		if (error) {
+			console.error(`Error fetching related items for ${item.type}:`, error);
+			return [];
+		}
+
+		return relatedItems.map(related => ({
+			variant_id: related.variant_id,
+			quantity: related.quantity * item.quantity,
+		}));
+	}
+	return [];
+};
+
 export default function CheckoutPage() {
 	const searchParams = useSearchParams();
 	const router = useRouter();
@@ -195,135 +223,81 @@ export default function CheckoutPage() {
 		setLoading(true);
 
 		try {
-			// Validate stock availability using StockService
-			await StockService.validateOrderStock(transformedItems);
+			// Step 1: Consolidate all variants from the cart into a single list
+			const allVariantsInOrder = (await Promise.all(transformedItems.flatMap(getVariantIdsFromItem))).flat();
 
-			// Get address details
+			const stockCheckPayload = allVariantsInOrder.map(v => ({
+				variant_id: v.variant_id,
+				quantity: v.quantity,
+			}));
+
+			// Step 2: Check stock for all items at once
+			for (const variant of stockCheckPayload) {
+				const { data: isAvailable, error } = await supabase.rpc('check_stock_availability', {
+					variant_id_input: variant.variant_id,
+					quantity_input: variant.quantity,
+				});
+
+				if (error || !isAvailable) {
+					throw new Error(`Insufficient stock for one or more items. Please review your cart.`);
+				}
+			}
+
+			// Get address details for shipping info
 			const { data: addressData, error: addressError } = await supabase
 				.from('addresses')
 				.select('*')
 				.eq('id', selectedAddressId)
 				.single();
-
 			if (addressError) throw addressError;
 
-			// Prepare order items with detailed information
-			const orderItems = transformedItems.map(item => {
-				const baseItem = {
-					name: item.name,
-					price: item.price,
-					quantity: item.quantity,
-					total_price: item.total_price,
-					type: item.type
-				};
-
-				if (item.type === 'product') {
-					return {
-						...baseItem,
-						product_id: item.product_id,
-						product_code: item.product_code,
-						variant_id: item.variant?.id,
-						variant_details: {
-							color: item.variant?.color,
-							size: item.variant?.size,
-							gsm: item.variant?.gsm,
-							quantity: item.variant?.quantity,
-							unit: item.variant?.unit
-						},
-						variant_display_text: item.variant_display_text
-					};
-				} else if (item.type === 'combo') {
-					return {
-						...baseItem,
-						combo_id: item.combo_id,
-						included_products: item.included_products,
-						included_variants: item.included_variants
-					};
-				} else if (item.type === 'kit') {
-					return {
-						...baseItem,
-						kit_id: item.kit_id,
-						included_products: item.included_products,
-						included_variants: item.included_variants
-					};
-				}
-			});
-
-			// Prepare shipping information
-			const shippingInfo = {
-				name: addressData.full_name,
-				phone: addressData.phone,
-				address: addressData.street,
-				city: addressData.city,
-				state: addressData.state,
-				postalCode: addressData.postal_code,
-				addressType: addressData.address_type
-			};
-
+			// Prepare order data
 			const orderData = {
 				user_id: userId,
-				items: orderItems,
+				address_id: selectedAddressId,
+				items: transformedItems, // Save the transformed items for order history
 				total: orderTotals.grandTotal,
 				subtotal: orderTotals.subtotal,
-				status: "pending",
-				address_id: selectedAddressId,
-				shipping_info: shippingInfo,
+				shipping_info: {
+					name: addressData.full_name,
+					phone: addressData.phone,
+					address: `${addressData.street}, ${addressData.city}, ${addressData.state} - ${addressData.postal_code}`,
+				},
+				status: 'pending',
 				...(coupon && {
 					coupon_id: coupon.id,
-					coupon_code: coupon.code,
-					discount_percent: coupon.value,
 					discount_amount: orderTotals.discount,
 				}),
-				created_at: new Date().toISOString(),
-				updated_at: new Date().toISOString()
 			};
 
-			console.log('Placing order with data:', orderData);
-
-			// Insert order
+			// Step 3: Insert the order
 			const { data: orderResult, error: orderError } = await supabase
 				.from("orders")
 				.insert([orderData])
-				.select()
+				.select('id')
 				.single();
-
 			if (orderError) throw orderError;
 
-			// Update stock using StockService
-			await StockService.updateStockOnCheckout(transformedItems);
+			// Step 4: Deduct stock for all items
+			await supabase.rpc('deduct_stock_for_order', {
+				items_to_deduct: stockCheckPayload,
+			});
 
-			// Handle coupon usage
+			// Step 5: Post-order cleanup
 			if (coupon) {
-				// Insert usage record
 				await supabase.from("user_coupons").insert([
-					{
-						user_id: userId,
-						coupon_id: coupon.id,
-						order_id: orderResult.id,
-						used_at: new Date().toISOString(),
-					},
+					{ user_id: userId, coupon_id: coupon.id, order_id: orderResult.id },
 				]);
-
-				// Update usage count
-				await supabase
-					.from("coupons")
-					.rpc("increment_coupon_usage", { coupon_id: coupon.id });
 			}
-
-			// Clear cart
 			await supabase.from("cart_items").delete().eq("user_id", userId);
-
-			// Clear coupon from context
 			clearCoupon();
 
-			// Redirect to confirmation page
 			router.push("/confirm");
 		} catch (error) {
 			console.error("Error placing order:", error);
 			alert("Error placing order: " + error.message);
 		} finally {
 			setLoading(false);
-			setShowConfirmModal(false);
 		}
 	};
 

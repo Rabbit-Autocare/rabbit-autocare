@@ -1,246 +1,218 @@
-'use client'
-import React, { useEffect, useState } from "react";
-import { supabase } from "../../../lib/supabaseClient";
-import { Line, Bar, Pie } from "react-chartjs-2";
-import DatePicker from "react-datepicker";
-import "react-datepicker/dist/react-datepicker.css";
-import "../../../app/globals.css"
-import {
-  Chart as ChartJS,
-  CategoryScale,
-  LinearScale,
-  PointElement,
-  LineElement,
-  BarElement,
-  Title,
-  Tooltip,
-  Legend,
-  ArcElement,
-} from "chart.js";
+'use client';
 
-// Register ChartJS components
-ChartJS.register(
-  CategoryScale,
-  LinearScale,
-  PointElement,
-  LineElement,
-  BarElement,
-  Title,
-  Tooltip,
-  Legend,
-  ArcElement
+import React, { useEffect, useState } from 'react';
+import { supabase } from '@/lib/supabaseClient';
+import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import DatePicker from 'react-datepicker';
+import 'react-datepicker/dist/react-datepicker.css';
+import '../../globals.css';
+import Papa from 'papaparse';
+
+// Custom Card Component
+const CustomCard = ({ children, className }) => (
+    <div className={`bg-white border rounded-lg shadow-sm ${className}`}>
+        {children}
+    </div>
 );
 
-const Spinner = () => (
-  <div className="flex justify-center items-center py-10">
-    <div className="animate-spin h-10 w-10 rounded-full border-4 border-blue-600 border-t-transparent"></div>
-  </div>
+const CustomCardHeader = ({ children, className }) => (
+    <div className={`p-6 pb-2 ${className}`}>
+        {children}
+    </div>
 );
 
-const SalesDashboard = () => {
-  // States
-  const [startDate, setStartDate] = useState(new Date(Date.now() - 30 * 24 * 60 * 60 * 1000));
-  const [endDate, setEndDate] = useState(new Date());
-  const [totalSales, setTotalSales] = useState(0);
-  const [ordersCount, setOrdersCount] = useState(0);
-  const [averageOrderValue, setAverageOrderValue] = useState(0);
-  const [salesOverTime, setSalesOverTime] = useState([]);
-  const [topProducts, setTopProducts] = useState([]);
-  const [salesByCategory, setSalesByCategory] = useState([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
+const CustomCardTitle = ({ children, className }) => (
+    <h3 className={`text-lg font-semibold tracking-tight ${className}`}>
+        {children}
+    </h3>
+);
 
-  // Auto-fetch data on date change
-  useEffect(() => {
-    fetchDashboardData();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [startDate, endDate]);
+const CustomCardContent = ({ children, className }) => (
+    <div className={`p-6 pt-0 ${className}`}>
+        {children}
+    </div>
+);
 
-  const fetchDashboardData = async () => {
-    setLoading(true);
-    setError(null);
 
-    try {
-      // Summary
-      const { data: summary, error: summaryError } = await supabase.rpc("get_sales_summary", {
-        start_date: startDate.toISOString().slice(0, 10),
-        end_date: endDate.toISOString().slice(0, 10),
-      });
+export default function SalesDashboard() {
+    const [salesOverTime, setSalesOverTime] = useState([]);
+    const [topProducts, setTopProducts] = useState([]);
+    const [startDate, setStartDate] = useState(() => {
+        const d = new Date();
+        d.setDate(d.getDate() - 30);
+        return d;
+    });
+    const [endDate, setEndDate] = useState(new Date());
+    const [loading, setLoading] = useState(true);
+    const [downloading, setDownloading] = useState(false);
 
-      if (summaryError) throw summaryError;
+    useEffect(() => {
+        fetchSalesData();
+    }, [startDate, endDate]);
 
-      // summary is an array with one object
-      const { total_sales, orders_count, average_order_value } = summary[0];
-      setTotalSales(Number(total_sales));
-      setOrdersCount(Number(orders_count));
-      setAverageOrderValue(Number(average_order_value));
+    const fetchSalesData = async () => {
+        setLoading(true);
+        try {
+            const from = startDate.toISOString();
+            const to = endDate.toISOString();
 
-      // Sales Over Time
-      const { data: overTime, error: timeError } = await supabase.rpc("get_sales_over_time", {
-        start_date: startDate.toISOString().slice(0, 10),
-        end_date: endDate.toISOString().slice(0, 10),
-      });
+            // Fetch Sales Over Time
+            const { data: sotData, error: sotError } = await supabase.rpc('get_sales_over_time', {
+                start_date: from,
+                end_date: to,
+            });
+            if (sotError) throw sotError;
+            setSalesOverTime(sotData.map(d => ({ ...d, sale_date: new Date(d.sale_date).toLocaleDateString() })) || []);
 
-      if (timeError) throw timeError;
+            // Fetch Top Selling Products
+            const { data: tpData, error: tpError } = await supabase.rpc('get_top_selling_products', {
+                limit_count: 10,
+                start_date: from,
+                end_date: to,
+            });
+            if (tpError) throw tpError;
+            setTopProducts(tpData || []);
 
-      setSalesOverTime(
-        overTime.map((o) => ({
-          date: o.order_date,
-          amount: Number(o.total),
-        }))
-      );
+        } catch (error) {
+            console.error('Error fetching sales data:', error);
+            alert('Failed to fetch sales data: ' + error.message);
+        } finally {
+            setLoading(false);
+        }
+    };
 
-      // Top Products
-      const { data: top, error: topErr } = await supabase.rpc("get_top_products", {
-        start_date: startDate.toISOString().slice(0, 10),
-        end_date: endDate.toISOString().slice(0, 10),
-      });
+    const handleDownloadCsv = async () => {
+        setDownloading(true);
+        try {
+            const { data, error } = await supabase.rpc('get_sales_report_data', {
+                start_date: startDate.toISOString(),
+                end_date: endDate.toISOString(),
+            });
 
-      if (topErr) throw topErr;
+            if (error) throw error;
 
-      setTopProducts(
-        top.map((t) => ({
-          name: t.product_name,
-          unitsSold: Number(t.units_sold),
-        }))
-      );
+            if (!data || data.length === 0) {
+                alert('No sales data available for the selected date range.');
+                return;
+            }
 
-      // Sales by Category
-      const { data: catData, error: catErr } = await supabase.rpc("get_sales_by_category", {
-        start_date: startDate.toISOString().slice(0, 10),
-        end_date: endDate.toISOString().slice(0, 10),
-      });
+            // Flatten the address object for better CSV readability
+            const flattenedData = data.map(row => ({
+                ...row,
+                shipping_name: row.shipping_address?.name,
+                shipping_phone: row.shipping_address?.phone,
+                shipping_address_line1: row.shipping_address?.address_line1,
+                shipping_address_line2: row.shipping_address?.address_line2,
+                shipping_city: row.shipping_address?.city,
+                shipping_state: row.shipping_address?.state,
+                shipping_postal_code: row.shipping_address?.postal_code,
+                shipping_country: row.shipping_address?.country,
+            }));
 
-      if (catErr) throw catErr;
+            // Remove the original address object
+            flattenedData.forEach(row => delete row.shipping_address);
 
-      setSalesByCategory(
-        catData.map((c) => ({
-          category: c.category || "Other",
-          amount: Number(c.total_sales),
-        }))
-      );
-    } catch (err) {
-      console.error(err);
-      setError(err.message || "Failed to load dashboard data.");
+
+            const csv = Papa.unparse(flattenedData, {
+                header: true,
+            });
+
+            const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement('a');
+            const url = URL.createObjectURL(blob);
+            link.setAttribute('href', url);
+            const from = startDate.toISOString().split('T')[0];
+            const to = endDate.toISOString().split('T')[0];
+            link.setAttribute('download', `sales_report_${from}_to_${to}.csv`);
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+
+        } catch (error) {
+            console.error('Error downloading CSV:', error);
+            alert('Failed to download sales report: ' + error.message);
+        } finally {
+            setDownloading(false);
+        }
+    };
+
+    if (loading) {
+        return <div className="flex items-center justify-center h-full"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900"></div></div>;
     }
 
-    setLoading(false);
-  };
+    return (
+        <div className="p-6 space-y-6">
+            <div className="flex justify-between items-center flex-wrap gap-4">
+                <h2 className="text-3xl font-bold">Sales Analytics</h2>
+                <div className="flex items-center space-x-4 flex-wrap">
+                    <button
+                        onClick={handleDownloadCsv}
+                        disabled={downloading}
+                        className="px-4 py-2 bg-green-600 text-white font-semibold rounded-lg hover:bg-green-700 disabled:bg-gray-400"
+                    >
+                        {downloading ? 'Downloading...' : 'Download CSV'}
+                    </button>
+                    <div className="flex items-center">
+                        <label className="text-sm font-medium mr-2">From</label>
+                        <DatePicker
+                            selected={startDate}
+                            onChange={(date) => setStartDate(date)}
+                            selectsStart
+                            startDate={startDate}
+                            endDate={endDate}
+                            className="w-full border border-gray-300 px-3 py-2 rounded-md"
+                        />
+                    </div>
+                    <div className="flex items-center">
+                        <label className="text-sm font-medium mr-2">To</label>
+                        <DatePicker
+                            selected={endDate}
+                            onChange={(date) => setEndDate(date)}
+                            selectsEnd
+                            startDate={startDate}
+                            endDate={endDate}
+                            minDate={startDate}
+                            className="w-full border border-gray-300 px-3 py-2 rounded-md"
+                        />
+                    </div>
+                </div>
+            </div>
 
-  // Chart Configs
-  const salesOverTimeData = {
-    labels: salesOverTime.map((s) => s.date),
-    datasets: [
-      {
-        label: "Sales (₹)",
-        data: salesOverTime.map((s) => s.amount),
-        borderColor: "#3b82f6",
-        backgroundColor: "rgba(59, 130, 246, 0.2)",
-        fill: true,
-        tension: 0.4,
-      },
-    ],
-  };
+            <CustomCard>
+                <CustomCardHeader>
+                    <CustomCardTitle>Sales Over Time</CustomCardTitle>
+                </CustomCardHeader>
+                <CustomCardContent>
+                    <ResponsiveContainer width="100%" height={300}>
+                        <LineChart data={salesOverTime}>
+                            <CartesianGrid strokeDasharray="3 3" />
+                            <XAxis dataKey="sale_date" />
+                            <YAxis tickFormatter={(value) => `₹${value / 1000}k`} />
+                            <Tooltip formatter={(value) => `₹${Number(value).toLocaleString('en-IN')}`} />
+                            <Legend />
+                            <Line type="monotone" dataKey="daily_revenue" stroke="#8884d8" name="Daily Revenue" />
+                        </LineChart>
+                    </ResponsiveContainer>
+                </CustomCardContent>
+            </CustomCard>
 
-  const topProductsData = {
-    labels: topProducts.map((p) => p.name),
-    datasets: [
-      {
-        label: "Units Sold",
-        data: topProducts.map((p) => p.unitsSold),
-        backgroundColor: "#ef4444",
-        borderRadius: 4,
-      },
-    ],
-  };
-
-  const salesByCategoryData = {
-    labels: salesByCategory.map((c) => c.category),
-    datasets: [
-      {
-        label: "Sales by Category (₹)",
-        data: salesByCategory.map((c) => c.amount),
-        backgroundColor: ["#3b82f6", "#10b981", "#f97316", "#8b5cf6", "#ec4899"],
-        hoverOffset: 12,
-      },
-    ],
-  };
-
-  return (
-    <div className="p-8 bg-gray-50 min-h-screen">
-      <div className="max-w-7xl mx-auto bg-white rounded-xl shadow-xl p-8">
-        <h1 className="text-3xl font-bold mb-6 text-gray-900">Sales Dashboard</h1>
-
-        {/* Date Pickers */}
-        <div className="flex flex-col sm:flex-row gap-6 mb-10">
-          <div className="w-full sm:w-64">
-            <label className="block font-medium mb-1 text-gray-700">Start Date</label>
-            <DatePicker
-              selected={startDate}
-              onChange={setStartDate}
-              maxDate={new Date()}
-              className="w-full border border-gray-300 px-3 py-2 rounded-md"
-              dateFormat="yyyy-MM-dd"
-            />
-          </div>
-          <div className="w-full sm:w-64">
-            <label className="block font-medium mb-1 text-gray-700">End Date</label>
-            <DatePicker
-              selected={endDate}
-              onChange={setEndDate}
-              maxDate={new Date()}
-              className="w-full border border-gray-300 px-3 py-2 rounded-md"
-              dateFormat="yyyy-MM-dd"
-            />
-          </div>
+            <CustomCard>
+                <CustomCardHeader>
+                    <CustomCardTitle>Top 10 Selling Products (by Revenue)</CustomCardTitle>
+                </CustomCardHeader>
+                <CustomCardContent>
+                    <ResponsiveContainer width="100%" height={400}>
+                        <BarChart data={topProducts} layout="vertical" margin={{ left: 150 }}>
+                            <CartesianGrid strokeDasharray="3 3" />
+                            <XAxis type="number" tickFormatter={(value) => `₹${value / 1000}k`} />
+                            <YAxis type="category" dataKey="product_name" width={150} interval={0} />
+                            <Tooltip formatter={(value) => `₹${Number(value).toLocaleString('en-IN')}`} />
+                            <Legend />
+                            <Bar dataKey="total_revenue" fill="#82ca9d" name="Total Revenue" />
+                        </BarChart>
+                    </ResponsiveContainer>
+                </CustomCardContent>
+            </CustomCard>
         </div>
-
-        {error && (
-          <div className="bg-red-100 text-red-700 p-3 rounded mb-6">{error}</div>
-        )}
-
-        {loading ? (
-          <Spinner />
-        ) : (
-          <>
-            {/* Summary Cards */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 mb-10">
-              <div className="bg-blue-100 p-6 rounded shadow text-center">
-                <h2 className="text-xl font-semibold mb-2">Total Sales</h2>
-                <p className="text-3xl font-bold text-blue-700">₹ {totalSales.toFixed(2)}</p>
-              </div>
-              <div className="bg-green-100 p-6 rounded shadow text-center">
-                <h2 className="text-xl font-semibold mb-2">Orders Count</h2>
-                <p className="text-3xl font-bold text-green-700">{ordersCount}</p>
-              </div>
-              <div className="bg-purple-100 p-6 rounded shadow text-center">
-                <h2 className="text-xl font-semibold mb-2">Avg Order Value</h2>
-                <p className="text-3xl font-bold text-purple-700">₹ {averageOrderValue.toFixed(2)}</p>
-              </div>
-            </div>
-
-            {/* Charts */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-              <div className="bg-white p-4 rounded shadow">
-                <h3 className="font-semibold mb-3">Sales Over Time</h3>
-                <Line data={salesOverTimeData} />
-              </div>
-
-              <div className="bg-white p-4 rounded shadow">
-                <h3 className="font-semibold mb-3">Top Selling Products</h3>
-                <Bar data={topProductsData} />
-              </div>
-
-              <div className="bg-white p-4 rounded shadow">
-                <h3 className="font-semibold mb-3">Sales by Category</h3>
-                <Pie data={salesByCategoryData} />
-              </div>
-            </div>
-          </>
-        )}
-      </div>
-    </div>
-  );
-};
-
-export default SalesDashboard;
+    );
+}

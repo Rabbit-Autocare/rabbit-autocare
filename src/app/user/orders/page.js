@@ -1,8 +1,8 @@
 'use client';
 import React, { useEffect, useState } from 'react';
-import { supabase } from '../../lib/supabaseClient';
-import UserLayout from '../../components/layouts/UserLayout';
-import '../../app/globals.css';
+import { supabase } from '@/lib/supabaseClient';
+import UserLayout from '@/components/layouts/UserLayout';
+import '@/app/globals.css';
 import Image from 'next/image';
 
 export default function OrderHistoryPage() {

@@ -1,7 +1,7 @@
 'use client';
 import '../../../app/globals.css';
 import { useEffect, useState } from 'react';
-import { supabase } from '../../../lib/supabaseClient';
+import { supabase } from '@/lib/supabaseClient';
 import AdminLayout from '@/components/layouts/AdminLayout';
 import { Search, ChevronDown } from 'lucide-react';
 
@@ -19,14 +19,14 @@ export default function UsersPage() {
   );
 
   const fetchUsers = async () => {
-    const { data } = await supabase.from('users').select('*');
+    const { data } = await supabase.from('auth_users').select('*');
     setUsers(data || []);
   };
 
   const toggleBanStatus = async (user) => {
     const newStatus = !user.is_banned;
     await supabase
-      .from('users')
+      .from('auth_users')
       .update({ is_banned: newStatus })
       .eq('id', user.id);
     fetchUsers();

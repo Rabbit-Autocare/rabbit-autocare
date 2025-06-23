@@ -173,7 +173,7 @@ export async function POST(request) {
 		// Log the prepared product data
 		console.log("Prepared product data for insert:", JSON.stringify(productData, null, 2));
 
-		// Start a transaction
+		// Insert the product
 		const { data: product, error: productError } = await supabase
 			.from("products")
 			.insert(productData)
@@ -194,57 +194,21 @@ export async function POST(request) {
 			);
 		}
 
-		// Insert variants
-		const variants = data.variants.map(variant => {
-			const base = {
-				id: variant.id,
-				product_id: product.id,
-				price: variant.price ?? null,
-				stock: variant.stock ?? 0,
-				compare_at_price: variant.compare_at_price ?? variant.compareAtPrice ?? null,
-				color_hex: variant.color_hex === "" ? null : variant.color_hex ?? null,
-			};
-			const clean = obj => Object.fromEntries(
-				Object.entries(obj).filter(([_, v]) => v !== undefined && v !== "")
-			);
-			if (data.is_microfiber) {
-				return clean({
-					...base,
-					gsm: variant.gsm ?? null,
-					size: variant.size ?? null,
-					color: variant.color ?? null,
-				});
-			} else {
-				return clean({
-					...base,
-					size: variant.size ?? null,
-					color: variant.color ?? null,
-					quantity: variant.quantity ?? null,
-					unit: variant.unit ?? null,
-				});
-			}
-		});
+		// Prepare variants, ensuring the client-generated text ID is included
+		const variantsToInsert = data.variants.map(variant => ({
+			...variant,
+			product_id: product.id, // This is an integer
+		}));
 
-		console.log("Variants prepared for INSERT:", JSON.stringify(variants, null, 2));
-
+		// Insert the variants
 		const { error: variantsError } = await supabase
 			.from("product_variants")
-			.insert(variants);
+			.insert(variantsToInsert);
 
 		if (variantsError) {
-			console.error("Error creating variants:", {
-				error: variantsError,
-				message: variantsError.message,
-				details: variantsError.details,
-				hint: variantsError.hint,
-				code: variantsError.code
-			});
-			// Rollback product creation
+			// Rollback product creation on variant failure
 			await supabase.from("products").delete().eq("id", product.id);
-			return NextResponse.json(
-				{ error: `Failed to create product variants: ${variantsError.message}` },
-				{ status: 500 }
-			);
+			return errorResponse(`Failed to create variants: ${variantsError.message}`);
 		}
 
 		// Fetch the complete product with variants
@@ -289,218 +253,64 @@ export async function POST(request) {
 	}
 }
 
-// PUT - Update a product
+// PUT - Update an existing product
 export async function PUT(request) {
 	try {
 		const data = await request.json();
-		console.log("Received update data:", JSON.stringify(data, null, 2));
+		const { id, variants, ...productData } = data;
 
-		if (!data.id) {
-			return NextResponse.json(
-				{ error: "Product ID is required" },
-				{ status: 400 }
-			);
+		if (!id) {
+			return errorResponse("Product ID is required for update", 400);
 		}
 
-		// Validate required fields
-		if (!data.name || !data.product_code) {
-			return NextResponse.json(
-				{ error: "Product name and code are required" },
-				{ status: 400 }
-			);
-		}
-
-		if (!data.variants || !Array.isArray(data.variants) || data.variants.length === 0) {
-			return NextResponse.json(
-				{ error: "At least one variant is required" },
-				{ status: 400 }
-			);
-		}
-
-		// Validate variant data
-		for (const variant of data.variants) {
-			if (data.is_microfiber) {
-				if (!variant.gsm || !variant.size || !variant.color || !variant.price) {
-					return NextResponse.json(
-						{ error: "GSM, size, color, and price are required for microfiber variants" },
-						{ status: 400 }
-					);
-				}
-			} else {
-				if (!variant.price) {
-					return NextResponse.json(
-						{ error: "Price is required for liquid variants" },
-						{ status: 400 }
-					);
-				}
-			}
-		}
-
-		// Prepare the product data
-		const productData = {
-			name: data.name,
-			product_code: data.product_code,
-			description: data.description,
-			category_name: data.category_name,
-			is_microfiber: data.is_microfiber,
-			main_image_url: data.main_image_url,
-			images: data.images,
-			key_features: data.key_features,
-			taglines: data.taglines,
-			subcategory_names: data.subcategory_names,
-			meta_title: data.meta_title,
-			meta_description: data.meta_description,
-			meta_keywords: data.meta_keywords,
-			og_title: data.og_title,
-			og_description: data.og_description,
-			og_image: data.og_image,
-			twitter_title: data.twitter_title,
-			twitter_description: data.twitter_description,
-			twitter_image: data.twitter_image,
-			schema_markup: data.schema_markup,
-		};
-
-		// Log the prepared product data
-		console.log("Prepared product data for update:", JSON.stringify(productData, null, 2));
-
-		// Update the product
-		const { data: product, error: productError } = await supabase
+		// Update the core product details
+		const { error: productUpdateError } = await supabase
 			.from("products")
 			.update(productData)
-			.eq("id", data.id)
-			.select()
-			.single();
+			.eq("id", id);
 
-		if (productError) {
-			console.error("Error updating product:", {
-				error: productError,
-				message: productError.message,
-				details: productError.details,
-				hint: productError.hint,
-				code: productError.code
-			});
-			return NextResponse.json(
-				{ error: `Failed to update product: ${productError.message}` },
-				{ status: 500 }
-			);
+		if (productUpdateError) {
+			return errorResponse(`Failed to update product: ${productUpdateError.message}`);
 		}
 
-		// Delete existing variants
-		const { error: deleteError } = await supabase
-			.from("product_variants")
-			.delete()
-			.eq("product_id", data.id);
+		// Perform a smart "upsert" for all variants.
+		// This will update existing variants and insert new ones based on the 'id' field.
+		if (variants && Array.isArray(variants)) {
+			const { error: upsertError } = await supabase
+				.from("product_variants")
+				.upsert(
+					variants.map(v => ({ ...v, product_id: id })),
+					{ onConflict: 'id' }
+				);
 
-		if (deleteError) {
-			console.error("Error deleting existing variants:", {
-				error: deleteError,
-				message: deleteError.message,
-				details: deleteError.details,
-				hint: deleteError.hint,
-				code: deleteError.code
-			});
-			return NextResponse.json(
-				{ error: `Failed to delete existing variants: ${deleteError.message}` },
-				{ status: 500 }
-			);
-		}
-
-		// Insert new variants
-		const variants = data.variants.map(variant => {
-			const base = {
-				id: variant.id,
-				product_id: data.id,
-				price: variant.price ?? null,
-				stock: variant.stock ?? 0,
-				compare_at_price: variant.compare_at_price ?? variant.compareAtPrice ?? null,
-				color_hex: variant.color_hex === "" ? null : variant.color_hex ?? null,
-			};
-			const clean = obj => Object.fromEntries(
-				Object.entries(obj).filter(([_, v]) => v !== undefined && v !== "")
-			);
-			if (data.is_microfiber) {
-				return clean({
-					...base,
-					gsm: variant.gsm ?? null,
-					size: variant.size ?? null,
-					color: variant.color ?? null,
-				});
-			} else {
-				return clean({
-					...base,
-					size: variant.size ?? null,
-					color: variant.color ?? null,
-					quantity: variant.quantity ?? null,
-					unit: variant.unit ?? null,
-				});
+			if (upsertError) {
+				return errorResponse(`Failed to upsert variants: ${upsertError.message}`);
 			}
-		});
-
-		console.log("Variants prepared for INSERT:", JSON.stringify(variants, null, 2));
-
-		const { error: variantsError } = await supabase
-			.from("product_variants")
-			.insert(variants);
-
-		if (variantsError) {
-			console.error("Error creating variants:", {
-				error: variantsError,
-				message: variantsError.message,
-				details: variantsError.details,
-				hint: variantsError.hint,
-				code: variantsError.code
-			});
-			return NextResponse.json(
-				{ error: `Failed to create product variants: ${variantsError.message}` },
-				{ status: 500 }
-			);
 		}
 
-		// Fetch the complete updated product
+		// Fetch the complete product with its updated variants
 		const { data: completeProduct, error: fetchError } = await supabase
 			.from("products")
 			.select(`
 				*,
-				product_variants (
-					id,
-					gsm,
-					size,
-					color,
-					color_hex,
-					quantity,
-					unit,
-					price,
-					stock,
-					compare_at_price
-				)
+				product_variants (*)
 			`)
-			.eq("id", data.id)
+			.eq("id", id)
 			.single();
 
 		if (fetchError) {
-			console.error("Error fetching updated product:", {
-				error: fetchError,
-				message: fetchError.message,
-				details: fetchError.details,
-				hint: fetchError.hint,
-				code: fetchError.code
-			});
-			return NextResponse.json(
-				{ error: `Failed to fetch updated product: ${fetchError.message}` },
-				{ status: 500 }
-			);
+			return errorResponse(`Failed to fetch updated product: ${fetchError.message}`);
 		}
 
 		return NextResponse.json({
 			success: true,
-			product: transformProductData(completeProduct)
+			product: completeProduct,
+			message: "Product updated successfully"
 		});
+
 	} catch (error) {
-		console.error("Error in PUT /api/products:", error);
-		return NextResponse.json(
-			{ error: "Internal server error" },
-			{ status: 500 }
-		);
+		console.error("PUT /api/products error:", error);
+		return errorResponse(error.message || "Internal server error");
 	}
 }
 

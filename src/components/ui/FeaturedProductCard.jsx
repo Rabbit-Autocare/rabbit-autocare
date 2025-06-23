@@ -325,6 +325,7 @@ export default function FeaturedProductCard({ product, className = "", isLastCar
         }
       }
 
+      console.log('FeaturedProductCard: Adding PRODUCT to cart:', { product, variant: itemToAdd.variant, quantity: 1 });
       const success = await addToCart(product, itemToAdd.variant, 1)
 
       if (success) {
@@ -382,7 +383,7 @@ export default function FeaturedProductCard({ product, className = "", isLastCar
         }
       }
 
-      // Add the item to cart first (using the centralized addToCart logic)
+      console.log('FeaturedProductCard: BuyNow PRODUCT addToCart:', { product, variant: itemToAdd.variant, quantity: 1 });
       const success = await addToCart(product, itemToAdd.variant, 1)
 
       if (success) {

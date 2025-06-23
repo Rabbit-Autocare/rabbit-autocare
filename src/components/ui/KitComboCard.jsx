@@ -85,25 +85,46 @@ export default function KitComboCard({ product, className = "", isLastCard = fal
 
   const handleAddToCart = async () => {
     setIsAddingToCart(true)
-
     try {
-      const itemToAdd = {
-        productId: product.id,
-        quantity: 1,
-        price: currentPrice,
-        productName: product.name,
-        productImage: product.main_image_url || product.image_url || product.images?.[0] || "",
-        variant: {
-          id: 'default',
+      let success = false;
+      if (product.kit_products) {
+        // It's a kit
+        const includedVariants = product.kit_products.map(item => ({
+          product_id: item.product_id,
+          variant_id: item.variant_id,
+          quantity: item.quantity
+        }));
+        const kitObj = { kit_id: product.id, ...product };
+        console.log('Adding KIT to cart:', { kitObj, includedVariants, quantity: 1 });
+        success = await addToCart(kitObj, includedVariants, 1);
+      } else if (product.combo_products) {
+        // It's a combo
+        const includedVariants = product.combo_products.map(item => ({
+          product_id: item.product_id,
+          variant_id: item.variant_id,
+          quantity: item.quantity
+        }));
+        const comboObj = { combo_id: product.id, ...product };
+        console.log('Adding COMBO to cart:', { comboObj, includedVariants, quantity: 1 });
+        success = await addToCart(comboObj, includedVariants, 1);
+      } else {
+        // Regular product fallback
+        const itemToAdd = {
+          productId: product.id,
+          quantity: 1,
           price: currentPrice,
-          displayText: product.kit_products ? 'Kit' : 'Combo'
+          productName: product.name,
+          productImage: product.main_image_url || product.image_url || product.images?.[0] || "",
+          variant: {
+            id: 'default',
+            price: currentPrice,
+            displayText: product.kit_products ? 'Kit' : 'Combo'
+          }
         }
+        console.log('Adding PRODUCT to cart:', { product, variant: itemToAdd.variant, quantity: 1 });
+        success = await addToCart(product, itemToAdd.variant, 1)
       }
-
-      const success = await addToCart(product, itemToAdd.variant, 1)
-
       if (success) {
-        console.log("Successfully added to cart.")
         openCart()
       } else {
         alert("Failed to add item to cart.")
@@ -118,25 +139,46 @@ export default function KitComboCard({ product, className = "", isLastCard = fal
 
   const handleBuyNow = async () => {
     setIsAddingToCart(true)
-
     try {
-      const itemToAdd = {
-        productId: product.id,
-        quantity: 1,
-        price: currentPrice,
-        productName: product.name,
-        productImage: product.main_image_url || product.image_url || product.images?.[0] || "",
-        variant: {
-          id: 'default',
+      let success = false;
+      if (product.kit_products) {
+        // It's a kit
+        const includedVariants = product.kit_products.map(item => ({
+          product_id: item.product_id,
+          variant_id: item.variant_id,
+          quantity: item.quantity
+        }));
+        const kitObj = { kit_id: product.id, ...product };
+        console.log('BuyNow KIT:', { kitObj, includedVariants, quantity: 1 });
+        success = await addToCart(kitObj, includedVariants, 1);
+      } else if (product.combo_products) {
+        // It's a combo
+        const includedVariants = product.combo_products.map(item => ({
+          product_id: item.product_id,
+          variant_id: item.variant_id,
+          quantity: item.quantity
+        }));
+        const comboObj = { combo_id: product.id, ...product };
+        console.log('BuyNow COMBO:', { comboObj, includedVariants, quantity: 1 });
+        success = await addToCart(comboObj, includedVariants, 1);
+      } else {
+        // Regular product fallback
+        const itemToAdd = {
+          productId: product.id,
+          quantity: 1,
           price: currentPrice,
-          displayText: product.kit_products ? 'Kit' : 'Combo'
+          productName: product.name,
+          productImage: product.main_image_url || product.image_url || product.images?.[0] || "",
+          variant: {
+            id: 'default',
+            price: currentPrice,
+            displayText: product.kit_products ? 'Kit' : 'Combo'
+          }
         }
+        console.log('BuyNow PRODUCT:', { product, variant: itemToAdd.variant, quantity: 1 });
+        success = await addToCart(product, itemToAdd.variant, 1)
       }
-
-      const success = await addToCart(product, itemToAdd.variant, 1)
-
       if (success) {
-        console.log("Item added to cart, redirecting to checkout.")
         router.push('/checkout')
       } else {
         alert("Failed to add item to cart for direct purchase.")

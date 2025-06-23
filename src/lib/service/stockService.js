@@ -32,30 +32,58 @@ export class StockService {
     }
   }
 
-  static async checkMultipleVariantsStock(variants) {
+  static async decrementStock(variantId, quantity) {
     try {
-      // variants should be an array of { variantId, quantity }
-      const results = await Promise.all(
-        variants.map(variant =>
-          this.checkStockAvailability(variant.variantId, variant.quantity)
-        )
-      );
-      return results.every(result => result === true);
+      const { data, error } = await supabase.rpc('decrement_stock', {
+        variant_id: variantId,
+        quantity: quantity
+      });
+
+      if (error) throw error;
+      return data;
+    } catch (error) {
+      console.error('Error decrementing stock:', error);
+      throw error;
+    }
+  }
+
+  static async incrementStock(variantId, quantity) {
+    try {
+      const { data, error } = await supabase.rpc('increment_stock', {
+        variant_id: variantId,
+        quantity: quantity
+      });
+
+      if (error) throw error;
+      return data;
+    } catch (error) {
+      console.error('Error incrementing stock:', error);
+      throw error;
+    }
+  }
+
+  static async checkMultipleVariantsStock(stockChecks) {
+    try {
+      const { data, error } = await supabase.rpc('check_multiple_variants_stock', {
+        variant_checks: stockChecks
+      });
+
+      if (error) throw error;
+      return data;
     } catch (error) {
       console.error('Error checking multiple variants stock:', error);
       throw error;
     }
   }
 
-  static async updateMultipleVariantsStock(variants, operation) {
+  static async updateMultipleVariantsStock(stockUpdates) {
     try {
-      // variants should be an array of { variantId, quantity }
-      const results = await Promise.all(
-        variants.map(variant =>
-          this.updateStock(variant.variantId, variant.quantity, operation)
-        )
-      );
-      return results.every(result => result === true);
+      const { data, error } = await supabase.rpc('update_multiple_variants_stock', {
+        stock_updates: stockUpdates
+      });
+
+      if (error) throw error;
+      return data;
     } catch (error) {
       console.error('Error updating multiple variants stock:', error);
       throw error;
@@ -211,6 +239,81 @@ export class StockService {
       }, {});
     } catch (error) {
       console.error('Error getting multiple variants stock:', error);
+      throw error;
+    }
+  }
+
+  static async getLowStockAlerts(threshold = 10) {
+    try {
+      const { data, error } = await supabase.rpc('get_low_stock_alerts', {
+        threshold: threshold
+      });
+
+      if (error) throw error;
+      return data;
+    } catch (error) {
+      console.error('Error getting low stock alerts:', error);
+      throw error;
+    }
+  }
+
+  static async getStockSummary() {
+    try {
+      const { data, error } = await supabase.rpc('get_stock_summary');
+
+      if (error) throw error;
+      return data[0]; // Return first row since it's a single summary
+    } catch (error) {
+      console.error('Error getting stock summary:', error);
+      throw error;
+    }
+  }
+
+  static async validateOrderStock(orderItems) {
+    try {
+      const stockChecks = [];
+
+      for (const item of orderItems) {
+        if (item.type === 'product' && item.variant_id) {
+          stockChecks.push({
+            variantId: item.variant_id,
+            quantity: item.quantity
+          });
+        } else if (item.type === 'kit' || item.type === 'combo') {
+          const relationTable = item.type === 'combo' ? 'combo_products' : 'kit_products';
+          const relationId = item.type === 'combo' ? 'combo_id' : 'kit_id';
+          const itemId = item.type === 'combo' ? item.combo_id : item.kit_id;
+
+          const { data: relationItems, error } = await supabase
+            .from(relationTable)
+            .select('variant_id, quantity')
+            .eq(relationId, itemId);
+
+          if (error) throw error;
+
+          relationItems.forEach(relationItem => {
+            stockChecks.push({
+              variantId: relationItem.variant_id,
+              quantity: relationItem.quantity * item.quantity
+            });
+          });
+        }
+      }
+
+      const stockValidation = await this.checkMultipleVariantsStock(stockChecks);
+
+      // Check if all items are available
+      const unavailableItems = stockValidation.filter(item => !item.isAvailable);
+
+      if (unavailableItems.length > 0) {
+        throw new Error(`Insufficient stock for some items: ${unavailableItems.map(item =>
+          `Variant ${item.variantId} (Available: ${item.availableStock}, Required: ${item.requiredQuantity})`
+        ).join(', ')}`);
+      }
+
+      return true;
+    } catch (error) {
+      console.error('Error validating order stock:', error);
       throw error;
     }
   }

@@ -2,6 +2,17 @@
 import Image from 'next/image';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import {
+  Home,
+  Package,
+  ShoppingCart,
+  Users,
+  Gift,
+  Tag,
+  Settings,
+  BarChart,
+  Boxes,
+} from 'lucide-react';
 
 export default function AdminSidebar() {
   const pathname = usePathname();
@@ -34,26 +45,17 @@ export default function AdminSidebar() {
     {
       name: 'Products',
       path: '/admin/products',
-      icon: (
-        <Image
-          src='/assets/adminsvgs/products.svg'
-          alt='products'
-          width={20}
-          height={20}
-        />
-      ),
+      icon: <Package className="h-5 w-5" />,
+    },
+    {
+      name: 'Stock',
+      path: '/admin/stock',
+      icon: <Boxes className="h-5 w-5" />,
     },
     {
       name: 'Kits & Combos',
       path: '/admin/kits&combos',
-      icon: (
-        <Image
-          src='/assets/adminsvgs/kits&combos.svg'
-          alt='kits&combos'
-          width={20}
-          height={20}
-        />
-      ),
+      icon: <Gift className="h-5 w-5" />,
     },
     {
       name: 'Customers',

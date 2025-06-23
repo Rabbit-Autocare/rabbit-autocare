@@ -7,6 +7,9 @@ import { useTheme } from "@/contexts/ThemeContext"
 import { useCart } from "@/hooks/useCart"
 import { Menu, X } from "lucide-react"
 import { CategoryService } from "@/lib/service/microdataService"
+import { useAuth } from "@/hooks/useAuth"
+import { UserService } from "@/lib/service/userService"
+import CouponCard from "@/components/ui/CouponCard"
 
 const categoryImageMap = {
   "car-interior": "/assets/images/carinterior.png",
@@ -37,6 +40,8 @@ export default function MobileNavbar({ onMenuStateChange }) {
   const { openCart, cartCount } = useCart()
   const [categories, setCategories] = useState([])
   const [loading, setLoading] = useState(false)
+  const [userCoupons, setUserCoupons] = useState([])
+  const { user, loading: authLoading } = useAuth()
 
   // Notify parent component when menu state changes
   useEffect(() => {
@@ -98,6 +103,22 @@ export default function MobileNavbar({ onMenuStateChange }) {
 
     fetchCategories()
   }, [])
+
+  // Fetch user's coupons
+  useEffect(() => {
+    const fetchUserCoupons = async () => {
+      if (user?.id) {
+        const result = await UserService.getUserCoupons(user.id);
+        if (result.success) {
+          setUserCoupons(result.data);
+        }
+      }
+    };
+
+    if (!authLoading) {
+      fetchUserCoupons();
+    }
+  }, [user?.id, authLoading]);
 
   const handleSearch = (e) => {
     e.preventDefault()
@@ -307,22 +328,43 @@ export default function MobileNavbar({ onMenuStateChange }) {
       {showCoupons && (
         <div className="bg-white border-b border-gray-200 shadow-lg relative z-40">
           <div className="px-4 py-4">
-            <h3 className="font-semibold text-lg mb-3">Available Coupons</h3>
-            <div className="space-y-3 max-h-60 overflow-y-auto">
-              {coupons.map((coupon, index) => (
-                <div
-                  key={index}
-                  className="flex items-center justify-between p-3 border border-gray-200 rounded-lg hover:bg-gray-50"
-                >
-                  <div className="flex-1">
-                    <div className="font-medium text-sm">{coupon.code}</div>
-                    <div className="text-xs text-gray-600">{coupon.description}</div>
-                  </div>
-                  <div className="bg-green-100 text-green-800 px-2 py-1 rounded text-xs font-medium">
-                    {coupon.discount}
-                  </div>
+            {/* <h3 className="font-semibold text-lg mb-3">Available Coupons</h3> */}
+            <div className="coupon-scroll-area">
+              {authLoading ? (
+                <div className="text-center ">
+                  <p className="text-gray-500">Loading...</p>
                 </div>
-              ))}
+              ) : user ? (
+                userCoupons.length > 0 ? (
+                  <div className="space-y-3 mb-3">
+                    {userCoupons.map((coupon) => (
+                      <CouponCard
+                        key={coupon.id}
+                        code={coupon.code}
+                        discount={coupon.discount}
+                        validUpto={coupon.expiry}
+                      />
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center py-8 text-gray-500">
+                    <svg className="mx-auto mb-3 w-12 h-12 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    <p>No coupons available</p>
+                  </div>
+                )
+              ) : (
+                <div className="text-center py-8">
+                  <svg className="mx-auto mb-3 w-12 h-12 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                  </svg>
+                  <p className="text-gray-500 mb-3">Please log in to view your coupons</p>
+                  <Link href="/login" className="inline-block bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition-colors">
+                    Login
+                  </Link>
+                </div>
+              )}
             </div>
           </div>
         </div>

@@ -2,115 +2,170 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { supabase } from '../../../lib/supabaseClient';
+import { supabase } from '@/lib/supabaseClient';
+
+// Custom Card Component
+const CustomCard = ({ children, className }) => (
+    <div className={`bg-white border rounded-lg shadow-sm ${className}`}>
+        {children}
+    </div>
+);
+
+const CustomCardHeader = ({ children, className }) => (
+    <div className={`p-6 pb-2 ${className}`}>
+        {children}
+    </div>
+);
+
+const CustomCardTitle = ({ children, className }) => (
+    <h3 className={`text-lg font-semibold tracking-tight ${className}`}>
+        {children}
+    </h3>
+);
+
+const CustomCardContent = ({ children, className }) => (
+    <div className={`p-6 pt-0 ${className}`}>
+        {children}
+    </div>
+);
+
+const StatCard = ({ title, value, description }) => (
+    <CustomCard>
+        <CustomCardHeader>
+            <CustomCardTitle className="text-sm font-medium text-gray-500">{title}</CustomCardTitle>
+        </CustomCardHeader>
+        <CustomCardContent>
+            <div className="text-2xl font-bold">{value}</div>
+            <p className="text-xs text-gray-500 mt-1">{description}</p>
+        </CustomCardContent>
+    </CustomCard>
+);
 
 export default function StockDashboard() {
-  const [products, setProducts] = useState([]);
-  const [search, setSearch] = useState('');
-  const [category, setCategory] = useState('');
-  const [sizeFilter, setSizeFilter] = useState('');
-  const [loading, setLoading] = useState(true);
+    const [analytics, setAnalytics] = useState(null);
+    const [lowStockProducts, setLowStockProducts] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [page, setPage] = useState(1);
+    const [pageSize] = useState(10);
+    const [totalRows, setTotalRows] = useState(0);
 
-  useEffect(() => {
-    async function fetchStock() {
-      setLoading(true);
-      const { data, error } = await supabase
-        .from('products')
-        .select('id, name, category, variants');
-      if (!error) {
-        setProducts(data);
-      }
-      setLoading(false);
+    useEffect(() => {
+        fetchStockData();
+    }, [page]);
+
+    const fetchStockData = async () => {
+        setLoading(true);
+        try {
+            // Fetch analytics KPIs
+            if (page === 1) { // Only fetch analytics on the first page load
+                const { data: analyticsData, error: analyticsError } = await supabase.rpc('get_stock_analytics');
+                if (analyticsError) throw analyticsError;
+                setAnalytics(analyticsData[0]);
+            }
+
+            // Fetch low stock products
+            const { data: productsData, error: productsError } = await supabase.rpc('get_low_stock_products', {
+                page_num: page,
+                page_size: pageSize,
+            });
+
+            if (productsError) throw productsError;
+
+            setLowStockProducts(productsData || []);
+            if (productsData && productsData.length > 0) {
+                setTotalRows(productsData[0].total_rows);
+            } else {
+                 setTotalRows(0);
+            }
+
+        } catch (error) {
+            console.error('Error fetching stock data:', error);
+            alert('Failed to fetch stock data: ' + error.message);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const totalPages = Math.ceil(totalRows / pageSize);
+
+    if (loading) {
+        return <div className="flex items-center justify-center h-full"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900"></div></div>;
     }
-    fetchStock();
-  }, []);
 
-  const filtered = products.filter((p) => {
-    if (search && !p.name.toLowerCase().includes(search.toLowerCase())) return false;
-    if (category && p.category !== category) return false;
-    if (sizeFilter && !p.variants?.some((v) => v.size === sizeFilter)) return false;
-    return true;
-  });
+    return (
+        <div className="p-6 space-y-6">
+            <h2 className="text-3xl font-bold">Stock Analytics</h2>
 
-  return (
-    <div className="space-y-6">
-      <h2 className="text-xl font-bold">📦 Stock Dashboard</h2>
+            {analytics && (
+                 <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+                    <StatCard title="Total Variants" value={analytics.total_variants} description="Total distinct product variants" />
+                    <StatCard title="Low Stock" value={analytics.low_stock_variants} description={`Variants at or below ${analytics.low_stock_threshold} units`} />
+                    <StatCard title="Out of Stock" value={analytics.out_of_stock_variants} description="Variants with zero quantity" />
+                    <StatCard title="Low Stock Threshold" value={analytics.low_stock_threshold} description="The quantity level that triggers a low stock alert" />
+                </div>
+            )}
 
-      {/* Filters */}
-      <div className="flex flex-wrap gap-4 items-center">
-        <input
-          type="text"
-          placeholder="Search by product name"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          className="px-3 py-2 border rounded-md"
-        />
+            <CustomCard>
+                <CustomCardHeader>
+                    <CustomCardTitle>Low Stock Products</CustomCardTitle>
+                </CustomCardHeader>
+                <CustomCardContent>
+                    <div className="overflow-x-auto">
+                        <table className="min-w-full divide-y divide-gray-200">
+                            <thead className="bg-gray-50">
+                                <tr>
+                                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Product</th>
+                                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Variant</th>
+                                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">SKU</th>
+                                    <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Quantity</th>
+                                </tr>
+                            </thead>
+                            <tbody className="bg-white divide-y divide-gray-200">
+                                {lowStockProducts.length > 0 ? (
+                                    lowStockProducts.map((item) => (
+                                        <tr key={item.variant_id}>
+                                            <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{item.product_name}</td>
+                                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{item.variant_name}</td>
+                                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{item.sku}</td>
+                                            <td className={`px-6 py-4 whitespace-nowrap text-right text-sm font-bold ${item.quantity === 0 ? 'text-red-600' : 'text-yellow-600'}`}>
+                                                {item.quantity}
+                                            </td>
+                                        </tr>
+                                    ))
+                                ) : (
+                                    <tr>
+                                        <td colSpan="4" className="px-6 py-4 text-center text-sm text-gray-500">No low stock products found.</td>
+                                    </tr>
+                                )}
+                            </tbody>
+                        </table>
+                    </div>
+                </CustomCardContent>
+            </CustomCard>
 
-        <select
-          value={category}
-          onChange={(e) => setCategory(e.target.value)}
-          className="px-3 py-2 border rounded-md"
-        >
-          <option value="">All Categories</option>
-          {[...new Set(products.map((p) => p.category))].map((cat) => (
-            <option key={cat} value={cat}>
-              {cat}
-            </option>
-          ))}
-        </select>
-
-        <select
-          value={sizeFilter}
-          onChange={(e) => setSizeFilter(e.target.value)}
-          className="px-3 py-2 border rounded-md"
-        >
-          <option value="">All Sizes</option>
-        {['50ml', '100ml', '250ml', '500ml', '1L', '5L'].map((size) => (
-  <option key={size} value={size}>{size}</option>
-))}
-        </select>
-      </div>
-
-      {/* Stock Table */}
-      {loading ? (
-        <p>Loading stock data...</p>
-      ) : (
-        <div className="overflow-auto border rounded-lg">
-          <table className="min-w-full text-sm">
-            <thead className="bg-gray-100">
-              <tr>
-                <th className="text-left px-4 py-2">Product</th>
-                <th className="text-left px-4 py-2">Category</th>
-                <th className="text-left px-4 py-2">Sizes</th>
-                <th className="text-left px-4 py-2">Total Stock</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filtered.map((p) => {
-                const total = p.variants?.reduce((acc, v) => acc + (v.stock || 0), 0) || 0;
-                return (
-                  <tr key={p.id} className="border-t">
-                    <td className="px-4 py-2 font-medium">{p.name}</td>
-                    <td className="px-4 py-2">{p.category}</td>
-                    <td className="px-4 py-2">
-                    {p.variants?.map((v) => (
-  <span
-    key={v.size}
-    className="inline-block px-2 py-1 bg-gray-200 rounded mr-1"
-  >
-    {v.size}: {v.stock}
-  </span>
-))}
-
-                    </td>
-                    <td className="px-4 py-2 font-semibold">{total}</td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
+            {totalPages > 1 && (
+                <div className="flex justify-between items-center pt-4">
+                    <span className="text-sm text-gray-600">
+                        Page {page} of {totalPages}
+                    </span>
+                    <div className="space-x-2">
+                        <button
+                            onClick={() => setPage(p => Math.max(1, p - 1))}
+                            disabled={page === 1}
+                            className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50"
+                        >
+                            Previous
+                        </button>
+                        <button
+                            onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+                            disabled={page === totalPages}
+                            className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50"
+                        >
+                            Next
+                        </button>
+                    </div>
+                </div>
+            )}
         </div>
-      )}
-    </div>
-  );
+    );
 }

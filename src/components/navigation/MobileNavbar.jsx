@@ -3,38 +3,18 @@
 import { useState, useEffect } from "react"
 import Link from "next/link"
 import Image from "next/image"
-
 import { useTheme } from "@/contexts/ThemeContext"
 import { useCart } from "@/hooks/useCart"
-// Remove CartDrawer import - it's now handled globally
 import { Menu, X } from "lucide-react"
 import { CategoryService } from "@/lib/service/microdataService"
 
-// Shop categories for mobile with images
-const shopCategories = [
-  {
-    name: "Car Interior",
-    href: "/shop/car-interior",
-    image: "/assets/images/banner.png",
-  },
-  {
-    name: "Car Exterior",
-    href: "/shop/car-exterior",
-    image: "/assets/images/banner.png",
-  },
-  {
-    name: "Microfibers",
-    href: "/shop/microfibers",
-    image: "/assets/images/banner.png",
-  },
-  {
-    name: "Bestsellers",
-    href: "/shop/bestsellers",
-    image: "/assets/images/banner.png",
-  },
-]
+const categoryImageMap = {
+  "car-interior": "/assets/images/carinterior.png",
+  "car-exterior": "/assets/images/banner2.png",
+  "kits&combos": "/assets/images/banner.png",
+  "microfiber-cloth": "/assets/images/mission.png",
+}
 
-// Navigation links for mobile
 const navLinks = [
   { name: "HOME", href: "/" },
   { name: "ABOUT US", href: "/about" },
@@ -43,31 +23,12 @@ const navLinks = [
   { name: "GET IN TOUCH", href: "/contact" },
 ]
 
-// Coupons data for mobile
 const coupons = [
-  {
-    code: "WELCOME20",
-    description: "20% off on first order",
-    discount: "20% OFF",
-  },
-  {
-    code: "BULK50",
-    description: "50% off on bulk orders",
-    discount: "50% OFF",
-  },
-  {
-    code: "FREESHIP",
-    description: "Free shipping on orders above ₹999",
-    discount: "FREE SHIPPING",
-  },
-  {
-    code: "SAVE30",
-    description: "30% off on car care combo",
-    discount: "30% OFF",
-  },
+  { code: "SAVE20", description: "20% off on all products", discount: "20% OFF" },
+  { code: "FIRST10", description: "10% off for first-time buyers", discount: "10% OFF" },
 ]
 
-export default function MobileNavbar() {
+export default function MobileNavbar({ onMenuStateChange }) {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
   const [showCoupons, setShowCoupons] = useState(false)
   const [searchQuery, setSearchQuery] = useState("")
@@ -77,20 +38,37 @@ export default function MobileNavbar() {
   const [categories, setCategories] = useState([])
   const [loading, setLoading] = useState(false)
 
-  // Check login status on mount and when localStorage changes
+  // Notify parent component when menu state changes
+  useEffect(() => {
+    if (onMenuStateChange) {
+      onMenuStateChange(isMobileMenuOpen)
+    }
+  }, [isMobileMenuOpen, onMenuStateChange])
+
+  // Prevent body scroll when menu is open
+  useEffect(() => {
+    if (isMobileMenuOpen) {
+      document.body.style.overflow = "hidden"
+      document.body.classList.add("mobile-menu-open")
+    } else {
+      document.body.style.overflow = "unset"
+      document.body.classList.remove("mobile-menu-open")
+    }
+
+    return () => {
+      document.body.style.overflow = "unset"
+      document.body.classList.remove("mobile-menu-open")
+    }
+  }, [isMobileMenuOpen])
+
   useEffect(() => {
     const checkLoginStatus = () => {
       const loggedIn = localStorage.getItem("isLoggedIn") === "true"
       setIsLoggedIn(loggedIn)
     }
 
-    // Initial check
     checkLoginStatus()
-
-    // Listen for storage changes
     window.addEventListener("storage", checkLoginStatus)
-
-    // Cleanup
     return () => window.removeEventListener("storage", checkLoginStatus)
   }, [])
 
@@ -98,10 +76,7 @@ export default function MobileNavbar() {
     const fetchCategories = async () => {
       setLoading(true)
       try {
-        // console.log("Fetching categories from CategoryService...")
         const result = await CategoryService.getCategories()
-        // console.log("CategoryService result:", result)
-
         if (result.success && Array.isArray(result.data)) {
           const transformedCategories = result.data.map((cat) => ({
             name: cat.name,
@@ -109,10 +84,8 @@ export default function MobileNavbar() {
             image: cat.image || `/images/categories/${cat.id}.jpg`,
             is_microfiber: cat.is_microfiber || false,
           }))
-          // console.log("Setting categories:", transformedCategories)
           setCategories(transformedCategories)
         } else {
-          console.error("Failed to fetch categories:", result.error || "No data")
           setCategories([])
         }
       } catch (error) {
@@ -133,15 +106,28 @@ export default function MobileNavbar() {
     }
   }
 
+  const closeMobileMenu = () => {
+    setIsMobileMenuOpen(false)
+    setShowCoupons(false)
+  }
+
+  const toggleMobileMenu = () => {
+    setIsMobileMenuOpen(!isMobileMenuOpen)
+    if (showCoupons) {
+      setShowCoupons(false)
+    }
+  }
+
   return (
     <>
-      {/* Mobile Top Bar - Hamburger + Logo + Icons */}
-      <div className="bg-white border-b border-gray-200 py-3 px-4">
+      {/* Mobile Top Bar */}
+      <div className="bg-white border-b border-gray-200 py-3 px-4 relative z-50">
         <div className="flex justify-between items-center">
-          {/* Left - Hamburger Menu */}
+          {/* Hamburger Menu */}
           <button
-            className="h-auto w-auto p-0 hover:bg-transparent bg-transparent border-none cursor-pointer transition-colors"
-            onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+            className="p-1 hover:bg-gray-100 rounded-md transition-colors"
+            onClick={toggleMobileMenu}
+            aria-label="Toggle menu"
           >
             {isMobileMenuOpen ? (
               <X size={24} className="text-gray-600" strokeWidth={1.5} />
@@ -150,24 +136,24 @@ export default function MobileNavbar() {
             )}
           </button>
 
-          {/* Center - Logo */}
+          {/* Logo */}
           <Link href="/" className="flex-1 flex justify-center">
             <Image src="/assets/RabbitLogo.png" alt="Rabbit Autocare" width={120} height={40} className="h-8 w-auto" />
           </Link>
 
-          {/* Right - Icons */}
+          {/* Icons */}
           <div className="flex items-center space-x-3">
-            {/* User Icon - Show based on login status */}
+            {/* User Icon */}
             {isLoggedIn ? (
               <Link href="/profile">
-                <button className="h-auto w-auto p-0 hover:bg-transparent bg-transparent border-none cursor-pointer transition-colors">
+                <button className="p-1 hover:bg-gray-100 rounded-md transition-colors">
                   <Image src="/assets/account.svg" alt="user" width={18} height={18} />
                   <span className="sr-only">User Profile</span>
                 </button>
               </Link>
             ) : (
               <Link href="/login">
-                <button className="h-auto w-auto p-0 hover:bg-transparent bg-transparent border-none cursor-pointer transition-colors">
+                <button className="p-1 hover:bg-gray-100 rounded-md transition-colors">
                   <Image src="/assets/account.svg" alt="user" width={18} height={18} />
                   <span className="sr-only">User account</span>
                 </button>
@@ -176,8 +162,9 @@ export default function MobileNavbar() {
 
             {/* Coupons Icon */}
             <button
-              className="h-auto w-auto p-0 hover:bg-transparent bg-transparent border-none cursor-pointer transition-colors"
+              className="p-1 hover:bg-gray-100 rounded-md transition-colors"
               onClick={() => setShowCoupons(!showCoupons)}
+              aria-label="Toggle coupons"
             >
               <svg width="18" height="18" viewBox="0 0 25 26" fill="none" xmlns="http://www.w3.org/2000/svg">
                 <path
@@ -213,7 +200,7 @@ export default function MobileNavbar() {
             </button>
 
             {/* Wishlist Icon */}
-            <button className="h-auto w-auto p-0 hover:bg-transparent bg-transparent border-none cursor-pointer transition-colors">
+            <button className="p-1 hover:bg-gray-100 rounded-md transition-colors">
               <svg width="18" height="18" viewBox="0 0 25 26" fill="none" xmlns="http://www.w3.org/2000/svg">
                 <path
                   d="M10.3511 16.6461C10.2581 16.2856 10.0702 15.9566 9.80693 15.6934C9.54368 15.4301 9.2147 15.2422 8.85421 15.1492L2.46358 13.5013C2.35455 13.4704 2.25859 13.4047 2.19026 13.3143C2.12193 13.2239 2.08496 13.1136 2.08496 13.0003C2.08496 12.8869 2.12193 12.7767 2.19026 12.6863C2.25859 12.5958 2.35455 12.5302 2.46358 12.4992L8.85421 10.8503C9.21457 10.7574 9.54347 10.5696 9.80671 10.3066C10.0699 10.0435 10.2579 9.71474 10.3511 9.35444L11.999 2.96381C12.0296 2.85435 12.0952 2.75792 12.1858 2.68922C12.2763 2.62053 12.3869 2.58334 12.5006 2.58334C12.6142 2.58334 12.7248 2.62053 12.8153 2.68922C12.9059 2.75792 12.9715 2.85435 13.0021 2.96381L14.649 9.35444C14.742 9.71493 14.9299 10.0439 15.1931 10.3072C15.4564 10.5704 15.7854 10.7583 16.1459 10.8513L22.5365 12.4982C22.6464 12.5285 22.7433 12.594 22.8124 12.6847C22.8814 12.7754 22.9188 12.8863 22.9188 13.0003C22.9188 13.1143 22.8814 13.2251 22.8124 13.3158C22.7433 13.4065 22.6464 13.472 22.5365 13.5024L16.1459 15.1492C15.7854 15.2422 15.4564 15.4301 15.1931 15.6934C14.9299 15.9566 14.742 16.2856 14.649 16.6461L13.0011 23.0367C12.9704 23.1462 12.9048 23.2426 12.8143 23.3113C12.7237 23.38 12.6132 23.4172 12.4995 23.4172C12.3859 23.4172 12.2753 23.38 12.1847 23.3113C12.0942 23.2426 12.0286 23.1462 11.998 23.0367L10.3511 16.6461Z"
@@ -255,10 +242,7 @@ export default function MobileNavbar() {
             </button>
 
             {/* Cart Icon */}
-            <button
-              onClick={openCart}
-              className="relative h-auto w-auto p-0 hover:bg-transparent bg-transparent border-none cursor-pointer transition-colors"
-            >
+            <button onClick={openCart} className="relative p-1 hover:bg-gray-100 rounded-md transition-colors">
               <svg
                 xmlns="http://www.w3.org/2000/svg"
                 width="18"
@@ -285,8 +269,8 @@ export default function MobileNavbar() {
         </div>
       </div>
 
-      {/* Mobile Bottom Bar - Search Only */}
-      <div className="bg-white border-b border-gray-200 py-3 px-4">
+      {/* Search Bar */}
+      <div className="bg-white border-b border-gray-200 py-3 px-4 relative z-50">
         <form onSubmit={handleSearch} className="relative">
           <input
             type="search"
@@ -297,7 +281,7 @@ export default function MobileNavbar() {
           />
           <button
             type="submit"
-            className="absolute right-2 top-1/2 -translate-y-1/2 h-8 w-8 hover:bg-transparent bg-transparent border-none cursor-pointer flex items-center justify-center transition-colors"
+            className="absolute right-2 top-1/2 -translate-y-1/2 p-1 hover:bg-gray-100 rounded-md transition-colors"
           >
             <svg
               xmlns="http://www.w3.org/2000/svg"
@@ -319,9 +303,9 @@ export default function MobileNavbar() {
         </form>
       </div>
 
-      {/* Mobile Coupons Dropdown */}
+      {/* Coupons Dropdown */}
       {showCoupons && (
-        <div className="bg-white border-b border-gray-200 shadow-lg z-40">
+        <div className="bg-white border-b border-gray-200 shadow-lg relative z-40">
           <div className="px-4 py-4">
             <h3 className="font-semibold text-lg mb-3">Available Coupons</h3>
             <div className="space-y-3 max-h-60 overflow-y-auto">
@@ -344,22 +328,21 @@ export default function MobileNavbar() {
         </div>
       )}
 
-      {/* Mobile Menu Overlay - Redesigned */}
+      {/* Mobile Menu Overlay */}
       {isMobileMenuOpen && (
-        <>
+        <div className="fixed inset-0 z-[100000]">
           {/* Backdrop */}
-          <div
-            className="fixed inset-0 bg-black/60 z-[999998]"
-            onClick={() => setIsMobileMenuOpen(false)}
-            aria-hidden="true"
-          />
+          <div className="absolute inset-0 bg-black/60" onClick={closeMobileMenu} aria-hidden="true" />
 
           {/* Menu Panel */}
-          <div className="fixed top-0 left-0 right-0 z-[999999] bg-white h-screen overflow-y-auto shadow-xl">
-            {/* Menu Header with Logo and Close Button */}
-            <div className="flex justify-between items-center py-4 px-6 border-b border-gray-200 bg-white sticky top-0 z-[10000]">
-              {/* Logo */}
-              <Link href="/" onClick={() => setIsMobileMenuOpen(false)}>
+          <div
+            className={`absolute top-0 left-0 right-0 bg-white shadow-xl transform transition-transform duration-300 ease-out max-h-screen overflow-y-auto ${
+              isMobileMenuOpen ? "translate-y-0" : "-translate-y-full"
+            }`}
+          >
+            {/* Menu Header */}
+            <div className="flex justify-between items-center py-4 px-6 border-b border-gray-200 bg-white sticky top-0 z-10">
+              <Link href="/" onClick={closeMobileMenu}>
                 <Image
                   src="/assets/RabbitLogo.png"
                   alt="Rabbit Autocare"
@@ -368,94 +351,63 @@ export default function MobileNavbar() {
                   className="h-8 w-auto"
                 />
               </Link>
-
-              {/* Close Button */}
               <button
-                className="h-auto w-auto p-2 hover:bg-gray-100 bg-transparent border-none cursor-pointer transition-colors rounded-full"
-                onClick={() => setIsMobileMenuOpen(false)}
+                className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+                onClick={closeMobileMenu}
+                aria-label="Close menu"
               >
                 <X size={24} className="text-gray-600" strokeWidth={1.5} />
               </button>
             </div>
 
             {/* Menu Content */}
-            <div className="px-6 py-4 bg-white">
+            <div className="px-6 py-4">
               {/* Categories Section */}
               <div className="mb-6">
                 <h3 className="font-semibold text-lg mb-4 text-gray-800">Categories</h3>
-
                 {loading ? (
                   <div className="flex justify-center items-center py-8">
                     <div className="text-gray-500">Loading categories...</div>
                   </div>
                 ) : (
                   <div className="grid grid-cols-2 gap-4">
-                    {categories.length > 0 ? (
-                      categories.map((category, index) => (
-                        <Link
-                          key={index}
-                          href={category.href}
-                          className="block group"
-                          onClick={() => setIsMobileMenuOpen(false)}
-                        >
-                          <div className="overflow-hidden rounded-lg shadow-sm hover:shadow-md transition-shadow duration-200 border border-gray-200 bg-white">
-                            <div className="relative aspect-[3/2] bg-gray-100">
-                              <img
-                                src={category.image || "/placeholder.svg"}
-                                alt={category.name}
-                                className="object-cover w-full h-full group-hover:scale-105 transition-transform duration-200"
-                                onError={(e) => {
-                                  e.target.src = "/placeholder.svg?height=200&width=300"
-                                }}
-                              />
-                            </div>
-                            <div className="bg-black text-white py-2 px-3 text-center">
-                              <span className="font-medium text-xs">{category.name}</span>
-                            </div>
+                    {categories.map((category, index) => (
+                      <Link key={index} href={category.href} className="block group" onClick={closeMobileMenu}>
+                        <div className="overflow-hidden rounded-lg shadow-sm hover:shadow-md transition-shadow duration-200 border border-gray-200 bg-white">
+                          <div className="relative aspect-[3/2] bg-gray-100">
+                            <img
+                              src={
+                                categoryImageMap[category.name.toLowerCase().replace(/\s+/g, "-")] ||
+                                "/placeholder.svg?height=200&width=300" ||
+                                "/placeholder.svg"
+                              }
+                              alt={category.name}
+                              className="object-cover w-full h-full group-hover:scale-105 transition-transform duration-200"
+                              onError={(e) => {
+                                e.target.src = "/placeholder.svg?height=200&width=300"
+                              }}
+                            />
                           </div>
-                        </Link>
-                      ))
-                    ) : (
-                      // Fallback categories if API fails
-                      shopCategories.map((category, index) => (
-                        <Link
-                          key={index}
-                          href={category.href}
-                          className="block group"
-                          onClick={() => setIsMobileMenuOpen(false)}
-                        >
-                          <div className="overflow-hidden rounded-lg shadow-sm hover:shadow-md transition-shadow duration-200 border border-gray-200 bg-white">
-                            <div className="relative aspect-[3/2] bg-gray-100">
-                              <img
-                                src={category.image}
-                                alt={category.name}
-                                className="object-cover w-full h-full group-hover:scale-105 transition-transform duration-200"
-                              />
-                            </div>
-                            <div className="bg-black text-white py-2 px-3 text-center">
-                              <span className="font-medium text-xs">{category.name}</span>
-                            </div>
+                          <div className="bg-black text-white py-2 px-3 text-center">
+                            <span className="font-medium text-xs">{category.name}</span>
                           </div>
-                        </Link>
-                      ))
-                    )}
+                        </div>
+                      </Link>
+                    ))}
                   </div>
                 )}
               </div>
 
-              {/* Horizontal Separator */}
-              <div className="border-t border-gray-200 my-6"></div>
-
               {/* Navigation Links */}
-              <div className="mb-6">
+              <div className="border-t border-gray-200 pt-6 mb-6">
                 <h3 className="font-semibold text-lg mb-4 text-gray-800">Navigation</h3>
-                <div className="space-y-0 bg-white">
-                  {navLinks.map((link, index) => (
+                <div className="space-y-0">
+                  {navLinks.map((link) => (
                     <Link
                       key={link.name}
                       href={link.href}
                       className="block py-4 text-base font-medium text-gray-800 hover:text-gray-600 hover:bg-gray-50 px-3 rounded-lg transition-colors border-b border-gray-100 last:border-b-0"
-                      onClick={() => setIsMobileMenuOpen(false)}
+                      onClick={closeMobileMenu}
                     >
                       {link.name}
                     </Link>
@@ -466,7 +418,7 @@ export default function MobileNavbar() {
               {/* Theme Toggle */}
               <div className="pt-4 border-t border-gray-200">
                 <button
-                  className="flex items-center gap-3 hover:bg-gray-50 w-full justify-start p-3 rounded-lg bg-transparent border-none cursor-pointer transition-colors"
+                  className="flex items-center gap-3 hover:bg-gray-50 w-full justify-start p-3 rounded-lg transition-colors"
                   onClick={toggleTheme}
                 >
                   {theme === "dark" ? (
@@ -511,7 +463,7 @@ export default function MobileNavbar() {
               </div>
             </div>
           </div>
-        </>
+        </div>
       )}
     </>
   )

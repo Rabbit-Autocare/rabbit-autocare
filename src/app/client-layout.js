@@ -17,13 +17,15 @@ export default function ClientLayout({ children }) {
   const [user, setUser] = useState(null)
   const [loading, setLoading] = useState(true)
   const [showExtraNavbar, setShowExtraNavbar] = useState(true)
-  const [showMainNavbar, setShowMainNavbar] = useState(false) // Initially hidden
+  const [showMainNavbar, setShowMainNavbar] = useState(false)
+  const [showMobileNavbar, setShowMobileNavbar] = useState(false)
   const [portalContainer, setPortalContainer] = useState(null)
+  const [mobilePortalContainer, setMobilePortalContainer] = useState(null)
   const [lastScrollY, setLastScrollY] = useState(0)
   const [scrollDirection, setScrollDirection] = useState("up")
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
 
   useEffect(() => {
-    // Check initial session
     const checkSession = async () => {
       const {
         data: { user },
@@ -34,7 +36,6 @@ export default function ClientLayout({ children }) {
 
     checkSession()
 
-    // Set up auth state listener
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange(async (event, session) => {
@@ -54,11 +55,9 @@ export default function ClientLayout({ children }) {
   useEffect(() => {
     const isHomePage = pathname === "/" || pathname === "/home"
 
-    // ✅ Enhanced scroll logic - only show navbar when ACTUALLY scrolling up
     const handleScroll = () => {
       let scrollY = 0
 
-      // Try smooth scroll first (for home page with GSAP ScrollSmoother)
       const smoothContent = document.getElementById("smooth-content")
       if (smoothContent && isHomePage) {
         const transform = window.getComputedStyle(smoothContent).transform
@@ -71,15 +70,12 @@ export default function ClientLayout({ children }) {
           }
         }
       } else {
-        // Regular scroll for all pages
         scrollY = window.pageYOffset || document.documentElement.scrollTop
       }
 
-      // ✅ Check if scroll position actually changed (to detect real scrolling)
       const scrollDifference = Math.abs(scrollY - lastScrollY)
-      const isActuallyScrolling = scrollDifference > 1 // Only consider it scrolling if moved more than 1px
+      const isActuallyScrolling = scrollDifference > 1
 
-      // ✅ Detect scroll direction only when actually scrolling
       let currentScrollDirection = scrollDirection
       if (isActuallyScrolling) {
         currentScrollDirection = scrollY > lastScrollY ? "down" : "up"
@@ -87,56 +83,47 @@ export default function ClientLayout({ children }) {
         setLastScrollY(scrollY)
       }
 
-      // ✅ ExtraNavbar logic (unchanged - hides when scrolling down)
+      // ExtraNavbar logic
       if (scrollY <= 10) {
         setShowExtraNavbar(true)
       } else if (scrollY > 100) {
         setShowExtraNavbar(false)
       }
 
-      // ✅ MainNavbar logic - ONLY show when ACTUALLY scrolling UP, hide when ACTUALLY scrolling DOWN
+      // MainNavbar logic (desktop only)
       if (scrollY > 50 && isActuallyScrolling) {
         if (currentScrollDirection === "up") {
-          setShowMainNavbar(true) // Show ONLY when actually scrolling UP
+          setShowMainNavbar(true)
         } else if (currentScrollDirection === "down") {
-          setShowMainNavbar(false) // Hide when actually scrolling DOWN
+          setShowMainNavbar(false)
         }
       } else if (scrollY <= 50) {
-        // Hide MainNavbar when near top
         setShowMainNavbar(false)
       }
-      // ✅ When NOT actually scrolling (scrolling stopped), do NOTHING - navbar stays in current state
 
-      // console.log(
-      //   "Scroll:",
-      //   scrollY,
-      //   "Last:",
-      //   lastScrollY,
-      //   "Difference:",
-      //   scrollDifference,
-      //   "Actually Scrolling:",
-      //   isActuallyScrolling,
-      //   "Direction:",
-      //   currentScrollDirection,
-      //   "MainNavbar:",
-      //   showMainNavbar,
-      // )
+      // MobileNavbar logic (mobile only)
+      if (scrollY > 50 && isActuallyScrolling) {
+        if (currentScrollDirection === "up") {
+          setShowMobileNavbar(true)
+        } else if (currentScrollDirection === "down") {
+          setShowMobileNavbar(false)
+        }
+      } else if (scrollY <= 50) {
+        setShowMobileNavbar(false)
+      }
     }
 
     const scrollHandler = () => {
       requestAnimationFrame(handleScroll)
     }
 
-    // ✅ Add scroll listeners for ALL pages
     window.addEventListener("scroll", scrollHandler, { passive: true })
 
-    // Only add smooth scroll listeners for home page with GSAP
     const smoothWrapper = document.getElementById("smooth-wrapper")
     if (smoothWrapper && isHomePage) {
       smoothWrapper.addEventListener("scroll", scrollHandler, { passive: true })
     }
 
-    // Watch for transform changes on smooth-content (GSAP ScrollSmoother)
     const smoothContent = document.getElementById("smooth-content")
     let observer = null
     if (smoothContent && isHomePage) {
@@ -149,10 +136,8 @@ export default function ClientLayout({ children }) {
       })
     }
 
-    // Initial check
     setTimeout(handleScroll, 100)
 
-    // Cleanup
     return () => {
       window.removeEventListener("scroll", scrollHandler)
       if (smoothWrapper && isHomePage) {
@@ -164,36 +149,22 @@ export default function ClientLayout({ children }) {
     }
   }, [pathname, lastScrollY, scrollDirection, showMainNavbar])
 
-  // ✅ Reset navbar states when pathname changes
   useEffect(() => {
-    // Reset states for new page
-    setShowExtraNavbar(true) // ExtraNavbar always visible on page load
-    setShowMainNavbar(false) // MainNavbar always hidden on page load
+    setShowExtraNavbar(true)
+    setShowMainNavbar(false)
+    setShowMobileNavbar(false)
     setLastScrollY(0)
     setScrollDirection("up")
-
-    // Scroll to top when changing pages
     window.scrollTo(0, 0)
   }, [pathname])
 
-  // ✅ Create portal container for MainNavbar
+  // Create portal container for MainNavbar (desktop)
   useEffect(() => {
     if (typeof window !== "undefined") {
       let navbarContainer = document.getElementById("navbar-portal")
       if (!navbarContainer) {
         navbarContainer = document.createElement("div")
         navbarContainer.id = "navbar-portal"
-        navbarContainer.style.cssText = `
-          position: fixed !important;
-          top: 0 !important;
-          left: 0 !important;
-          right: 0 !important;
-          z-index: 99999 !important;
-          pointer-events: ${showMainNavbar ? "auto" : "none"};
-          opacity: ${showMainNavbar ? "1" : "0"};
-          transform: translateY(${showMainNavbar ? "0" : "-100%"});
-          transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-        `
         document.body.appendChild(navbarContainer)
       }
       setPortalContainer(navbarContainer)
@@ -207,14 +178,82 @@ export default function ClientLayout({ children }) {
     }
   }, [])
 
-  // ✅ Update portal container styles when showMainNavbar changes
+  // Create portal container for MobileNavbar
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      let mobileNavbarContainer = document.getElementById("mobile-navbar-portal")
+      if (!mobileNavbarContainer) {
+        mobileNavbarContainer = document.createElement("div")
+        mobileNavbarContainer.id = "mobile-navbar-portal"
+        document.body.appendChild(mobileNavbarContainer)
+      }
+      setMobilePortalContainer(mobileNavbarContainer)
+    }
+
+    return () => {
+      const mobileNavbarContainer = document.getElementById("mobile-navbar-portal")
+      if (mobileNavbarContainer && document.body.contains(mobileNavbarContainer)) {
+        document.body.removeChild(mobileNavbarContainer)
+      }
+    }
+  }, [])
+
+  // Handle mobile menu body scroll lock
+  useEffect(() => {
+    if (isMobileMenuOpen) {
+      // Save current scroll position
+      const scrollY = window.scrollY
+      document.body.style.position = 'fixed'
+      document.body.style.top = `-${scrollY}px`
+      document.body.style.width = '100%'
+    } else {
+      // Restore scroll position
+      const scrollY = document.body.style.top
+      document.body.style.position = ''
+      document.body.style.top = ''
+      document.body.style.width = ''
+      window.scrollTo(0, parseInt(scrollY || '0') * -1)
+    }
+
+    return () => {
+      document.body.style.position = ''
+      document.body.style.top = ''
+      document.body.style.width = ''
+    }
+  }, [isMobileMenuOpen])
+
+  // Update portal container styles
   useEffect(() => {
     if (portalContainer) {
-      portalContainer.style.pointerEvents = showMainNavbar ? "auto" : "none"
-      portalContainer.style.opacity = showMainNavbar ? "1" : "0"
-      portalContainer.style.transform = `translateY(${showMainNavbar ? "0" : "-100%"})`
+      portalContainer.style.cssText = `
+        position: fixed !important;
+        top: 0 !important;
+        left: 0 !important;
+        right: 0 !important;
+        z-index: 99999 !important;
+        pointer-events: ${showMainNavbar ? "auto" : "none"};
+        opacity: ${showMainNavbar ? "1" : "0"};
+        transform: translateY(${showMainNavbar ? "0" : "-100%"});
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      `
     }
   }, [showMainNavbar, portalContainer])
+
+  useEffect(() => {
+    if (mobilePortalContainer) {
+      mobilePortalContainer.style.cssText = `
+        position: fixed !important;
+        top: 0 !important;
+        left: 0 !important;
+        right: 0 !important;
+        z-index: 99998 !important;
+        pointer-events: ${showMobileNavbar ? "auto" : "none"};
+        opacity: ${showMobileNavbar ? "1" : "0"};
+        transform: translateY(${showMobileNavbar ? "0" : "-100%"});
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      `
+    }
+  }, [showMobileNavbar, mobilePortalContainer])
 
   if (loading) {
     return (
@@ -224,54 +263,42 @@ export default function ClientLayout({ children }) {
     )
   }
 
-  // console.log(
-  //   "🎯 NAVBAR STATE - Page:",
-  //   pathname,
-  //   "Extra:",
-  //   showExtraNavbar,
-  //   "Main:",
-  //   showMainNavbar,
-  //   "Direction:",
-  //   scrollDirection,
-  // )
-
   return (
     <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
       <CartProvider>
-        <div className="md:hidden">
-          <MobileNavbar />
-        </div>
+        {/* MobileNavbar Portal - Mobile only */}
+        {mobilePortalContainer &&
+          createPortal(
+            <div className="md:hidden">
+              <MobileNavbar
+                isMobileMenuOpen={isMobileMenuOpen}
+                setIsMobileMenuOpen={setIsMobileMenuOpen}
+              />
+            </div>,
+            mobilePortalContainer,
+          )}
+
         <div style={{ position: "relative" }}>
-          {/* ✅ ExtraNavbar - Unchanged behavior */}
+          {/* ExtraNavbar */}
           <div
-            className={`hidden md:block transition-all duration-300 ease-in-out ${
+            className={`transition-all duration-300 ease-in-out ${
               showExtraNavbar ? "opacity-100 translate-y-0" : "opacity-0 -translate-y-full pointer-events-none"
             }`}
-            style={{
-              position: "relative",
-              zIndex: 50,
-            }}
+            style={{ position: "relative", zIndex: 50 }}
           >
             <ExtraNavbar />
           </div>
 
-          {/* ✅ Content - No padding needed since MainNavbar is fixed */}
+          {/* Content */}
           <div>{children}</div>
 
           <Footer />
         </div>
 
-        {/* ✅ MainNavbar Portal - ONLY shows when ACTUALLY scrolling up, never when scrolling stops */}
+        {/* MainNavbar Portal - Desktop only */}
         {portalContainer &&
           createPortal(
-            <div
-              className={` ${showMainNavbar ? "animate-in slide-in-from-top duration-300" : ""}`}
-              style={{
-                opacity: showMainNavbar ? 1 : 0,
-                transform: `translateY(${showMainNavbar ? "0" : "-100%"})`,
-                transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
-              }}
-            >
+            <div className="hidden md:block">
               <MainNavbar />
             </div>,
             portalContainer,

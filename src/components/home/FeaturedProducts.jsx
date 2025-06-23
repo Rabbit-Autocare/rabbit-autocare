@@ -11,6 +11,11 @@ import { ScrollSmoother } from "gsap/ScrollSmoother"
 
 gsap.registerPlugin(ScrollTrigger, ScrollSmoother)
 
+// Add this at the top level
+if (typeof window !== 'undefined') {
+  window.scrollSmoother = null;
+}
+
 export default function FeaturedProducts() {
   const containerRef = useRef(null)
   const sectionRefs = useRef([])
@@ -112,11 +117,14 @@ export default function FeaturedProducts() {
     const initScrollAnimations = () => {
       // Clean up existing scroll triggers
       ScrollTrigger.getAll().forEach((trigger) => trigger.kill())
-      if (ScrollSmoother.get()) ScrollSmoother.get().kill()
+      if (window.scrollSmoother) {
+        window.scrollSmoother.kill()
+        window.scrollSmoother = null
+      }
 
       // Initialize ScrollSmoother if wrapper and content exist
       if (wrapper && content) {
-        ScrollSmoother.create({
+        window.scrollSmoother = ScrollSmoother.create({
           wrapper,
           content,
           smooth: is320px || is360px ? 0.005 : is480px ? 0.01 : isMobile ? 0.03 : 0.8,
@@ -204,7 +212,10 @@ export default function FeaturedProducts() {
     // Cleanup function
     return () => {
       ScrollTrigger.getAll().forEach((trigger) => trigger.kill())
-      if (ScrollSmoother.get()) ScrollSmoother.get().kill()
+      if (window.scrollSmoother) {
+        window.scrollSmoother.kill()
+        window.scrollSmoother = null
+      }
       sections.forEach((section) => {
         const heading = section.querySelector(".product-heading")
         if (heading) resetHeading(heading)

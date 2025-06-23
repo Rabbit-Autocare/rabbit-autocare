@@ -24,38 +24,40 @@ export default function ClientLayout({ children }) {
   const [lastScrollY, setLastScrollY] = useState(0)
   const [scrollDirection, setScrollDirection] = useState("up")
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
+  const [isInitialized, setIsInitialized] = useState(false)
 
+  // Initialize scroll state
   useEffect(() => {
-    const checkSession = async () => {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser()
-      setUser(user)
-      setLoading(false)
-    }
+    setIsInitialized(true);
+    return () => setIsInitialized(false);
+  }, []);
 
-    checkSession()
-
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange(async (event, session) => {
-      const currentUser = session?.user ?? null
-      setUser(currentUser)
-
-      if (event === "SIGNED_OUT") {
-        router.push("/login")
-      } else if (event === "SIGNED_IN" && !pathname.includes("/auth/callback")) {
-        router.refresh()
-      }
-    })
-
-    return () => subscription?.unsubscribe()
-  }, [router, pathname])
-
+  // Reset states on route change
   useEffect(() => {
+    setShowExtraNavbar(true)
+    setShowMainNavbar(false)
+    setShowMobileNavbar(false)
+    setLastScrollY(0)
+    setScrollDirection("up")
+    setIsMobileMenuOpen(false)
+    window.scrollTo(0, 0)
+  }, [pathname])
+
+  // Handle mobile menu state
+  const handleMobileMenuToggle = (newState) => {
+    if (!isInitialized) return;
+    setIsMobileMenuOpen(newState);
+  };
+
+  // Scroll effect
+  useEffect(() => {
+    if (!isInitialized) return;
+
     const isHomePage = pathname === "/" || pathname === "/home"
 
     const handleScroll = () => {
+      if (isMobileMenuOpen) return;
+
       let scrollY = 0
 
       const smoothContent = document.getElementById("smooth-content")
@@ -102,61 +104,94 @@ export default function ClientLayout({ children }) {
       }
 
       // MobileNavbar logic (mobile only)
-      if (scrollY > 50 && isActuallyScrolling) {
-        if (currentScrollDirection === "up") {
-          setShowMobileNavbar(true)
-        } else if (currentScrollDirection === "down") {
+      if (!isMobileMenuOpen) {  // Only update mobile navbar visibility if menu is closed
+        if (scrollY > 50 && isActuallyScrolling) {
+          if (currentScrollDirection === "up") {
+            setShowMobileNavbar(true)
+          } else if (currentScrollDirection === "down") {
+            setShowMobileNavbar(false)
+          }
+        } else if (scrollY <= 50) {
           setShowMobileNavbar(false)
         }
-      } else if (scrollY <= 50) {
-        setShowMobileNavbar(false)
       }
     }
 
     const scrollHandler = () => {
-      requestAnimationFrame(handleScroll)
+      if (!isMobileMenuOpen && isInitialized) {
+        requestAnimationFrame(handleScroll)
+      }
     }
 
-    window.addEventListener("scroll", scrollHandler, { passive: true })
+    // Add event listeners only after initialization
+    if (isInitialized) {
+      window.addEventListener("scroll", scrollHandler, { passive: true })
 
-    const smoothWrapper = document.getElementById("smooth-wrapper")
-    if (smoothWrapper && isHomePage) {
-      smoothWrapper.addEventListener("scroll", scrollHandler, { passive: true })
-    }
-
-    const smoothContent = document.getElementById("smooth-content")
-    let observer = null
-    if (smoothContent && isHomePage) {
-      observer = new MutationObserver(() => {
-        handleScroll()
-      })
-      observer.observe(smoothContent, {
-        attributes: true,
-        attributeFilter: ["style"],
-      })
-    }
-
-    setTimeout(handleScroll, 100)
-
-    return () => {
-      window.removeEventListener("scroll", scrollHandler)
+      const smoothWrapper = document.getElementById("smooth-wrapper")
       if (smoothWrapper && isHomePage) {
-        smoothWrapper.removeEventListener("scroll", scrollHandler)
+        smoothWrapper.addEventListener("scroll", scrollHandler, { passive: true })
       }
-      if (observer) {
-        observer.disconnect()
+
+      const smoothContent = document.getElementById("smooth-content")
+      let observer = null
+      if (smoothContent && isHomePage) {
+        observer = new MutationObserver(() => {
+          if (!isMobileMenuOpen && isInitialized) {
+            handleScroll()
+          }
+        })
+        observer.observe(smoothContent, {
+          attributes: true,
+          attributeFilter: ["style"],
+        })
+      }
+
+      // Initial scroll check after a short delay
+      const timer = setTimeout(() => {
+        if (!isMobileMenuOpen && isInitialized) {
+          handleScroll()
+        }
+      }, 100)
+
+      return () => {
+        window.removeEventListener("scroll", scrollHandler)
+        if (smoothWrapper && isHomePage) {
+          smoothWrapper.removeEventListener("scroll", scrollHandler)
+        }
+        if (observer) {
+          observer.disconnect()
+        }
+        clearTimeout(timer)
       }
     }
-  }, [pathname, lastScrollY, scrollDirection, showMainNavbar])
+  }, [pathname, lastScrollY, scrollDirection, showMainNavbar, isMobileMenuOpen, isInitialized])
 
   useEffect(() => {
-    setShowExtraNavbar(true)
-    setShowMainNavbar(false)
-    setShowMobileNavbar(false)
-    setLastScrollY(0)
-    setScrollDirection("up")
-    window.scrollTo(0, 0)
-  }, [pathname])
+    const checkSession = async () => {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser()
+      setUser(user)
+      setLoading(false)
+    }
+
+    checkSession()
+
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange(async (event, session) => {
+      const currentUser = session?.user ?? null
+      setUser(currentUser)
+
+      if (event === "SIGNED_OUT") {
+        router.push("/login")
+      } else if (event === "SIGNED_IN" && !pathname.includes("/auth/callback")) {
+        router.refresh()
+      }
+    })
+
+    return () => subscription?.unsubscribe()
+  }, [router, pathname])
 
   // Create portal container for MainNavbar (desktop)
   useEffect(() => {
@@ -272,7 +307,7 @@ export default function ClientLayout({ children }) {
             <div className="md:hidden">
               <MobileNavbar
                 isMobileMenuOpen={isMobileMenuOpen}
-                setIsMobileMenuOpen={setIsMobileMenuOpen}
+                setIsMobileMenuOpen={handleMobileMenuToggle}
               />
             </div>,
             mobilePortalContainer,

@@ -31,8 +31,7 @@ const coupons = [
   { code: "FIRST10", description: "10% off for first-time buyers", discount: "10% OFF" },
 ]
 
-export default function MobileNavbar({ onMenuStateChange }) {
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
+export default function MobileNavbar({ isMobileMenuOpen, setIsMobileMenuOpen }) {
   const [showCoupons, setShowCoupons] = useState(false)
   const [searchQuery, setSearchQuery] = useState("")
   const [isLoggedIn, setIsLoggedIn] = useState(false)
@@ -42,29 +41,54 @@ export default function MobileNavbar({ onMenuStateChange }) {
   const [loading, setLoading] = useState(false)
   const [userCoupons, setUserCoupons] = useState([])
   const { user, loading: authLoading } = useAuth()
+  const [isReady, setIsReady] = useState(false)
 
-  // Notify parent component when menu state changes
+  // Handle initialization
   useEffect(() => {
-    if (onMenuStateChange) {
-      onMenuStateChange(isMobileMenuOpen)
-    }
-  }, [isMobileMenuOpen, onMenuStateChange])
+    setIsReady(true);
+    return () => setIsReady(false);
+  }, []);
 
-  // Prevent body scroll when menu is open
+  // Handle scroll locking with initialization check
   useEffect(() => {
+    if (!isReady) return;
+
+    let scrollY = 0;
+
     if (isMobileMenuOpen) {
-      document.body.style.overflow = "hidden"
-      document.body.classList.add("mobile-menu-open")
+      // Store current scroll position and lock body
+      scrollY = window.scrollY;
+      document.body.style.top = `-${scrollY}px`;
+      document.body.classList.add('mobile-menu-open');
+
+      // Pause ScrollSmoother if it exists
+      if (typeof window !== 'undefined' && window.scrollSmoother) {
+        window.scrollSmoother.paused(true);
+      }
     } else {
-      document.body.style.overflow = "unset"
-      document.body.classList.remove("mobile-menu-open")
+      // Remove lock and restore scroll position
+      document.body.classList.remove('mobile-menu-open');
+      document.body.style.top = '';
+      window.scrollTo(0, scrollY);
+
+      // Resume ScrollSmoother if it exists
+      if (typeof window !== 'undefined' && window.scrollSmoother) {
+        const timer = setTimeout(() => {
+          window.scrollSmoother.paused(false);
+        }, 100);
+        return () => clearTimeout(timer);
+      }
     }
 
     return () => {
-      document.body.style.overflow = "unset"
-      document.body.classList.remove("mobile-menu-open")
-    }
-  }, [isMobileMenuOpen])
+      // Cleanup on unmount
+      document.body.classList.remove('mobile-menu-open');
+      document.body.style.top = '';
+      if (typeof window !== 'undefined' && window.scrollSmoother) {
+        window.scrollSmoother.paused(false);
+      }
+    };
+  }, [isMobileMenuOpen, isReady]);
 
   useEffect(() => {
     const checkLoginStatus = () => {
@@ -128,11 +152,13 @@ export default function MobileNavbar({ onMenuStateChange }) {
   }
 
   const closeMobileMenu = () => {
+    if (!isReady) return;
     setIsMobileMenuOpen(false)
     setShowCoupons(false)
   }
 
   const toggleMobileMenu = () => {
+    if (!isReady) return;
     setIsMobileMenuOpen(!isMobileMenuOpen)
     if (showCoupons) {
       setShowCoupons(false)
@@ -142,7 +168,7 @@ export default function MobileNavbar({ onMenuStateChange }) {
   return (
     <>
       {/* Mobile Top Bar */}
-      <div className="bg-white border-b border-gray-200 py-3 px-4 relative z-50">
+      <div className="bg-white border-b border-gray-200 py-3 px-4 relative z-[100000]">
         <div className="flex justify-between items-center">
           {/* Hamburger Menu */}
           <button
@@ -372,18 +398,22 @@ export default function MobileNavbar({ onMenuStateChange }) {
 
       {/* Mobile Menu Overlay */}
       {isMobileMenuOpen && (
-        <div className="fixed inset-0 z-[100000]">
+        <div className="fixed inset-0 z-[100001] flex flex-col">
           {/* Backdrop */}
-          <div className="absolute inset-0 bg-black/60" onClick={closeMobileMenu} aria-hidden="true" />
+          <div
+            className="absolute inset-0 bg-black/60"
+            onClick={closeMobileMenu}
+            aria-hidden="true"
+          />
 
           {/* Menu Panel */}
           <div
-            className={`absolute top-0 left-0 right-0 bg-white shadow-xl transform transition-transform duration-300 ease-out max-h-screen overflow-y-auto ${
+            className={`relative w-full bg-white shadow-xl flex flex-col h-[100dvh] transform transition-transform duration-300 ease-out ${
               isMobileMenuOpen ? "translate-y-0" : "-translate-y-full"
             }`}
           >
-            {/* Menu Header */}
-            <div className="flex justify-between items-center py-4 px-6 border-b border-gray-200 bg-white sticky top-0 z-10">
+            {/* Menu Header - Fixed at top */}
+            <div className="flex justify-between items-center py-4 px-6 border-b border-gray-200 bg-white">
               <Link href="/" onClick={closeMobileMenu}>
                 <Image
                   src="/assets/RabbitLogo.png"
@@ -402,106 +432,108 @@ export default function MobileNavbar({ onMenuStateChange }) {
               </button>
             </div>
 
-            {/* Menu Content */}
-            <div className="px-6 py-4">
-              {/* Categories Section */}
-              <div className="mb-6">
-                <h3 className="font-semibold text-lg mb-4 text-gray-800">Categories</h3>
-                {loading ? (
-                  <div className="flex justify-center items-center py-8">
-                    <div className="text-gray-500">Loading categories...</div>
-                  </div>
-                ) : (
-                  <div className="grid grid-cols-2 gap-4">
-                    {categories.map((category, index) => (
-                      <Link key={index} href={category.href} className="block group" onClick={closeMobileMenu}>
-                        <div className="overflow-hidden rounded-lg shadow-sm hover:shadow-md transition-shadow duration-200 border border-gray-200 bg-white">
-                          <div className="relative aspect-[3/2] bg-gray-100">
-                            <img
-                              src={
-                                categoryImageMap[category.name.toLowerCase().replace(/\s+/g, "-")] ||
-                                "/placeholder.svg?height=200&width=300" ||
-                                "/placeholder.svg"
-                              }
-                              alt={category.name}
-                              className="object-cover w-full h-full group-hover:scale-105 transition-transform duration-200"
-                              onError={(e) => {
-                                e.target.src = "/placeholder.svg?height=200&width=300"
-                              }}
-                            />
+            {/* Scrollable Content Area */}
+            <div className="flex-1 overflow-y-auto">
+              <div className="px-6 py-4">
+                {/* Categories Section */}
+                <div className="mb-6">
+                  <h3 className="font-semibold text-lg mb-4 text-gray-800">Categories</h3>
+                  {loading ? (
+                    <div className="flex justify-center items-center py-8">
+                      <div className="text-gray-500">Loading categories...</div>
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-2 gap-4">
+                      {categories.map((category, index) => (
+                        <Link key={index} href={category.href} className="block group" onClick={closeMobileMenu}>
+                          <div className="overflow-hidden rounded-lg shadow-sm hover:shadow-md transition-shadow duration-200 border border-gray-200 bg-white">
+                            <div className="relative aspect-[3/2] bg-gray-100">
+                              <img
+                                src={
+                                  categoryImageMap[category.name.toLowerCase().replace(/\s+/g, "-")] ||
+                                  "/placeholder.svg?height=200&width=300" ||
+                                  "/placeholder.svg"
+                                }
+                                alt={category.name}
+                                className="object-cover w-full h-full group-hover:scale-105 transition-transform duration-200"
+                                onError={(e) => {
+                                  e.target.src = "/placeholder.svg?height=200&width=300"
+                                }}
+                              />
+                            </div>
+                            <div className="bg-black text-white py-2 px-3 text-center">
+                              <span className="font-medium text-xs">{category.name}</span>
+                            </div>
                           </div>
-                          <div className="bg-black text-white py-2 px-3 text-center">
-                            <span className="font-medium text-xs">{category.name}</span>
-                          </div>
-                        </div>
+                        </Link>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* Navigation Links */}
+                <div className="border-t border-gray-200 pt-6 mb-6">
+                  <h3 className="font-semibold text-lg mb-4 text-gray-800">Navigation</h3>
+                  <div className="space-y-0">
+                    {navLinks.map((link) => (
+                      <Link
+                        key={link.name}
+                        href={link.href}
+                        className="block py-4 text-base font-medium text-gray-800 hover:text-gray-600 hover:bg-gray-50 px-3 rounded-lg transition-colors border-b border-gray-100 last:border-b-0"
+                        onClick={closeMobileMenu}
+                      >
+                        {link.name}
                       </Link>
                     ))}
                   </div>
-                )}
-              </div>
-
-              {/* Navigation Links */}
-              <div className="border-t border-gray-200 pt-6 mb-6">
-                <h3 className="font-semibold text-lg mb-4 text-gray-800">Navigation</h3>
-                <div className="space-y-0">
-                  {navLinks.map((link) => (
-                    <Link
-                      key={link.name}
-                      href={link.href}
-                      className="block py-4 text-base font-medium text-gray-800 hover:text-gray-600 hover:bg-gray-50 px-3 rounded-lg transition-colors border-b border-gray-100 last:border-b-0"
-                      onClick={closeMobileMenu}
-                    >
-                      {link.name}
-                    </Link>
-                  ))}
                 </div>
-              </div>
 
-              {/* Theme Toggle */}
-              <div className="pt-4 border-t border-gray-200">
-                <button
-                  className="flex items-center gap-3 hover:bg-gray-50 w-full justify-start p-3 rounded-lg transition-colors"
-                  onClick={toggleTheme}
-                >
-                  {theme === "dark" ? (
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      width="18"
-                      height="18"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    >
-                      <circle cx="12" cy="12" r="5" />
-                      <line x1="12" y1="1" x2="12" y2="3" />
-                      <line x1="12" y1="21" x2="12" y2="23" />
-                      <line x1="4.22" y1="4.22" x2="5.64" y2="5.64" />
-                      <line x1="18.36" y1="18.36" x2="19.78" y2="19.78" />
-                      <line x1="1" y1="12" x2="3" y2="12" />
-                      <line x1="21" y1="12" x2="23" y2="12" />
-                      <line x1="4.22" y1="19.78" x2="5.64" y2="18.36" />
-                      <line x1="18.36" y1="5.64" x2="19.78" y2="4.22" />
-                    </svg>
-                  ) : (
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      width="18"
-                      height="18"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    >
-                      <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
-                    </svg>
-                  )}
-                  <span className="text-sm font-medium">{theme === "dark" ? "Light Mode" : "Dark Mode"}</span>
-                </button>
+                {/* Theme Toggle */}
+                <div className="pt-4 border-t border-gray-200">
+                  <button
+                    className="flex items-center gap-3 hover:bg-gray-50 w-full justify-start p-3 rounded-lg transition-colors"
+                    onClick={toggleTheme}
+                  >
+                    {theme === "dark" ? (
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        width="18"
+                        height="18"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      >
+                        <circle cx="12" cy="12" r="5" />
+                        <line x1="12" y1="1" x2="12" y2="3" />
+                        <line x1="12" y1="21" x2="12" y2="23" />
+                        <line x1="4.22" y1="4.22" x2="5.64" y2="5.64" />
+                        <line x1="18.36" y1="18.36" x2="19.78" y2="19.78" />
+                        <line x1="1" y1="12" x2="3" y2="12" />
+                        <line x1="21" y1="12" x2="23" y2="12" />
+                        <line x1="4.22" y1="19.78" x2="5.64" y2="18.36" />
+                        <line x1="18.36" y1="5.64" x2="19.78" y2="4.22" />
+                      </svg>
+                    ) : (
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        width="18"
+                        height="18"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      >
+                        <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
+                      </svg>
+                    )}
+                    <span className="text-sm font-medium">{theme === "dark" ? "Light Mode" : "Dark Mode"}</span>
+                  </button>
+                </div>
               </div>
             </div>
           </div>

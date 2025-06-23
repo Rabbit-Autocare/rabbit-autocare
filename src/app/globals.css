@@ -120,7 +120,7 @@
 
 /* ✅ Updated smooth scroll styles - only apply to home page */
 body.smooth-scroll #smooth-wrapper {
-  position: fixed;
+  /* position: fixed; */
   top: 0;
   left: 0;
   right: 0;
@@ -165,4 +165,47 @@ body:not(.smooth-scroll) {
   overscroll-behavior: contain;
   padding: 0.5rem 0;
   scroll-behavior: smooth;
+}
+
+/* Mobile menu overlay scrolling */
+.mobile-menu-overlay {
+  max-height: 100vh;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Mobile menu styles */
+body.mobile-menu-open {
+  position: fixed;
+  width: 100%;
+  overflow: hidden;
+  touch-action: none;
+}
+
+/* Ensure mobile menu scrolls independently */
+body.mobile-menu-open #smooth-wrapper {
+  position: static !important;
+  overflow: visible !important;
+  z-index: 1;
+}
+
+body.mobile-menu-open #smooth-content {
+  transform: none !important;
+  will-change: auto !important;
+  position: relative;
+  z-index: 1;
+}
+
+/* Prevent component overlapping */
+body.mobile-menu-open .hero-section,
+body.mobile-menu-open .theme-component {
+  position: relative;
+  z-index: 1;
+}
+
+/* Ensure proper height on iOS */
+.h-\[100dvh\] {
+  height: 100vh;
+  height: -webkit-fill-available;
+  height: 100dvh;
 }

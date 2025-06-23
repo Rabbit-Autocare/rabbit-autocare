@@ -3,42 +3,14 @@ import { useCart } from "@/hooks/useCart";
 
 export default function PriceSummary({ formatPrice }) {
 	const {
-		coupon,
 		cartItems,
+		subtotal,
+		discount,
+		total,
+		coupon,
 	} = useCart();
 
 	const hasComboOrKit = cartItems.some(item => item.combo_id || item.kit_id);
-
-	const getSubtotal = () => {
-		return cartItems.reduce((total, item) => {
-			const price = (item.combo_id && item.combo_price)
-				? item.combo_price
-				: (item.kit_id && item.kit_price)
-				? item.kit_price
-				: item.variant?.price || 0;
-			return total + price * item.quantity;
-		}, 0);
-	};
-
-	const subtotal = getSubtotal();
-
-	// Coupon logic: only apply if no combo/kit and subtotal >= coupon.applicable_upto
-	function applyCouponAndCalculateDiscount() {
-		console.log('PriceSummary - applyCouponAndCalculateDiscount called with:', { coupon, hasComboOrKit, subtotal });
-
-		if (!coupon || hasComboOrKit) {
-			return { discount: 0, message: hasComboOrKit ? 'Coupons are not applicable when combos or kits are in the cart.' : '' };
-		}
-
-		// Use the pre-calculated discount from the coupon object
-		const discount = coupon.discount || 0;
-		console.log('PriceSummary - calculated discount:', discount);
-
-		return { discount, message: '' };
-	}
-
-	const { discount, message: couponMessage } = applyCouponAndCalculateDiscount();
-	const total = Math.max(0, subtotal - discount);
 
 	if (cartItems.length === 0) {
 		return null;
@@ -56,10 +28,6 @@ export default function PriceSummary({ formatPrice }) {
 
 				{hasComboOrKit && (
 					<p className="text-red-500 text-xs mb-2">Coupons are not applicable when combos or kits are in the cart.</p>
-				)}
-
-				{couponMessage && (
-					<p className={`text-xs mb-2 ${hasComboOrKit ? 'text-red-500' : 'text-orange-500'}`}>{couponMessage}</p>
 				)}
 
 				{discount > 0 && (

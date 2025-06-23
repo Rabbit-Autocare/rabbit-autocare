@@ -7,7 +7,7 @@ import { ComboService } from '@/lib/service/comboService';
 import { KitService } from '@/lib/service/kitService';
 
 export default function CartItem({ item, formatPrice, getVariantDisplayText }) {
-  const { removeFromCart, updateCartItem } = useCart();
+  const { removeFromCart, updateCartItem, updateItemPrice } = useCart();
   const [isUpdating, setIsUpdating] = useState(false);
   const [comboKitDetails, setComboKitDetails] = useState(null);
 
@@ -15,20 +15,22 @@ export default function CartItem({ item, formatPrice, getVariantDisplayText }) {
     async function fetchComboKit() {
       if (item.combo_id) {
         const combos = await ComboService.getCombos(item.combo_id);
-        setComboKitDetails(combos && combos.length > 0 ? combos[0] : null);
-        if (combos && combos.length > 0) {
-          item.combo_price = combos[0].price;
+        const details = combos && combos.length > 0 ? combos[0] : null;
+        setComboKitDetails(details);
+        if (details) {
+          updateItemPrice(item.id, { combo_price: details.price });
         }
       } else if (item.kit_id) {
         const kits = await KitService.getKits(item.kit_id);
-        setComboKitDetails(kits && kits.length > 0 ? kits[0] : null);
-        if (kits && kits.length > 0) {
-          item.kit_price = kits[0].price;
+        const details = kits && kits.length > 0 ? kits[0] : null;
+        setComboKitDetails(details);
+        if (details) {
+          updateItemPrice(item.id, { kit_price: details.price });
         }
       }
     }
     fetchComboKit();
-  }, [item.combo_id, item.kit_id]);
+  }, [item.id, item.combo_id, item.kit_id, updateItemPrice]);
 
   const handleIncrease = async () => {
     // Check stock before increasing

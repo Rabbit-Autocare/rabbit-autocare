@@ -57,6 +57,16 @@ export async function transformCartForCheckout(cartItems, userId) {
 /**
  * Transform a product cart item with complete details
  */
+async function fetchVariantById(variantId) {
+  if (!variantId) return null;
+  const { data, error } = await supabase.from('variants').select('*').eq('id', variantId).single();
+  if (error) {
+    console.error('Error fetching variant:', error);
+    return null;
+  }
+  return data;
+}
+
 async function transformProductItem(cartItem) {
   try {
     // Fetch complete product details
@@ -71,47 +81,28 @@ async function transformProductItem(cartItem) {
       return null;
     }
 
-    // Parse variant data
-    let variantDetails = null;
-    let variantPrice = product.price || 0;
+    // Use variant directly from cart item
+    let variantDetails = cartItem.variant || null;
+    let variantPrice = variantDetails && variantDetails.price ? variantDetails.price : product.price || 0;
     let variantDisplayText = 'Default';
-
-    if (cartItem.variant) {
-      try {
-        const variant = typeof cartItem.variant === 'string'
-          ? JSON.parse(cartItem.variant)
-          : cartItem.variant;
-
-        variantDetails = {
-          id: variant.id,
-          size: variant.size,
-          color: variant.color,
-          gsm: variant.gsm,
-          quantity_value: variant.quantity_value,
-          unit: variant.unit,
-          is_package: variant.is_package,
-          package_quantity: variant.package_quantity,
-          stock: variant.stock,
-          price: variant.price || product.price
-        };
-
-        // Generate display text
-        const parts = [];
-        if (variant.color) parts.push(variant.color);
-        if (variant.size) parts.push(variant.size);
-        if (variant.gsm) parts.push(`${variant.gsm} GSM`);
-        if (variant.quantity_value && variant.unit) {
-          parts.push(`${variant.quantity_value} ${variant.unit}`);
-        }
-        if (variant.is_package && variant.package_quantity) {
-          parts.push(`Package of ${variant.package_quantity}`);
-        }
-
-        variantDisplayText = parts.length > 0 ? parts.join(' / ') : 'Default';
-        variantPrice = variant.price || product.price;
-      } catch (parseError) {
-        console.error('Error parsing variant:', parseError);
+    if (variantDetails) {
+      if (product.is_microfiber) {
+        const size = variantDetails.size ? `${variantDetails.size}` : '';
+        const color = variantDetails.color ? `${variantDetails.color}` : '';
+        const gsm = variantDetails.gsm ? `${variantDetails.gsm}gsm` : '';
+        variantDisplayText = [size, color, gsm].filter(Boolean).join(', ');
+      } else if (variantDetails.quantity && variantDetails.unit) {
+        variantDisplayText = `${variantDetails.quantity}${variantDetails.unit}`;
+      } else if (variantDetails.displayText) {
+        variantDisplayText = variantDetails.displayText;
+      } else if (variantDetails.id) {
+        variantDisplayText = `Variant ID: ${variantDetails.id}`;
       }
+    }
+
+    // Fallback if product price is still undefined
+    if (variantPrice === undefined || variantPrice === null) {
+      variantPrice = 0;
     }
 
     return {
@@ -144,48 +135,42 @@ async function transformProductItem(cartItem) {
  */
 async function transformComboItem(cartItem) {
   try {
-    // Fetch complete combo details
     const { data: combo, error: comboError } = await supabase
       .from('combos')
       .select('*')
       .eq('id', cartItem.combo_id)
       .single();
-
     if (comboError) {
       console.error('Error fetching combo:', comboError);
       return null;
     }
-
-    // Fetch combo products
     const { data: comboProducts, error: productsError } = await supabase
       .from('combo_products')
-      .select(`
-        *,
-        product:products(*)
-      `)
+      .select(`*, product:products(*)`)
       .eq('combo_id', cartItem.combo_id);
-
     if (productsError) {
       console.error('Error fetching combo products:', productsError);
       return null;
     }
-
-    // Parse included variants
-    let includedVariants = [];
-    if (cartItem.variant && Array.isArray(cartItem.variant)) {
-      includedVariants = cartItem.variant.map(variant => {
-        const comboProduct = comboProducts.find(cp => cp.product_id === variant.product_id);
+    // Fetch and attach variant details for each included product
+    const includedProducts = await Promise.all(
+      comboProducts.map(async (cp) => {
+        let variant = null;
+        if (cp.variant_id) {
+          const { data: v, error: vErr } = await supabase.from('product_variants').select('*').eq('id', cp.variant_id).single();
+          if (!vErr) variant = v;
+        }
         return {
-          product_id: variant.product_id,
-          product_name: comboProduct?.product?.name || 'Unknown Product',
-          product_code: comboProduct?.product?.product_code,
-          variant_id: variant.variant_id,
-          quantity: variant.quantity,
-          variant_details: variant
+          product_id: cp.product_id,
+          product_name: cp.product?.name,
+          product_code: cp.product?.product_code,
+          variant_id: cp.variant_id,
+          variant,
+          is_microfiber: cp.product?.is_microfiber,
+          quantity: cp.quantity
         };
-      });
-    }
-
+      })
+    );
     return {
       id: cartItem.id,
       type: 'combo',
@@ -196,17 +181,11 @@ async function transformComboItem(cartItem) {
       images: combo.images,
       price: combo.price,
       original_price: combo.original_price,
-      discount_percentage: combo.discount_percentage,
+      discount_percentage: combo.discount_percent ?? combo.discount_percentage ?? 0,
       quantity: cartItem.quantity,
       total_price: combo.price * cartItem.quantity,
-      included_products: comboProducts.map(cp => ({
-        product_id: cp.product_id,
-        product_name: cp.product?.name,
-        product_code: cp.product?.product_code,
-        variant_id: cp.variant_id,
-        quantity: cp.quantity
-      })),
-      included_variants: includedVariants
+      included_products: includedProducts,
+      included_variants: []
     };
   } catch (error) {
     console.error('Error transforming combo item:', error);
@@ -219,48 +198,42 @@ async function transformComboItem(cartItem) {
  */
 async function transformKitItem(cartItem) {
   try {
-    // Fetch complete kit details
     const { data: kit, error: kitError } = await supabase
       .from('kits')
       .select('*')
       .eq('id', cartItem.kit_id)
       .single();
-
     if (kitError) {
       console.error('Error fetching kit:', kitError);
       return null;
     }
-
-    // Fetch kit products
     const { data: kitProducts, error: productsError } = await supabase
       .from('kit_products')
-      .select(`
-        *,
-        product:products(*)
-      `)
+      .select(`*, product:products(*)`)
       .eq('kit_id', cartItem.kit_id);
-
     if (productsError) {
       console.error('Error fetching kit products:', productsError);
       return null;
     }
-
-    // Parse included variants
-    let includedVariants = [];
-    if (cartItem.variant && Array.isArray(cartItem.variant)) {
-      includedVariants = cartItem.variant.map(variant => {
-        const kitProduct = kitProducts.find(kp => kp.product_id === variant.product_id);
+    // Fetch and attach variant details for each included product
+    const includedProducts = await Promise.all(
+      kitProducts.map(async (kp) => {
+        let variant = null;
+        if (kp.variant_id) {
+          const { data: v, error: vErr } = await supabase.from('product_variants').select('*').eq('id', kp.variant_id).single();
+          if (!vErr) variant = v;
+        }
         return {
-          product_id: variant.product_id,
-          product_name: kitProduct?.product?.name || 'Unknown Product',
-          product_code: kitProduct?.product?.product_code,
-          variant_id: variant.variant_id,
-          quantity: variant.quantity,
-          variant_details: variant
+          product_id: kp.product_id,
+          product_name: kp.product?.name,
+          product_code: kp.product?.product_code,
+          variant_id: kp.variant_id,
+          variant,
+          is_microfiber: kp.product?.is_microfiber,
+          quantity: kp.quantity
         };
-      });
-    }
-
+      })
+    );
     return {
       id: cartItem.id,
       type: 'kit',
@@ -271,17 +244,11 @@ async function transformKitItem(cartItem) {
       images: kit.images,
       price: kit.price,
       original_price: kit.original_price,
-      discount_percentage: kit.discount_percentage,
+      discount_percentage: kit.discount_percent ?? kit.discount_percentage ?? 0,
       quantity: cartItem.quantity,
       total_price: kit.price * cartItem.quantity,
-      included_products: kitProducts.map(kp => ({
-        product_id: kp.product_id,
-        product_name: kp.product?.name,
-        product_code: kp.product?.product_code,
-        variant_id: kp.variant_id,
-        quantity: kp.quantity
-      })),
-      included_variants: includedVariants
+      included_products: includedProducts,
+      included_variants: []
     };
   } catch (error) {
     console.error('Error transforming kit item:', error);
@@ -299,8 +266,8 @@ export function calculateOrderTotals(transformedItems, coupon = null) {
   let discountPercentage = 0;
 
   if (coupon) {
-    discountPercentage = coupon.value || 0;
-    discount = (subtotal * discountPercentage) / 100;
+    discountPercentage = coupon.discount_percent || coupon.value || 0;
+    discount = coupon.discount || ((subtotal * discountPercentage) / 100);
   }
 
   const grandTotal = Math.max(0, subtotal - discount);

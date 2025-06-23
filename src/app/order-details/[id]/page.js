@@ -1,10 +1,12 @@
 "use client";
 
 import { useEffect, useState, useCallback } from 'react';
+import { supabase } from '@/lib/supabaseClient';
 // ... other imports ...
 
 export default function OrderDetailsPage({ params }) {
-  // ... state declarations ...
+  const [order, setOrder] = useState(null);
+  const [loading, setLoading] = useState(true);
 
   const fetchOrder = useCallback(async () => {
     if (!params.id) return;
@@ -26,6 +28,8 @@ export default function OrderDetailsPage({ params }) {
       setOrder(data);
     } catch (error) {
       console.error('Error fetching order:', error);
+    } finally {
+      setLoading(false);
     }
   }, [params.id]);
 
@@ -33,5 +37,19 @@ export default function OrderDetailsPage({ params }) {
     fetchOrder();
   }, [fetchOrder]);
 
-  // ... rest of the code ...
+  if (loading) {
+    return <div>Loading...</div>;
+  }
+
+  if (!order) {
+    return <div>Order not found</div>;
+  }
+
+  return (
+    <div>
+      <h1>Order Details</h1>
+      <p>Order Number: {order.order_number}</p>
+      {/* Add more order details display here */}
+    </div>
+  );
 }

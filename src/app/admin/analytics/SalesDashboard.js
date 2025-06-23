@@ -2,41 +2,24 @@
 
 import React, { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabaseClient';
-import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import DatePicker from 'react-datepicker';
 import 'react-datepicker/dist/react-datepicker.css';
 import '../../globals.css';
 import Papa from 'papaparse';
 
-// Custom Card Component
-const CustomCard = ({ children, className }) => (
-    <div className={`bg-white border rounded-lg shadow-sm ${className}`}>
-        {children}
-    </div>
-);
-
-const CustomCardHeader = ({ children, className }) => (
-    <div className={`p-6 pb-2 ${className}`}>
-        {children}
-    </div>
-);
-
-const CustomCardTitle = ({ children, className }) => (
-    <h3 className={`text-lg font-semibold tracking-tight ${className}`}>
-        {children}
-    </h3>
-);
-
-const CustomCardContent = ({ children, className }) => (
-    <div className={`p-6 pt-0 ${className}`}>
-        {children}
-    </div>
-);
-
+function getVariantDisplayText(variant) {
+    if (!variant) return '';
+    const parts = [];
+    if (variant.gsm) parts.push(`${variant.gsm} GSM`);
+    if (variant.size) parts.push(variant.size);
+    if (variant.color) parts.push(variant.color);
+    if (variant.color_hex) parts.push(variant.color_hex);
+    if (variant.quantity && variant.unit) parts.push(`${variant.quantity}${variant.unit}`);
+    return parts.filter(Boolean).join(', ');
+}
 
 export default function SalesDashboard() {
-    const [salesOverTime, setSalesOverTime] = useState([]);
-    const [topProducts, setTopProducts] = useState([]);
+    const [salesData, setSalesData] = useState([]);
     const [startDate, setStartDate] = useState(() => {
         const d = new Date();
         d.setDate(d.getDate() - 30);
@@ -45,34 +28,31 @@ export default function SalesDashboard() {
     const [endDate, setEndDate] = useState(new Date());
     const [loading, setLoading] = useState(true);
     const [downloading, setDownloading] = useState(false);
+    const [currentPage, setCurrentPage] = useState(1);
+    const [itemsPerPage] = useState(20);
+    const [sortConfig, setSortConfig] = useState({ key: 'sale_date', direction: 'desc' });
+    const [totalAmount, setTotalAmount] = useState(0);
 
     useEffect(() => {
         fetchSalesData();
-    }, [startDate, endDate]);
+    }, [startDate, endDate, currentPage, sortConfig]);
 
     const fetchSalesData = async () => {
         setLoading(true);
         try {
-            const from = startDate.toISOString();
-            const to = endDate.toISOString();
-
-            // Fetch Sales Over Time
-            const { data: sotData, error: sotError } = await supabase.rpc('get_sales_over_time', {
-                start_date: from,
-                end_date: to,
-            });
-            if (sotError) throw sotError;
-            setSalesOverTime(sotData.map(d => ({ ...d, sale_date: new Date(d.sale_date).toLocaleDateString() })) || []);
-
-            // Fetch Top Selling Products
-            const { data: tpData, error: tpError } = await supabase.rpc('get_top_selling_products', {
-                limit_count: 10,
-                start_date: from,
-                end_date: to,
-            });
-            if (tpError) throw tpError;
-            setTopProducts(tpData || []);
-
+            const from = startDate.toISOString().split('T')[0];
+            const to = endDate.toISOString().split('T')[0];
+            const { data, error } = await supabase
+                .from('sales_records')
+                .select('*')
+                .gte('sale_date', from)
+                .lte('sale_date', to)
+                .order(sortConfig.key, { ascending: sortConfig.direction === 'asc' })
+                .range((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage - 1);
+            if (error) throw error;
+            setSalesData(data || []);
+            const total = (data || []).reduce((sum, record) => sum + (record.total_price || 0), 0);
+            setTotalAmount(total);
         } catch (error) {
             console.error('Error fetching sales data:', error);
             alert('Failed to fetch sales data: ' + error.message);
@@ -81,53 +61,38 @@ export default function SalesDashboard() {
         }
     };
 
+    const handleSort = (key) => {
+        setSortConfig(prevConfig => ({
+            key,
+            direction: prevConfig.key === key && prevConfig.direction === 'asc' ? 'desc' : 'asc'
+        }));
+    };
+
     const handleDownloadCsv = async () => {
         setDownloading(true);
         try {
-            const { data, error } = await supabase.rpc('get_sales_report_data', {
-                start_date: startDate.toISOString(),
-                end_date: endDate.toISOString(),
-            });
-
+            const from = startDate.toISOString().split('T')[0];
+            const to = endDate.toISOString().split('T')[0];
+            const { data, error } = await supabase
+                .from('sales_records')
+                .select('*')
+                .gte('sale_date', from)
+                .lte('sale_date', to)
+                .order('sale_date', { ascending: false });
             if (error) throw error;
-
             if (!data || data.length === 0) {
                 alert('No sales data available for the selected date range.');
                 return;
             }
-
-            // Flatten the address object for better CSV readability
-            const flattenedData = data.map(row => ({
-                ...row,
-                shipping_name: row.shipping_address?.name,
-                shipping_phone: row.shipping_address?.phone,
-                shipping_address_line1: row.shipping_address?.address_line1,
-                shipping_address_line2: row.shipping_address?.address_line2,
-                shipping_city: row.shipping_address?.city,
-                shipping_state: row.shipping_address?.state,
-                shipping_postal_code: row.shipping_address?.postal_code,
-                shipping_country: row.shipping_address?.country,
-            }));
-
-            // Remove the original address object
-            flattenedData.forEach(row => delete row.shipping_address);
-
-
-            const csv = Papa.unparse(flattenedData, {
-                header: true,
-            });
-
+            const csv = Papa.unparse(data);
             const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
             const link = document.createElement('a');
             const url = URL.createObjectURL(blob);
             link.setAttribute('href', url);
-            const from = startDate.toISOString().split('T')[0];
-            const to = endDate.toISOString().split('T')[0];
             link.setAttribute('download', `sales_report_${from}_to_${to}.csv`);
             document.body.appendChild(link);
             link.click();
             document.body.removeChild(link);
-
         } catch (error) {
             console.error('Error downloading CSV:', error);
             alert('Failed to download sales report: ' + error.message);
@@ -136,14 +101,25 @@ export default function SalesDashboard() {
         }
     };
 
-    if (loading) {
-        return <div className="flex items-center justify-center h-full"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900"></div></div>;
-    }
+    const formatDate = (dateString) => {
+        return new Date(dateString).toLocaleDateString('en-IN', {
+            year: 'numeric',
+            month: 'short',
+            day: 'numeric'
+        });
+    };
+
+    const formatCurrency = (amount) => {
+        return new Intl.NumberFormat('en-IN', {
+            style: 'currency',
+            currency: 'INR'
+        }).format(amount);
+    };
 
     return (
         <div className="p-6 space-y-6">
             <div className="flex justify-between items-center flex-wrap gap-4">
-                <h2 className="text-3xl font-bold">Sales Analytics</h2>
+                <h2 className="text-3xl font-bold">Sales Records</h2>
                 <div className="flex items-center space-x-4 flex-wrap">
                     <button
                         onClick={handleDownloadCsv}
@@ -178,41 +154,132 @@ export default function SalesDashboard() {
                 </div>
             </div>
 
-            <CustomCard>
-                <CustomCardHeader>
-                    <CustomCardTitle>Sales Over Time</CustomCardTitle>
-                </CustomCardHeader>
-                <CustomCardContent>
-                    <ResponsiveContainer width="100%" height={300}>
-                        <LineChart data={salesOverTime}>
-                            <CartesianGrid strokeDasharray="3 3" />
-                            <XAxis dataKey="sale_date" />
-                            <YAxis tickFormatter={(value) => `₹${value / 1000}k`} />
-                            <Tooltip formatter={(value) => `₹${Number(value).toLocaleString('en-IN')}`} />
-                            <Legend />
-                            <Line type="monotone" dataKey="daily_revenue" stroke="#8884d8" name="Daily Revenue" />
-                        </LineChart>
-                    </ResponsiveContainer>
-                </CustomCardContent>
-            </CustomCard>
-
-            <CustomCard>
-                <CustomCardHeader>
-                    <CustomCardTitle>Top 10 Selling Products (by Revenue)</CustomCardTitle>
-                </CustomCardHeader>
-                <CustomCardContent>
-                    <ResponsiveContainer width="100%" height={400}>
-                        <BarChart data={topProducts} layout="vertical" margin={{ left: 150 }}>
-                            <CartesianGrid strokeDasharray="3 3" />
-                            <XAxis type="number" tickFormatter={(value) => `₹${value / 1000}k`} />
-                            <YAxis type="category" dataKey="product_name" width={150} interval={0} />
-                            <Tooltip formatter={(value) => `₹${Number(value).toLocaleString('en-IN')}`} />
-                            <Legend />
-                            <Bar dataKey="total_revenue" fill="#82ca9d" name="Total Revenue" />
-                        </BarChart>
-                    </ResponsiveContainer>
-                </CustomCardContent>
-            </CustomCard>
+            <div className="bg-white rounded-lg shadow">
+                <div className="p-4 border-b">
+                    <div className="text-lg font-semibold">
+                        Total Amount: {formatCurrency(totalAmount)}
+                    </div>
+                </div>
+                <div className="overflow-x-auto">
+                    <table className="min-w-full divide-y divide-gray-200">
+                        <thead className="bg-gray-50">
+                            <tr>
+                                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer" onClick={() => handleSort('sale_date')}>
+                                    Date {sortConfig.key === 'sale_date' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
+                                </th>
+                                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    Order #
+                                </th>
+                                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer" onClick={() => handleSort('product_name')}>
+                                    Product {sortConfig.key === 'product_name' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
+                                </th>
+                                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    Product Code
+                                </th>
+                                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    Variant
+                                </th>
+                                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    Quantity
+                                </th>
+                                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    Unit Price
+                                </th>
+                                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer" onClick={() => handleSort('total_price')}>
+                                    Total {sortConfig.key === 'total_price' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
+                                </th>
+                                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    Type
+                                </th>
+                                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    Parent (Kit/Combo)
+                                </th>
+                                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    Category
+                                </th>
+                            </tr>
+                        </thead>
+                        <tbody className="bg-white divide-y divide-gray-200">
+                            {loading ? (
+                                <tr>
+                                    <td colSpan="11" className="px-6 py-4 text-center">
+                                        <div className="flex justify-center">
+                                            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
+                                        </div>
+                                    </td>
+                                </tr>
+                            ) : salesData.length === 0 ? (
+                                <tr>
+                                    <td colSpan="11" className="px-6 py-4 text-center text-gray-500">
+                                        No sales records found for the selected date range.
+                                    </td>
+                                </tr>
+                            ) : (
+                                salesData.map((record) => (
+                                    <tr key={record.id} className="hover:bg-gray-50">
+                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                            {formatDate(record.sale_date)}
+                                        </td>
+                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                            {record.order_number}
+                                        </td>
+                                        <td className="px-6 py-4 text-sm text-gray-900">
+                                            <div className="font-medium">{record.product_name}</div>
+                                        </td>
+                                        <td className="px-6 py-4 text-sm text-gray-900">
+                                            {record.product_code}
+                                        </td>
+                                        <td className="px-6 py-4 text-sm text-gray-900">
+                                            {record.variant_details}
+                                        </td>
+                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                            {record.quantity}
+                                        </td>
+                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                            {formatCurrency(record.unit_price)}
+                                        </td>
+                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                            {formatCurrency(record.total_price)}
+                                        </td>
+                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                            {record.sale_type}
+                                        </td>
+                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                            {record.parent_item_name || '-'}
+                                        </td>
+                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                            {record.category_name || '-'}
+                                        </td>
+                                    </tr>
+                                ))
+                            )}
+                        </tbody>
+                    </table>
+                </div>
+                <div className="px-6 py-4 border-t">
+                    <div className="flex justify-between items-center">
+                        <div className="text-sm text-gray-700">
+                            Showing {((currentPage - 1) * itemsPerPage) + 1} to {Math.min(currentPage * itemsPerPage, salesData.length)} entries
+                        </div>
+                        <div className="flex space-x-2">
+                            <button
+                                onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                                disabled={currentPage === 1}
+                                className="px-3 py-1 border rounded text-sm disabled:opacity-50"
+                            >
+                                Previous
+                            </button>
+                            <button
+                                onClick={() => setCurrentPage(prev => prev + 1)}
+                                disabled={salesData.length < itemsPerPage}
+                                className="px-3 py-1 border rounded text-sm disabled:opacity-50"
+                            >
+                                Next
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
     );
 }

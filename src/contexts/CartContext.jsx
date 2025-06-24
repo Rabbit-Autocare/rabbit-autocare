@@ -87,7 +87,7 @@ export function CartProvider({ children }) {
   const refreshCart = useCallback(async () => {
     // Wait until the AuthContext has finished its initial session check
     if (!sessionChecked) {
-      setLoading(true); // Ensure cart shows loading
+      setLoading(true);
       return;
     }
 
@@ -244,7 +244,7 @@ export function CartProvider({ children }) {
 
   const value = {
     ...cartState,
-    loading,
+    loading: !sessionChecked ? true : loading,
     isCartOpen,
     openCart,
     closeCart,

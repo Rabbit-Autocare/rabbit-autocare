@@ -25,7 +25,7 @@ export default function UserCouponsPage() {
 
   const fetchCoupons = async (userId) => {
     try {
-      setLoading(true);
+    setLoading(true);
       // Fetch all active coupons
       const { data: allCoupons, error: couponsError } = await supabase
         .from('coupons')

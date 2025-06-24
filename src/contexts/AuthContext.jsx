@@ -9,6 +9,7 @@ export function AuthProvider({ children }) {
   const [user, setUser] = useState(null)
   const [isAdmin, setIsAdmin] = useState(false)
   const [loading, setLoading] = useState(true)
+  const [sessionChecked, setSessionChecked] = useState(false)
 
   useEffect(() => {
     // Check initial auth state
@@ -46,6 +47,7 @@ export function AuthProvider({ children }) {
       setIsAdmin(false)
     } finally {
       setLoading(false)
+      setSessionChecked(true)
     }
   }
 
@@ -102,7 +104,8 @@ export function AuthProvider({ children }) {
     isAdmin,
     loading,
     signIn,
-    signOut
+    signOut,
+    sessionChecked
   }
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>

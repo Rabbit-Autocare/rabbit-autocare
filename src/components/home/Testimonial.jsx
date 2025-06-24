@@ -78,7 +78,7 @@ export default function Testimonial() {
   const [cardsPerView, setCardsPerView] = useState(2);
   const [cardWidth, setCardWidth] = useState(590);
   const [isDesktop, setIsDesktop] = useState(true);
-  
+
   // Touch/Swipe state
   const [touchStart, setTouchStart] = useState(null);
   const [touchEnd, setTouchEnd] = useState(null);
@@ -90,8 +90,8 @@ export default function Testimonial() {
   // Update cards per view and card width based on screen size
   useEffect(() => {
     const updateLayout = () => {
-      const width = window.innerWidth;
-      
+      const width = typeof window !== 'undefined' ? window.innerWidth : 1024;
+
       if (width >= 1024) {
         // Desktop: 2 cards
         setCardsPerView(2);
@@ -110,8 +110,8 @@ export default function Testimonial() {
     };
 
     updateLayout();
-    window.addEventListener('resize', updateLayout);
-    return () => window.removeEventListener('resize', updateLayout);
+    typeof window !== 'undefined' && window.addEventListener('resize', updateLayout);
+    return () => typeof window !== 'undefined' && window.removeEventListener('resize', updateLayout);
   }, []);
 
   // Calculate the maximum index based on cards per view
@@ -157,7 +157,7 @@ export default function Testimonial() {
       setIsDragging(false);
       return;
     }
-    
+
     const distance = touchStart - touchEnd;
     const isLeftSwipe = distance > minSwipeDistance;
     const isRightSwipe = distance < -minSwipeDistance;
@@ -166,10 +166,10 @@ export default function Testimonial() {
       // Swipe left - go to next
       slideToIndex(index + 1);
     } else if (isRightSwipe && index > 0) {
-      // Swipe right - go to previous  
+      // Swipe right - go to previous
       slideToIndex(index - 1);
     }
-    
+
     setIsDragging(false);
     setTouchStart(null);
     setTouchEnd(null);
@@ -192,7 +192,7 @@ export default function Testimonial() {
         </p>
       </div>
 
-      <div 
+      <div
         className="relative overflow-hidden"
         onTouchStart={onTouchStart}
         onTouchMove={onTouchMove}
@@ -200,43 +200,51 @@ export default function Testimonial() {
         style={{ touchAction: isDesktop ? 'auto' : 'pan-y' }} // Allow vertical scroll but control horizontal
       >
         <div className="flex w-max gap-4" ref={containerRef}>
-          {testimonials.map((item, i) => (
-            <div 
-              key={item.id} 
-              className="border border-black rounded-[30px] p-4 md:p-6 flex-shrink-0"
-              style={{ 
-                width: `${cardWidth}px`,
-                height: window.innerWidth >= 768 ? '360px' : '350px',
-                userSelect: isDragging ? 'none' : 'auto' // Prevent text selection while dragging
-              }}
-            >
-              <div className="flex items-center mb-4">
-                <Image 
-                  src={item.avatar} 
-                  alt="avatar" 
-                  width={window.innerWidth >= 768 ? 80 : 60} 
-                  height={window.innerWidth >= 768 ? 80 : 60} 
-                  className="mr-3" 
-                  draggable={false} // Prevent image dragging
-                />
-                <div className="flex-1">
-                  <p className="text-[16px] md:text-[18px] tracking-wide text-black font-medium">{item.name}</p>
-                  <p className="text-[14px] md:text-[18px] tracking-wide text-[#545454]">{item.date}</p>
+          {testimonials.map((item, i) => {
+            // SSR-safe: Only use window on client
+            let isClient = typeof window !== 'undefined';
+            let width = isClient ? window.innerWidth : 1024;
+            let cardHeight = width >= 768 ? '360px' : '350px';
+            let avatarSize = width >= 768 ? 80 : 60;
+            let quoteSize = width >= 768 ? 110 : 50;
+            return (
+              <div
+                key={item.id}
+                className="border border-black rounded-[30px] p-4 md:p-6 flex-shrink-0"
+                style={{
+                  width: `${cardWidth}px`,
+                  height: cardHeight,
+                  userSelect: isDragging ? 'none' : 'auto' // Prevent text selection while dragging
+                }}
+              >
+                <div className="flex items-center mb-4">
+                  <Image
+                    src={item.avatar}
+                    alt="avatar"
+                    width={avatarSize}
+                    height={avatarSize}
+                    className="mr-3"
+                    draggable={false} // Prevent image dragging
+                  />
+                  <div className="flex-1">
+                    <p className="text-[16px] md:text-[18px] tracking-wide text-black font-medium">{item.name}</p>
+                    <p className="text-[14px] md:text-[18px] tracking-wide text-[#545454]">{item.date}</p>
+                  </div>
+                  <Image
+                    src={item.quote}
+                    alt="quote"
+                    width={quoteSize}
+                    height={quoteSize}
+                    className="ml-auto"
+                    draggable={false} // Prevent image dragging
+                  />
                 </div>
-                <Image
-                  src={item.quote}
-                  alt="quote"
-                  width={window.innerWidth >= 768 ? 110 : 50}
-                  height={window.innerWidth >= 768 ? 110 : 50}
-                  className="ml-auto"
-                  draggable={false} // Prevent image dragging
-                />
+                <p className="text-[14px] md:text-[16px] tracking-wide italic text-[#646464] leading-normal" style={{ textAlign: 'justify', textAlignLast: 'right', textIndent: '28%' }}>
+                  "{item.text}"
+                </p>
               </div>
-              <p className="text-[14px] md:text-[16px] tracking-wide italic text-[#646464] leading-normal" style={{ textAlign: 'justify', textAlignLast: 'right', textIndent: '28%' }}>
-                "{item.text}"
-              </p>
-            </div>
-          ))}
+            );
+          })}
         </div>
       </div>
 

@@ -36,13 +36,13 @@ export default function AddressBookPage() {
 
   const fetchAddresses = async (userId) => {
     try {
-      setLoading(true);
-      const { data, error } = await supabase
-        .from('addresses')
-        .select('*')
-        .eq('user_id', userId)
-        .order('is_default', { ascending: false })
-        .order('created_at', { ascending: false });
+    setLoading(true);
+    const { data, error } = await supabase
+      .from('addresses')
+      .select('*')
+      .eq('user_id', userId)
+      .order('is_default', { ascending: false })
+      .order('created_at', { ascending: false });
 
       if (error) throw error;
       setAddresses(data || []);

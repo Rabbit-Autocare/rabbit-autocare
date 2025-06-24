@@ -2,70 +2,46 @@
 "use client";
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { supabase } from "@/lib/supabaseClient";
+import { useAuth } from "@/hooks/useAuth";
 
 export default function AuthCallbackPage() {
 	const router = useRouter();
+	// Get user and session status from the central AuthContext
+	const { user, isAdmin, sessionChecked } = useAuth();
 
 	useEffect(() => {
-		const handleAuthCallback = async () => {
-			try {
-				// Wait for Supabase to process the OAuth callback
-				const {
-					data: { session },
-					error,
-				} = await supabase.auth.getSession();
+		console.log("[AuthCallback] Page effect triggered. sessionChecked:", sessionChecked, "User exists:", !!user);
 
-				if (error) throw error;
-				if (!session) throw new Error("No session found");
+		// Wait until the AuthContext has finished its initial session check
+		if (!sessionChecked) {
+			console.log("[AuthCallback] Waiting for session to be checked by AuthContext...");
+			return; // Do nothing until the session is checked
+		}
 
-				console.log("Session details:", session);
+		console.log("[AuthCallback] Session has been checked by AuthContext.");
 
-				// Check if user is admin from auth_users table
-				const { data: userData, error: userError } = await supabase
-					.from("auth_users")
-					.select("*")
-					.eq("id", session.user.id)
-					.single();
-
-				if (userError) {
-					console.error("Error fetching user data:", userError);
-					// Use router.push for smooth client-side navigation
-					router.push("/");
-					return;
-				}
-
-				console.log("User details from database:", userData);
-
-				// Check if user is banned
-				if (userData?.is_banned === true) {
-					console.error("User is banned");
-					router.push("/login?error=user_banned");
-					return;
-				}
-
-				// Redirect based on is_admin status
-				if (userData?.is_admin === true) {
-					// Use router.push for smooth client-side navigation
-					router.push("/admin");
-				} else {
-					// Use router.push for smooth client-side navigation
-					router.push("/");
-				}
-			} catch (error) {
-				console.error("Auth callback error:", error);
-				router.push("/login?error=auth_failed");
+		if (user) {
+			// The user object from useAuth now includes the is_admin flag from our checkUserRole function
+			console.log(`[AuthCallback] User is authenticated. isAdmin: ${isAdmin}. Redirecting...`);
+			if (isAdmin) {
+				router.replace("/admin");
+			} else {
+				router.replace("/");
 			}
-		};
+		} else {
+			// If the session is checked and there's still no user, it means login failed.
+			console.error("[AuthCallback] Authentication failed. Redirecting to login.");
+			router.replace("/login?error=auth_failed");
+		}
 
-		handleAuthCallback();
-	}, [router]);
+	}, [user, isAdmin, sessionChecked, router]);
 
 	return (
-		<div className="flex justify-center items-center h-screen">
-			<div className="text-center">
-				<h1 className="text-2xl font-bold mb-4">Authenticating...</h1>
-				<p>Please wait while we log you in.</p>
+		<div className="flex justify-center items-center h-screen bg-gray-50">
+			<div className="text-center p-8 bg-white shadow-md rounded-lg">
+				<div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-700 mx-auto mb-4"></div>
+				<h1 className="text-2xl font-bold mb-2 text-gray-800">Finalizing Login...</h1>
+				<p className="text-gray-600">Please wait, we&apos;re confirming your details.</p>
 			</div>
 		</div>
 	);

@@ -18,7 +18,7 @@ const calculateCartState = (cartItems, coupon) => {
       item.variant?.price ||
       0
     const quantity = item.quantity || 0
-    console.log(`Calculating item: ${item.product?.name || item.combo?.combo_name || item.kit?.kit_name || 'Unknown'} | Price: ${price} | Quantity: ${quantity} | Subtotal: ${total + price * quantity}`);
+    // console.log(`Calculating item: ${item.product?.name || item.combo?.combo_name || item.kit?.kit_name || 'Unknown'} | Price: ${price} | Quantity: ${quantity} | Subtotal: ${total + price * quantity}`);
     return total + price * quantity
   }, 0)
 
@@ -43,7 +43,7 @@ const calculateCartState = (cartItems, coupon) => {
 
 // Create the provider component
 export function CartProvider({ children }) {
-  const { user } = useAuth()
+  const { user, sessionChecked } = useAuth()
   const router = useRouter()
   const [cartState, setCartState] = useState({
     cartItems: [],
@@ -85,6 +85,12 @@ export function CartProvider({ children }) {
 
   // Initialize or update cart
   const refreshCart = useCallback(async () => {
+    // Wait until the AuthContext has finished its initial session check
+    if (!sessionChecked) {
+      setLoading(true); // Ensure cart shows loading
+      return;
+    }
+
     if (!user) {
       updateCalculatedState([], null)
       setLoading(false)
@@ -106,7 +112,7 @@ export function CartProvider({ children }) {
     } finally {
       setLoading(false)
     }
-  }, [user, coupon, updateCalculatedState])
+  }, [user, sessionChecked, coupon, updateCalculatedState]);
 
   useEffect(() => {
     refreshCart()

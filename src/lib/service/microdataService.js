@@ -10,11 +10,12 @@ const CATEGORIES_API = "/api/products/category";
 export class SizeService {
   static async getSizes() {
     try {
+      console.log('[DEBUG] Fetching sizes...');
       const { data, error } = await supabase
         .from('sizes')
         .select('*')
         .order('size_cm', { ascending: true });
-
+      console.log('[DEBUG] Sizes fetched:', data, error);
       if (error) throw error;
       return { success: true, data };
     } catch (error) {
@@ -205,11 +206,12 @@ export class GsmService {
 export class QuantityService {
   static async getQuantities() {
     try {
+      console.log('[DEBUG] Fetching quantities...');
       const { data, error } = await supabase
         .from('quantity')
         .select('*')
         .order('quantity', { ascending: true });
-
+      console.log('[DEBUG] Quantities fetched:', data, error);
       if (error) throw error;
       return { success: true, data };
     } catch (error) {
@@ -270,11 +272,12 @@ export class QuantityService {
 export class CategoryService {
   static async getCategories() {
     try {
+      console.log('[DEBUG] Fetching categories...');
       const { data, error } = await supabase
         .from('categories')
         .select('*')
         .order('name', { ascending: true });
-
+      console.log('[DEBUG] Categories fetched:', data, error);
       if (error) throw error;
       return { success: true, data };
     } catch (error) {

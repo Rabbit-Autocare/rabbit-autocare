@@ -49,6 +49,7 @@ const FilterSidebar = ({
   // Fetch all filter data on component mount
   useEffect(() => {
     const fetchFilterData = async () => {
+      console.log('[DEBUG] Fetching all filter data...');
       try {
         setLoading(true)
 
@@ -119,6 +120,15 @@ const FilterSidebar = ({
           setMinPrice((minProductPrice === Infinity ? 0 : minProductPrice).toString())
           setMaxPrice((maxProductPrice === 0 ? 1000 : maxProductPrice).toString())
         }
+
+        console.log('[DEBUG] Filter data fetched:', {
+          categories: categoriesRes,
+          sizes: sizesRes,
+          colors: colorsRes,
+          gsm: gsmRes,
+          quantities: quantitiesRes,
+          products: productsRes
+        });
       } catch (error) {
         console.error("Error fetching filter data:", error)
       } finally {

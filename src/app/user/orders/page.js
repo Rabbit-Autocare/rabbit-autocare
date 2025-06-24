@@ -4,36 +4,41 @@ import { supabase } from '@/lib/supabaseClient';
 import UserLayout from '@/components/layouts/UserLayout';
 import '@/app/globals.css';
 import Image from 'next/image';
+import { useAuth } from '@/hooks/useAuth';
 
 export default function OrderHistoryPage() {
   const [orders, setOrders] = useState([]);
-  const [userId, setUserId] = useState(null);
   const [loading, setLoading] = useState(true);
   const [selectedOrder, setSelectedOrder] = useState(null);
+  const { user, sessionChecked } = useAuth();
 
   useEffect(() => {
-    getUser();
-  }, []);
+    // Only fetch orders if we have confirmed the session state
+    if (sessionChecked) {
+      if (user) {
+        fetchOrders(user.id);
+      } else {
+        setLoading(false);
+      }
+    }
+  }, [user, sessionChecked]);
 
-  useEffect(() => {
-    if (userId) fetchOrders();
-  }, [userId]);
+  const fetchOrders = async (userId) => {
+    try {
+      setLoading(true);
+      const { data, error } = await supabase
+        .from('orders')
+        .select('*')
+        .eq('user_id', userId)
+        .order('created_at', { ascending: false });
 
-  const getUser = async () => {
-    const { data } = await supabase.auth.getUser();
-    if (data?.user) setUserId(data.user.id);
-  };
-
-  const fetchOrders = async () => {
-    setLoading(true);
-    const { data, error } = await supabase
-      .from('orders')
-      .select('*')
-      .eq('user_id', userId)
-      .order('created_at', { ascending: false });
-
-    if (!error) setOrders(data);
-    setLoading(false);
+      if (error) throw error;
+      setOrders(data || []);
+    } catch (error) {
+      console.error('Error fetching orders:', error);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const formatDate = (dateString) => {
@@ -55,7 +60,22 @@ export default function OrderHistoryPage() {
     setSelectedOrder(null);
   };
 
-  if (loading)
+  // Show loading state while session is being checked
+  if (!sessionChecked) {
+    return (
+      <UserLayout>
+        <div className='p-6 flex items-center justify-center'>
+          <div className='bg-white p-8 rounded-lg shadow-md'>
+            <div className='animate-spin rounded-full h-12 w-12 border-b-2 border-blue-700 mx-auto'></div>
+            <p className='text-center mt-4'>Initializing...</p>
+          </div>
+        </div>
+      </UserLayout>
+    );
+  }
+
+  // Show loading state while fetching orders
+  if (loading) {
     return (
       <UserLayout>
         <div className='p-6 flex items-center justify-center'>
@@ -66,6 +86,7 @@ export default function OrderHistoryPage() {
         </div>
       </UserLayout>
     );
+  }
 
   return (
     <UserLayout>

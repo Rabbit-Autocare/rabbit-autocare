@@ -4,13 +4,14 @@ import { supabase } from '@/lib/supabaseClient';
 import UserLayout from '@/components/layouts/UserLayout';
 import { MapPin, Phone, Edit3, Trash2, Plus, Home, Briefcase, Star, Check, X, User, Building } from 'lucide-react';
 import '@/app/globals.css';
+import { useAuth } from '@/hooks/useAuth';
 
 export default function AddressBookPage() {
   const [addresses, setAddresses] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [userId, setUserId] = useState(null);
   const [showAddForm, setShowAddForm] = useState(false);
   const [editingId, setEditingId] = useState(null);
+  const { user, sessionChecked } = useAuth();
   const [formData, setFormData] = useState({
     full_name: '',
     phone: '',
@@ -23,33 +24,33 @@ export default function AddressBookPage() {
   });
 
   useEffect(() => {
-    getUser();
-  }, []);
-
-  useEffect(() => {
-    if (userId) fetchAddresses();
-  }, [userId]);
-
-  const getUser = async () => {
-    const { data } = await supabase.auth.getUser();
-    if (data?.user) setUserId(data.user.id);
-  };
-
-  const fetchAddresses = async () => {
-    setLoading(true);
-    const { data, error } = await supabase
-      .from('addresses')
-      .select('*')
-      .eq('user_id', userId)
-      .order('is_default', { ascending: false })
-      .order('created_at', { ascending: false });
-
-    if (!error) {
-      setAddresses(data || []);
-    } else {
-      console.error('Error fetching addresses:', error);
+    // Only fetch addresses if we have confirmed the session state
+    if (sessionChecked) {
+      if (user) {
+        fetchAddresses(user.id);
+      } else {
+        setLoading(false);
+      }
     }
-    setLoading(false);
+  }, [user, sessionChecked]);
+
+  const fetchAddresses = async (userId) => {
+    try {
+      setLoading(true);
+      const { data, error } = await supabase
+        .from('addresses')
+        .select('*')
+        .eq('user_id', userId)
+        .order('is_default', { ascending: false })
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      setAddresses(data || []);
+    } catch (error) {
+      console.error('Error fetching addresses:', error);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleFormChange = (e) => {
@@ -69,7 +70,7 @@ export default function AddressBookPage() {
       await supabase
         .from('addresses')
         .update({ is_default: false })
-        .eq('user_id', userId)
+        .eq('user_id', user.id)
         .eq('is_default', true);
     }
 
@@ -82,7 +83,7 @@ export default function AddressBookPage() {
       postal_code: formData.postal_code,
       address_type: formData.address_type,
       is_default: formData.is_default,
-      user_id: userId,
+      user_id: user.id,
     };
 
     if (editingId) {
@@ -96,7 +97,7 @@ export default function AddressBookPage() {
         console.error(error);
       } else {
         resetForm();
-        fetchAddresses();
+        fetchAddresses(user.id);
       }
     } else {
       const { error } = await supabase
@@ -108,7 +109,7 @@ export default function AddressBookPage() {
         console.error(error);
       } else {
         resetForm();
-        fetchAddresses();
+        fetchAddresses(user.id);
       }
     }
 
@@ -152,7 +153,7 @@ export default function AddressBookPage() {
     await supabase
       .from('addresses')
       .update({ is_default: false })
-      .eq('user_id', userId);
+      .eq('user_id', user.id);
 
     // Set the new default
     const { error } = await supabase
@@ -164,7 +165,7 @@ export default function AddressBookPage() {
       alert('Failed to set default address');
       console.error(error);
     } else {
-      fetchAddresses();
+      fetchAddresses(user.id);
     }
     setLoading(false);
   };
@@ -179,7 +180,7 @@ export default function AddressBookPage() {
       alert('Failed to delete address');
       console.error(error);
     } else {
-      fetchAddresses();
+      fetchAddresses(user.id);
     }
     setLoading(false);
   };
@@ -200,11 +201,39 @@ export default function AddressBookPage() {
     }
   };
 
+  // Show loading state while session is being checked
+  if (!sessionChecked) {
+    return (
+      <UserLayout>
+        <div className='p-6 flex items-center justify-center'>
+          <div className='bg-white p-8 rounded-lg shadow-md'>
+            <div className='animate-spin rounded-full h-12 w-12 border-b-2 border-blue-700 mx-auto'></div>
+            <p className='text-center mt-4'>Initializing...</p>
+          </div>
+        </div>
+      </UserLayout>
+    );
+  }
+
+  // Show loading state while fetching addresses
+  if (loading) {
+    return (
+      <UserLayout>
+        <div className='p-6 flex items-center justify-center'>
+          <div className='bg-white p-8 rounded-lg shadow-md'>
+            <div className='animate-spin rounded-full h-12 w-12 border-b-2 border-blue-700 mx-auto'></div>
+            <p className='text-center mt-4'>Loading addresses...</p>
+          </div>
+        </div>
+      </UserLayout>
+    );
+  }
+
   return (
     <UserLayout>
       <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 p-6">
         <div className="max-w-7xl mx-auto">
-          
+
           {/* Header */}
           <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center mb-8 space-y-4 lg:space-y-0">
             <div>
@@ -248,8 +277,8 @@ export default function AddressBookPage() {
                 <div className="grid grid-cols-3 gap-4">
                   {['home', 'work', 'other'].map((type) => (
                     <label key={type} className={`cursor-pointer p-4 rounded-2xl border-2 transition-all duration-200 ${
-                      formData.address_type === type 
-                        ? 'border-blue-500 bg-blue-50' 
+                      formData.address_type === type
+                        ? 'border-blue-500 bg-blue-50'
                         : 'border-gray-200 hover:border-gray-300 bg-white'
                     }`}>
                       <input
@@ -402,15 +431,7 @@ export default function AddressBookPage() {
             </div>
           )}
 
-          {/* Loading State */}
-          {loading && !showAddForm ? (
-            <div className="text-center py-16">
-              <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-r from-blue-600 to-indigo-600 rounded-full mb-4 animate-pulse">
-                <MapPin className="w-8 h-8 text-white" />
-              </div>
-              <p className="text-xl font-medium text-gray-600">Loading addresses...</p>
-            </div>
-          ) : addresses.length === 0 && !loading ? (
+          {addresses.length === 0 && !loading ? (
             <div className="bg-white/80 backdrop-blur-sm p-12 text-center rounded-3xl shadow-xl shadow-slate-200/50 border border-white/50">
               <div className="w-24 h-24 bg-gradient-to-br from-blue-100 to-indigo-100 rounded-full flex items-center justify-center mx-auto mb-6">
                 <MapPin className="w-12 h-12 text-blue-600" />
@@ -431,8 +452,8 @@ export default function AddressBookPage() {
                 <div
                   key={address.id}
                   className={`group bg-white/80 backdrop-blur-sm p-6 rounded-3xl shadow-xl shadow-slate-200/50 border transition-all duration-300 transform hover:-translate-y-1 ${
-                    address.is_default 
-                      ? 'border-yellow-300 bg-gradient-to-br from-yellow-50 to-white ring-2 ring-yellow-200' 
+                    address.is_default
+                      ? 'border-yellow-300 bg-gradient-to-br from-yellow-50 to-white ring-2 ring-yellow-200'
                       : 'border-white/50 hover:shadow-2xl hover:shadow-slate-300/50'
                   }`}
                 >
@@ -442,7 +463,7 @@ export default function AddressBookPage() {
                       {getAddressTypeIcon(address.address_type)}
                       <span className="ml-1 capitalize">{address.address_type}</span>
                     </span>
-                    
+
                     {address.is_default && (
                       <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800 border border-yellow-200">
                         <Star className="w-3 h-3 mr-1 fill-current" />
@@ -457,7 +478,7 @@ export default function AddressBookPage() {
                       <User className="w-4 h-4 mr-2 text-gray-500" />
                       {address.full_name}
                     </h3>
-                    
+
                     <div className="text-gray-600 space-y-1">
                       <p className="flex items-start">
                         <MapPin className="w-4 h-4 mr-2 mt-0.5 text-gray-400 flex-shrink-0" />
@@ -484,7 +505,7 @@ export default function AddressBookPage() {
                         <Edit3 className="w-4 h-4" />
                         <span>Edit</span>
                       </button>
-                      
+
                       {!address.is_default && (
                         <button
                           onClick={() => handleSetDefault(address.id)}
@@ -495,7 +516,7 @@ export default function AddressBookPage() {
                         </button>
                       )}
                     </div>
-                    
+
                     <button
                       onClick={() => handleDelete(address.id)}
                       className="flex items-center space-x-1 px-3 py-2 text-red-600 hover:text-red-700 hover:bg-red-50 rounded-lg transition-colors duration-200 text-sm font-medium"

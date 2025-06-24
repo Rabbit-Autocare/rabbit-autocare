@@ -173,7 +173,7 @@ export default function ShopPage() {
           throw new Error(`Failed to fetch kits and combos: ${error.message}`);
         }
       } else {
-        console.log("Fetching products for category:", currentCategory);
+        // console.log("Fetching products for category:", currentCategory);
         try {
           // Prepare filter parameters
           const filterParams = {
@@ -198,9 +198,9 @@ export default function ShopPage() {
             }
           });
 
-          console.log("Filter parameters:", filterParams);
+
           const response = await ProductService.getProductsByCategory(currentCategory, filterParams);
-          console.log("Raw API Response:", response);
+
 
           if (response?.success && Array.isArray(response.products)) {
             products = response.products;
@@ -218,7 +218,7 @@ export default function ShopPage() {
         }
       }
 
-      console.log("Products before transformation:", products);
+      // console.log("Products before transformation:", products);
 
       if (!Array.isArray(products) || products.length === 0) {
         console.log("No products found or invalid products array");
@@ -232,9 +232,9 @@ export default function ShopPage() {
       const transformedProducts = products
         .map(product => {
           try {
-            console.log("Transforming product:", product);
+            // console.log("Transforming product:", product);
             const transformed = ProductService.formatProductForDisplay(product);
-            console.log("Transformed result:", transformed);
+            // console.log("Transformed result:", transformed);
             return transformed;
           } catch (error) {
             console.error("Error transforming product:", error, product);
@@ -305,7 +305,7 @@ export default function ShopPage() {
           return matches;
         });
 
-      console.log("Final transformed product data:", transformedProducts);
+      // console.log("Final transformed product data:", transformedProducts);
 
       if (transformedProducts.length > 0) {
         setProducts(transformedProducts);

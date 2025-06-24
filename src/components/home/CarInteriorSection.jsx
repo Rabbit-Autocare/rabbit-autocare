@@ -35,6 +35,7 @@ export default function CarInteriorSection() {
 
   useEffect(() => {
     const fetchCategories = async () => {
+      console.log('[DEBUG] CarInteriorSection: Fetching categories...');
       try {
         setIsLoading(true)
         const result = await CategoryService.getCategories()
@@ -44,6 +45,7 @@ export default function CarInteriorSection() {
           const categoryNames = result.data.map((category) => category.name)
           setTitles(categoryNames)
           setDisplayedTitle(categoryNames[0] || "Interior")
+          console.log('[DEBUG] CarInteriorSection: Categories fetched:', result.data)
         } else {
           setError("Failed to fetch categories")
           console.error("Error fetching categories:", result.error)
@@ -69,25 +71,25 @@ export default function CarInteriorSection() {
   const getVisibleCards = () => {
     const cards = []
     const totalCards = images.length
-    
+
     // Helper function to get wrapped index
     const getWrappedIndex = (index) => {
       if (index < 0) return totalCards + index
       if (index >= totalCards) return index - totalCards
       return index
     }
-    
+
     // Left card (previous with wrapping)
     const leftIndex = getWrappedIndex(current - 1)
     cards.push({ index: leftIndex, position: 'left' })
-    
+
     // Center card (current)
     cards.push({ index: current, position: 'center' })
-    
+
     // Right card (next with wrapping)
     const rightIndex = getWrappedIndex(current + 1)
     cards.push({ index: rightIndex, position: 'right' })
-    
+
     return cards
   }
 
@@ -141,7 +143,7 @@ export default function CarInteriorSection() {
 
   const animateSlide = (direction) => {
     if (isAnimating) return
-    
+
     setIsAnimating(true)
 
     // Calculate new index with wrapping

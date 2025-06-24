@@ -31,7 +31,9 @@ export function AuthProvider({ children }) {
 
   const checkUser = async () => {
     try {
-      const { data: { user } } = await supabase.auth.getUser()
+      const { data: { session } } = await supabase.auth.getSession()
+      console.log("Session on mount:", session);
+      const user = session?.user;
       if (user) {
         await checkUserRole(user)
       } else {

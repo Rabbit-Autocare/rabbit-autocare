@@ -15,7 +15,7 @@ export default function ClientLayout({ children }) {
   const router = useRouter()
   const pathname = usePathname()
   const [user, setUser] = useState(null)
-  const [loading, setLoading] = useState(true)
+  const [loading, setLoading] = useState(false)
   const [showExtraNavbar, setShowExtraNavbar] = useState(true)
   const [showMainNavbar, setShowMainNavbar] = useState(false)
   const [showMobileNavbar, setShowMobileNavbar] = useState(false)
@@ -169,10 +169,11 @@ export default function ClientLayout({ children }) {
   useEffect(() => {
     const checkSession = async () => {
       const {
-        data: { user },
-      } = await supabase.auth.getUser()
+        data: { session },
+      } = await supabase.auth.getSession()
+      console.log("Session on mount:", session);
+      const user = session?.user ?? null
       setUser(user)
-      setLoading(false)
     }
 
     checkSession()
@@ -289,14 +290,6 @@ export default function ClientLayout({ children }) {
       `
     }
   }, [showMobileNavbar, mobilePortalContainer])
-
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-gray-900"></div>
-      </div>
-    )
-  }
 
   return (
     <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>

@@ -3,11 +3,13 @@ import { useState } from 'react';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { Star, Heart, Sparkles } from 'lucide-react';
+import { WishlistService } from '@/lib/service/wishlistService'; // Step 1: Import service
 
 export default function ProductCard({ product, index }) {
   const router = useRouter();
   const [hasImageError, setHasImageError] = useState(false);
   const [isWishlisted, setIsWishlisted] = useState(false);
+  const [wishlistLoading, setWishlistLoading] = useState(false);
 
   // Validate product data
   if (!product) {
@@ -119,14 +121,29 @@ export default function ProductCard({ product, index }) {
     router.push(`/products/${productIdentifier}`);
   };
 
-  const handleWishlistToggle = (e) => {
+  // Step 2: Wishlist toggle logic
+  const handleWishlistToggle = async (e) => {
     e.stopPropagation();
-    setIsWishlisted(!isWishlisted);
-    // TODO: Implement actual wishlist functionality
-    console.log(
-      `${isWishlisted ? 'Removed from' : 'Added to'} wishlist:`,
-      product.name
-    );
+    setWishlistLoading(true);
+    try {
+      if (!isWishlisted) {
+        // Add to wishlist
+        await WishlistService.addToWishlist({
+          product_id: product.id,
+          variant: product.selectedVariant || product.variants?.[0] || null, // Send variant if available
+        });
+        setIsWishlisted(true);
+      } else {
+        // Remove from wishlist
+        // You may need to fetch the wishlist item id for this product for real apps
+        // For demo, assume product.id is wishlist id (adjust as per your data)
+        await WishlistService.removeFromWishlist(product.id);
+        setIsWishlisted(false);
+      }
+    } catch (err) {
+      console.error('Wishlist error:', err);
+    }
+    setWishlistLoading(false);
   };
 
   // Format product name with fallback
@@ -149,6 +166,7 @@ export default function ProductCard({ product, index }) {
         onClick={handleWishlistToggle}
         className='absolute top-3 right-3 z-10 p-2 rounded-full bg-white/90 hover:bg-white transition-colors shadow-sm border border-gray-100'
         aria-label={isWishlisted ? 'Remove from wishlist' : 'Add to wishlist'}
+        disabled={wishlistLoading}
       >
         <Heart
           size={16}

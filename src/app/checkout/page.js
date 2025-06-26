@@ -4,7 +4,6 @@ import { useSearchParams, useRouter } from "next/navigation"
 import { supabase } from "@/lib/supabaseClient"
 import { useCart } from "@/contexts/CartContext"
 import { useAuth } from "@/contexts/AuthContext"
-
 import "@/app/globals.css"
 
 import AddressSection from "@/components/Address/AddressSection"
@@ -258,7 +257,11 @@ export default function CheckoutPage() {
           shipping_address: shippingAddress,
           billing_address: billingAddress
         },
-        items: transformedItems,
+        // Ensure every item has main_image_url
+        items: transformedItems.map(item => ({
+          ...item,
+          main_image_url: item.main_image_url || null
+        })),
         subtotal: orderTotals.subtotal,
         discount_amount: orderTotals.discount || 0,
         total: orderTotals.grandTotal,
@@ -277,6 +280,51 @@ export default function CheckoutPage() {
 
       if (orderError) throw orderError
       console.log("Order created:", order)
+
+     
+
+      // const shiprocketPayload = {
+      //   order_id: order.order_number,
+      //   order_date: new Date().toISOString().split('T')[0],
+      //   pickup_location: "warehouse", // <-- Use the exact name here
+      //   billing_customer_name: shippingAddress.full_name || "Customer",
+      //   billing_last_name: "",
+      //   billing_address: shippingAddress.street || shippingAddress.address_line || shippingAddress.address || "",
+      //   billing_city: shippingAddress.city,
+      //   billing_pincode: shippingAddress.pincode || shippingAddress.postal_code || "",
+      //   billing_state: shippingAddress.state,
+      //   billing_country: "India",
+      //   billing_email: user.email,
+      //   billing_phone: shippingAddress.phone,
+      //   shipping_is_billing: true,
+      //   order_items: transformedItems.map((item) => ({
+      //     name: item.name,
+      //     sku: item.product_code || item.combo_id || item.kit_id || 'SKU',
+      //     units: item.quantity,
+      //     selling_price: item.price,
+      //   })),
+      //   payment_method: "Prepaid",
+      //   sub_total: orderTotals.subtotal,
+      //   length: 10,
+      //   breadth: 10,
+      //   height: 10,
+      //   weight: 1,
+      // }
+
+      // try {
+      //   const shiprocketResponse = await createShiprocketOrderViaApi(shiprocketPayload);
+      //   console.log("🚚 Shiprocket order created:", shiprocketResponse);
+
+      //   // (optional) save `awb_code`, `shipment_id` to Supabase for tracking later
+      //   await supabase
+      //     .from('orders')
+      //     .update({ shiprocket_data: shiprocketResponse })
+      //     .eq('id', order.id)
+
+      // } catch (shiprocketErr) {
+      //   console.error("❌ Shiprocket error", shiprocketErr);
+      //   // Still continue if Shiprocket fails
+      // }
 
       // Create sales records and deduct stock for each item
       for (const item of transformedItems) {
@@ -374,6 +422,16 @@ export default function CheckoutPage() {
     }
   }
 
+  async function createShiprocketOrderViaApi(payload) {
+    const res = await fetch('/api/shiprocket', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    if (!res.ok) throw new Error('Shiprocket order failed');
+    return await res.json();
+  }
+
   if (cartLoading || loading) {
     return (
       <div className="min-h-screen bg-white">
@@ -454,7 +512,7 @@ export default function CheckoutPage() {
                 </div>
                 <h2 className="text-3xl font-bold text-black mb-4">Your Cart is Empty</h2>
                 <p className="text-gray-600 text-lg mb-8 leading-relaxed">
-                  Looks like you haven't added any items to your cart yet.
+                  Looks like you havent added any items to your cart yet.
                   Discover our amazing products and start shopping!
                 </p>
                 <button

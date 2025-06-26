@@ -1,11 +1,12 @@
 "use client"
-
+import { supabase } from "@/lib/supabaseClient.js"
 import { useState, useEffect, useMemo } from "react"
 import { ChevronLeft, ChevronRight, X } from "lucide-react"
 import { useCart } from "@/contexts/CartContext.jsx"
 import Image from "next/image"
 import { useRouter } from 'next/navigation'
-
+import { WishlistService } from '@/lib/service/wishlistService';
+// ...existing imports...
 export default function FeaturedProductCard({ product, className = "", isLastCard = false }) {
   const { addToCart, user, openCart } = useCart()
   const router = useRouter()
@@ -401,10 +402,25 @@ export default function FeaturedProductCard({ product, className = "", isLastCar
   }
 
   const handleAddToWishlist = async () => {
-    // TODO: Implement actual wishlist functionality
-    setIsWishlisted(!isWishlisted)
-    console.log(`${isWishlisted ? 'Removed from' : 'Added to'} wishlist:`, product.name)
-  }
+    try {
+      let variantToSave = null;
+      if (isMicrofiber && selectedColor && selectedSize) {
+        variantToSave = getVariantForCombination(selectedColor, selectedSize);
+      } else if (selectedVariant) {
+        variantToSave = selectedVariant;
+      }
+
+      await WishlistService.addToWishlist({
+        product_id: product.id,
+        variant: variantToSave,
+      });
+      setIsWishlisted(true);
+    } catch (err) {
+      console.error('Error adding to wishlist:', err);
+      alert('Could not add to wishlist.');
+    }
+  };
+
 
   const formatPrice = (price) => {
     return new Intl.NumberFormat("en-IN", {
@@ -711,7 +727,14 @@ export default function FeaturedProductCard({ product, className = "", isLastCar
             <div className="flex items-center w-full">
               <div className="border-1 border-black px-2 py-2 xs:px-3 xs:py-2 sm:px-4 sm:py-2 mr-1 rounded-[4px]">
                 <div className="relative w-4 h-4 xs:w-5 xs:h-5 cursor-pointer">
-                  <Image src="/assets/featured/cartstar.svg" alt="cart-star" fill className="object-contain" />
+                  <button
+                    type="button"
+                    onClick={handleAddToWishlist}
+                    disabled={isWishlisted}
+                    className={`text-xs ${isWishlisted ? "text-red-500" : "text-black"}`}
+                  >
+                    {isWishlisted ? "Wishlisted" : "Add"}
+                  </button>
                 </div>
               </div>
               <button
@@ -753,3 +776,4 @@ export default function FeaturedProductCard({ product, className = "", isLastCar
     </div>
   )
 }
+   

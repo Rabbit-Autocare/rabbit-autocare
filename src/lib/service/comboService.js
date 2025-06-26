@@ -1,5 +1,6 @@
 import { supabase } from '@/lib/supabaseClient';
 import { StockService } from './stockService';
+import { fetchWithRetry } from '@/lib/utils/fetchWithRetry';
 
 export class ComboService {
   static async uploadComboImage(comboId, imageFile) {
@@ -45,7 +46,7 @@ export class ComboService {
         query.eq('id', id);
       }
 
-      const { data, error } = await query;
+      const { data, error } = await fetchWithRetry(() => query);
       if (error) throw error;
 
       // Transform image URLs to use consistent path
@@ -220,6 +221,41 @@ export class ComboService {
       if (error) throw error;
     } catch (error) {
       console.error('Error deleting combo:', error);
+      throw error;
+    }
+  }
+
+  // Simplified method for cart drawer - no complex joins
+  static async getCombosForCart() {
+    try {
+      console.log('[DEBUG] Fetching combos for cart...');
+
+      // Add timeout to prevent infinite loading
+      const timeoutPromise = new Promise((_, reject) =>
+        setTimeout(() => reject(new Error('Request timeout')), 8000)
+      );
+
+      const combosPromise = supabase
+        .from('combos')
+        .select('id, name, description, image_url, original_price, price, discount_percent')
+        .order('created_at', { ascending: false });
+
+      const { data, error } = await Promise.race([combosPromise, timeoutPromise]);
+
+      if (error) throw error;
+
+      console.log('[DEBUG] Combos for cart fetched:', data);
+
+      // Transform image URLs to use consistent path
+      return data.map(combo => ({
+        ...combo,
+        image_url: combo.image_url || `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/product-images/products/combos/${combo.id}.jpg`,
+        main_image_url: combo.main_image_url || combo.image_url || `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/product-images/products/combos/${combo.id}.jpg`,
+        // Add empty combo_products array for compatibility
+        combo_products: []
+      }));
+    } catch (error) {
+      console.error('Error fetching combos for cart:', error);
       throw error;
     }
   }

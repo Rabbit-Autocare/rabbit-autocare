@@ -435,7 +435,7 @@ export default function ExtraNavbar() {
       >
         <div className="p-2">
           {/* <h3 className="font-semibold text-lg mb-4 text-gray-800">Your Available Coupons</h3> */}
-          <div className="coupon-scroll-area">
+          <div className="coupon-scroll-area" style={{ maxHeight: 320, overflowY: 'auto' }}>
             {authLoading ? (
               <div className="text-center ">
                 <p className="text-gray-500">Loading...</p>
@@ -443,9 +443,9 @@ export default function ExtraNavbar() {
             ) : user ? (
               userCoupons.length > 0 ? (
                 <div className="space-y-3 mb-3">
-                  {userCoupons.map((coupon) => (
+                  {userCoupons.map((coupon, idx) => (
                     <CouponCard
-                      key={coupon.id}
+                      key={coupon.id || idx}
                       code={coupon.code}
                       discount={coupon.discount}
                       validUpto={coupon.expiry}

@@ -4,12 +4,13 @@ import { useEffect, useState } from 'react';
 import AdminLayout from '@/components/layouts/AdminLayout';
 import CouponForm from '@/components/forms/CouponForm';
 import '../../../app/globals.css';
-import { Plus } from 'lucide-react';
+import { Plus, AlertCircle, Trash2, Gift } from 'lucide-react';
 import Image from 'next/image';
 
 export default function CouponsPage() {
   const [coupons, setCoupons] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const [formMode, setFormMode] = useState('add'); // 'add' or 'edit'
   const [currentView, setCurrentView] = useState('list'); // 'list' or 'form'
   const [currentCoupon, setCurrentCoupon] = useState({
@@ -29,6 +30,7 @@ export default function CouponsPage() {
 
   const fetchCoupons = async () => {
     setLoading(true);
+    setError(null);
     try {
       const response = await fetch('/api/coupons', {
         method: 'GET',
@@ -51,7 +53,7 @@ export default function CouponsPage() {
       }
     } catch (error) {
       console.error('Error fetching coupons:', error);
-      alert(`Error fetching coupons: ${error.message}`);
+      setError(`Error fetching coupons: ${error.message}`);
     } finally {
       setLoading(false);
     }
@@ -59,6 +61,7 @@ export default function CouponsPage() {
 
   const handleSubmit = async (couponData) => {
     setLoading(true);
+    setError(null);
     try {
       const url = '/api/coupons';
       const method = formMode === 'add' ? 'POST' : 'PUT';
@@ -86,7 +89,7 @@ export default function CouponsPage() {
       }
     } catch (error) {
       console.error(`Error ${formMode}ing coupon:`, error);
-      alert(`Error: ${error.message}`);
+      setError(`Error: ${error.message}`);
     } finally {
       setLoading(false);
     }
@@ -95,6 +98,7 @@ export default function CouponsPage() {
   const handleDelete = async (id) => {
     if (window.confirm('Are you sure you want to delete this coupon?')) {
       setLoading(true);
+      setError(null);
       try {
         const response = await fetch(`/api/coupons?id=${id}`, {
           method: 'DELETE',
@@ -116,7 +120,7 @@ export default function CouponsPage() {
         }
       } catch (error) {
         console.error('Error deleting coupon:', error);
-        alert(`Error: ${error.message}`);
+        setError(`Error: ${error.message}`);
       } finally {
         setLoading(false);
       }
@@ -130,6 +134,7 @@ export default function CouponsPage() {
 
   const handleCancel = () => {
     setCurrentView('list');
+    setError(null);
   };
 
   const resetForm = () => {
@@ -158,6 +163,21 @@ export default function CouponsPage() {
     });
   };
 
+  if (loading && currentView === 'list') {
+    return (
+      <AdminLayout>
+        <div className='p-6 max-w-6xl mx-auto'>
+          <div className="flex items-center justify-center h-64">
+            <div className="text-center">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600 mx-auto mb-4"></div>
+              <p className="text-gray-600">Loading coupons...</p>
+            </div>
+          </div>
+        </div>
+      </AdminLayout>
+    );
+  }
+
   return (
     <AdminLayout>
       <div className='p-6 max-w-6xl mx-auto'>
@@ -176,6 +196,16 @@ export default function CouponsPage() {
               </button>
             </div>
 
+            {/* Error Message */}
+            {error && (
+              <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg">
+                <div className="flex items-center gap-2">
+                  <AlertCircle className="text-red-500" size={20} />
+                  <span className="text-red-700">{error}</span>
+                </div>
+              </div>
+            )}
+
             {/* Stats */}
             <div className='mb-4 text-sm text-gray-600'>
               Active Coupons: {activeCount} / {MAX_ACTIVE_COUPONS}
@@ -183,17 +213,15 @@ export default function CouponsPage() {
 
             {/* Table */}
             <div className='bg-white rounded-lg border border-[#E0DEE3] overflow-x-auto'>
-              {loading && !coupons.length ? (
-                <p className='text-center py-4 text-gray-500 text-sm'>
-                  Loading coupons...
-                </p>
-              ) : !coupons.length ? (
-                <p className='text-center py-4 text-gray-500 text-sm'>
-                  No coupons found.
-                </p>
+              {!coupons.length ? (
+                <div className="text-center py-12">
+                  <Gift className="w-16 h-16 mx-auto text-gray-400 mb-4" />
+                  <p className="text-lg font-medium text-gray-900 mb-2">No coupons found</p>
+                  <p className="text-gray-500">Create your first coupon to get started.</p>
+                </div>
               ) : (
                 <table className='w-full text-sm'>
-                  <thead className='text-black border-b border-[#E0DEE3]'>
+                  <thead className='text-black border-b border-[#E0DEE3] bg-gray-50'>
                     <tr>
                       <th className='px-5 py-4 text-left font-medium'>
                         Coupon
@@ -223,7 +251,7 @@ export default function CouponsPage() {
                         className={
                           isExpired(coupon) && !coupon.is_permanent
                             ? 'bg-red-50'
-                            : 'bg-white hover:bg-gray-50'
+                            : 'bg-white hover:bg-gray-50 transition-colors'
                         }
                       >
                         <td className='px-5 py-4 font-medium text-gray-900'>
@@ -240,31 +268,38 @@ export default function CouponsPage() {
                         </td>
                         <td className='px-5 py-4 text-gray-700'>
                           {coupon.is_permanent ? (
-                            <span>Permanent</span>
+                            <span className="text-green-600 font-medium">Permanent</span>
                           ) : (
                             formatDate(coupon.expiry_date)
                           )}
                         </td>
                         <td className='px-5 py-4'>
                           <span
-                            className={`px-5 py-2 rounded-md text-xs font-medium ${
-                              coupon.is_active
-                                ? 'bg-gray-100 text-gray-800'
-                                : 'bg-gray-50 text-gray-500'
+                            className={`px-3 py-1 rounded-full text-xs font-medium ${
+                              isExpired(coupon) && !coupon.is_permanent
+                                ? 'bg-red-100 text-red-800'
+                                : coupon.is_active
+                                ? 'bg-green-100 text-green-800'
+                                : 'bg-gray-100 text-gray-800'
                             }`}
                           >
-                            {coupon.is_active ? 'Active' : 'Inactive'}
+                            {isExpired(coupon) && !coupon.is_permanent
+                              ? 'Expired'
+                              : coupon.is_active
+                                ? 'Active'
+                                : 'Inactive'
+                            }
                           </span>
                         </td>
                         <td className='pr-7 py-4 flex justify-center'>
-                          <Image
-                            src='/assets/adminsvgs/delete.svg'
-                            alt='Delete'
-                            width={20}
-                            height={20}
+                          <button
                             onClick={() => handleDelete(coupon.id)}
-                            className='cursor-pointer hover:opacity-70'
-                          />
+                            disabled={loading}
+                            className="p-1 text-red-600 hover:bg-red-100 rounded-full transition-colors disabled:opacity-50"
+                            title="Delete coupon"
+                          >
+                            <Trash2 size={16} />
+                          </button>
                         </td>
                       </tr>
                     ))}

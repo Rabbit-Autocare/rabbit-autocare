@@ -32,33 +32,33 @@ const loadRazorpayScript = () => {
   });
 };
 
-const getVariantIdsFromItem = async (item) => {
-  if (item.type === 'product' && item.variant_id) {
-    return [{ variant_id: item.variant_id, quantity: item.quantity }];
-  }
+// const getVariantIdsFromItem = async (item) => {
+//   if (item.type === 'product' && item.variant_id) {
+//     return [{ variant_id: item.variant_id, quantity: item.quantity }];
+//   }
 
-  if (item.type === 'kit' || item.type === 'combo') {
-    const sourceTable = item.type === 'kit' ? 'kit_products' : 'combo_products';
-    const sourceIdColumn = item.type === 'kit' ? 'kit_id' : 'combo_id';
-    const sourceId = item.type === 'kit' ? item.kit_id : item.combo_id;
+//   if (item.type === 'kit' || item.type === 'combo') {
+//     const sourceTable = item.type === 'kit' ? 'kit_products' : 'combo_products';
+//     const sourceIdColumn = item.type === 'kit' ? 'kit_id' : 'combo_id';
+//     const sourceId = item.type === 'kit' ? item.kit_id : item.combo_id;
 
-    const { data: relatedItems, error } = await supabase
-      .from(sourceTable)
-      .select('variant_id, quantity')
-      .eq(sourceIdColumn, sourceId);
+//     const { data: relatedItems, error } = await supabase
+//       .from(sourceTable)
+//       .select('variant_id, quantity')
+//       .eq(sourceIdColumn, sourceId);
 
-    if (error) {
-      console.error(`Error fetching related items for ${item.type}:`, error);
-      return [];
-    }
+//     if (error) {
+//       console.error(`Error fetching related items for ${item.type}:`, error);
+//       return [];
+//     }
 
-    return relatedItems.map((related) => ({
-      variant_id: related.variant_id,
-      quantity: related.quantity * item.quantity,
-    }));
-  }
-  return [];
-};
+//     return relatedItems.map((related) => ({
+//       variant_id: related.variant_id,
+//       quantity: related.quantity * item.quantity,
+//     }));
+//   }
+//   return [];
+// };
 
 export default function CheckoutPage() {
   const searchParams = useSearchParams();
@@ -81,7 +81,8 @@ export default function CheckoutPage() {
     useState(null);
   const [useSameAddress, setUseSameAddress] = useState(true);
   const [loading, setLoading] = useState(true);
-  const [showConfirmModal, setShowConfirmModal] = useState(false);
+  const [paymentProcessing, setPaymentProcessing] = useState(false);
+  const [paymentError, setPaymentError] = useState(null);
   const [orderTotals, setOrderTotals] = useState({
     subtotal: 0,
     discount: 0,
@@ -90,9 +91,6 @@ export default function CheckoutPage() {
     itemCount: 0,
     totalQuantity: 0,
   });
-  // Add a new state for payment processing
-  const [paymentProcessing, setPaymentProcessing] = useState(false);
-  const [paymentError, setPaymentError] = useState(null);
 
   useEffect(() => {
     if (user) {
@@ -248,7 +246,7 @@ export default function CheckoutPage() {
     );
   };
 
-  const placeOrder = async () => {
+  const handlePlaceOrder = async () => {
     if (
       !selectedShippingAddressId ||
       (!useSameAddress && !selectedBillingAddressId) ||
@@ -263,44 +261,32 @@ export default function CheckoutPage() {
     setLoading(true);
     setPaymentProcessing(true);
     setPaymentError(null);
-    setShowConfirmModal(false); // Hide confirmation immediately
 
     try {
-      console.log('Starting order creation process...');
-
       // Get shipping address details
       const { data: shippingAddress, error: shippingError } = await supabase
         .from('addresses')
         .select('*')
         .eq('id', selectedShippingAddressId)
         .single();
-
       if (shippingError)
         throw new Error(
           `Failed to fetch shipping address: ${shippingError.message}`
         );
-      console.log('Shipping address fetched:', shippingAddress);
-
       // Get billing address details if different from shipping
       const billingAddressId = useSameAddress
         ? selectedShippingAddressId
         : selectedBillingAddressId;
-
       const { data: billingAddress, error: billingError } = await supabase
         .from('addresses')
         .select('*')
         .eq('id', billingAddressId)
         .single();
-
       if (billingError)
         throw new Error(
           `Failed to fetch billing address: ${billingError.message}`
         );
-      console.log('Billing address fetched:', billingAddress);
-
-      // Get user details from auth context instead of profiles table
       if (!user) throw new Error('User not authenticated');
-
       // Generate order number (YYYYMMDD-XXXX format)
       const date = new Date();
       const orderNumber = `${date.getFullYear()}${String(
@@ -309,8 +295,7 @@ export default function CheckoutPage() {
         2,
         '0'
       )}-${Math.floor(1000 + Math.random() * 9000)}`;
-
-      // Prepare order data
+      // Prepare order data (for later use)
       const orderData = {
         order_number: orderNumber,
         user_id: userId,
@@ -326,28 +311,10 @@ export default function CheckoutPage() {
         discount_amount: orderTotals.discount || 0,
         total: orderTotals.grandTotal,
         coupon_id: coupon?.id || null,
-        // coupon_code: coupon?.code || null,
         status: 'pending',
         payment_status: 'pending',
         created_at: new Date().toISOString(),
       };
-
-      // Create order in Supabase
-      const { data: order, error: orderError } = await supabase
-        .from('orders')
-        .insert(orderData)
-        .select()
-        .single();
-
-      if (orderError) {
-        throw new Error(`Failed to create order: ${orderError.message}`);
-      }
-
-      console.log('Order created:', order);
-
-      // Process inventory and create sales records
-      await processSalesRecords(order, transformedItems, orderNumber);
-
       // Create Razorpay Order
       const razorpayOrderRes = await fetch('/api/razorpay/create-order', {
         method: 'POST',
@@ -356,16 +323,12 @@ export default function CheckoutPage() {
           amount: orderTotals.grandTotal,
           currency: 'INR',
           receipt: orderNumber,
-          order_id: order.id,
         }),
       });
-
       const razorpayOrderData = await razorpayOrderRes.json();
-
       if (!razorpayOrderData?.success || !razorpayOrderData?.id) {
         throw new Error('Failed to create payment order. Please try again.');
       }
-
       // Initialize Razorpay checkout
       const options = {
         key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
@@ -384,71 +347,56 @@ export default function CheckoutPage() {
         },
         handler: async function (response) {
           try {
-            // Show loading indicator for payment processing
             setPaymentProcessing(true);
-
             // Verify payment with backend
             const verificationRes = await fetch('/api/razorpay/verify', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({
                 ...response,
-                order_id: order.id,
+                // No order_id here, as order is not yet created
               }),
             });
-
             const verificationData = await verificationRes.json();
-
             if (verificationData.success) {
-              // Payment successful - cleanup
-              await supabase.from('cart_items').delete().eq('user_id', userId);
-              if (coupon) clearCoupon();
-
-              // Redirect to order confirmation
-              router.push(`/order-confirmation/${order.id}?success=true`);
+              // Now create the order in DB and process everything
+              const completeOrderRes = await fetch('/api/orders/complete', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  ...orderData,
+                  payment_status: 'paid',
+                  razorpay_order_id: razorpayOrderData.id,
+                  razorpay_payment_id: response.razorpay_payment_id,
+                  razorpay_signature: response.razorpay_signature,
+                }),
+              });
+              const completeOrderData = await completeOrderRes.json();
+              if (completeOrderData.success) {
+                // Cleanup cart and coupon
+                await supabase.from('cart_items').delete().eq('user_id', userId);
+                if (coupon) clearCoupon();
+                // Redirect to order confirmation
+                router.push(`/order-confirmation/${completeOrderData.order_id}?success=true`);
+              } else {
+                setPaymentError('Order creation failed after payment. Please contact support.');
+              }
             } else {
-              // Payment verification failed
-              setPaymentError(
-                'Payment verification failed. Please contact support.'
-              );
-
-              // Update order status
-              await supabase
-                .from('orders')
-                .update({
-                  payment_status: 'failed',
-                  status: 'payment_failed',
-                })
-                .eq('id', order.id);
+              setPaymentError('Payment verification failed. Please contact support.');
             }
           } catch (handlerError) {
             console.error('Payment handler error:', handlerError);
-            setPaymentError(
-              'Failed to process payment. Please try again or contact support.'
-            );
+            setPaymentError('Failed to process payment. Please try again or contact support.');
           } finally {
             setPaymentProcessing(false);
             setLoading(false);
           }
         },
         modal: {
-          ondismiss: async function () {
-            console.log('Payment window closed without completion');
-
-            // Update order status to abandoned
-            await supabase
-              .from('orders')
-              .update({
-                status: 'payment_abandoned',
-                payment_status: 'abandoned',
-              })
-              .eq('id', order.id);
-
+          ondismiss: function () {
             setPaymentProcessing(false);
             setLoading(false);
-            setPaymentError(
-              'Payment was cancelled. Your order is saved but not confirmed.'
-            );
+            setPaymentError('Payment was cancelled.');
           },
         },
       };
@@ -456,28 +404,12 @@ export default function CheckoutPage() {
       if (!loaded) {
         throw new Error('Failed to load Razorpay SDK. Please try again later.');
       }
-
       const rzp = new window.Razorpay(options);
-
-      rzp.on('payment.failed', async function (response) {
-        console.error('Payment failed:', response.error);
-
-        // Update order status
-        await supabase
-          .from('orders')
-          .update({
-            status: 'payment_failed',
-            payment_status: 'failed',
-            payment_error: JSON.stringify(response.error),
-          })
-          .eq('id', order.id);
-
+      rzp.on('payment.failed', function (response) {
         setPaymentProcessing(false);
         setLoading(false);
         setPaymentError(`Payment failed: ${response.error.description}`);
       });
-
-      // Open Razorpay checkout
       rzp.open();
     } catch (error) {
       console.error('Order creation error:', error);
@@ -487,57 +419,6 @@ export default function CheckoutPage() {
       );
       setLoading(false);
       setPaymentProcessing(false);
-    }
-  };
-
-  // Create a helper function for inventory and sales records processing
-  const processSalesRecords = async (order, items, orderNumber) => {
-    for (const item of items) {
-      try {
-        if (item.type === 'product') {
-          // Handle single product
-          if (item.variant?.id) {
-            // Deduct stock for the variant
-            const { error: stockError } = await supabase.rpc(
-              'adjust_variant_stock',
-              {
-                variant_id_input: item.variant.id,
-                quantity_input: item.quantity,
-                operation: 'subtract',
-              }
-            );
-
-            if (stockError) {
-              console.error(
-                `Stock adjustment failed for variant ${item.variant.id}:`,
-                stockError
-              );
-              // Continue processing other items even if one fails
-            }
-          }
-
-          // Create sales record
-          await supabase.from('sales_records').insert({
-            order_id: order.id,
-            order_number: orderNumber,
-            product_name: item.name,
-            product_code: item.product_code || '',
-            variant_details: item.variant_display_text || null,
-            quantity: item.quantity,
-            unit_price: item.price,
-            total_price: item.total_price,
-            sale_type: 'direct',
-            category_name: item.category_name || null,
-            sale_date: new Date().toISOString().split('T')[0],
-          });
-        } else if (item.type === 'kit' || item.type === 'combo') {
-          // Process kits and combos as before
-          // Your existing code...
-        }
-      } catch (itemError) {
-        console.error(`Error processing item ${item.id}:`, itemError);
-        // Continue with other items instead of breaking the whole flow
-      }
     }
   };
 
@@ -788,7 +669,7 @@ export default function CheckoutPage() {
                       coupon={coupon}
                       orderTotals={orderTotals}
                       loading={loading}
-                      onPlaceOrder={() => setShowConfirmModal(true)}
+                      onPlaceOrder={handlePlaceOrder}
                     />
 
                     {/* Security Badges */}
@@ -815,41 +696,6 @@ export default function CheckoutPage() {
             </div>
           )}
         </div>
-
-        {/* Confirmation Modal */}
-        {showConfirmModal && (
-          <div className='fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4'>
-            <div className='bg-white rounded-[4px] shadow-xl max-w-md w-full p-8 border border-gray-200'>
-              <div className='text-center'>
-                <div className='w-20 h-20 mx-auto mb-6 bg-[#601E8D] rounded-full flex items-center justify-center'>
-                  <span className='text-3xl text-white'>🛒</span>
-                </div>
-                <h3 className='text-2xl font-bold text-black mb-4'>
-                  Confirm Your Order
-                </h3>
-                <p className='text-gray-600 mb-6 leading-relaxed'>
-                  Are you sure you want to place this order? This action cannot
-                  be undone.
-                </p>
-                <div className='flex gap-4'>
-                  <button
-                    onClick={() => setShowConfirmModal(false)}
-                    className='flex-1 bg-gray-100 hover:bg-gray-200 text-gray-800 py-3 px-6 rounded-[4px] font-semibold transition-colors border border-gray-200'
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    onClick={placeOrder}
-                    disabled={loading}
-                    className='flex-1 bg-[#601E8D] hover:bg-[#4a1770] text-white py-3 px-6 rounded-[4px] font-semibold disabled:opacity-50 transition-all duration-300'
-                  >
-                    {loading ? 'Processing...' : 'Confirm Order'}
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
       </div>
     </>
   );

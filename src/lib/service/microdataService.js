@@ -1,4 +1,5 @@
 import { supabase } from '@/lib/supabaseClient';
+import { fetchWithRetry } from '@/lib/utils/fetchWithRetry';
 
 // API endpoints
 const SIZES_API = "/api/products/size";
@@ -11,10 +12,10 @@ export class SizeService {
   static async getSizes() {
     try {
       console.log('[DEBUG] Fetching sizes...');
-      const { data, error } = await supabase
+      const { data, error } = await fetchWithRetry(() => supabase
         .from('sizes')
         .select('*')
-        .order('size_cm', { ascending: true });
+        .order('size_cm', { ascending: true }));
       console.log('[DEBUG] Sizes fetched:', data, error);
       if (error) throw error;
       return { success: true, data };
@@ -76,10 +77,10 @@ export class SizeService {
 export class ColorService {
   static async getColors() {
     try {
-      const { data, error } = await supabase
+      const { data, error } = await fetchWithRetry(() => supabase
         .from('colors')
         .select('*')
-        .order('color', { ascending: true });
+        .order('color', { ascending: true }));
 
       if (error) throw error;
       return { success: true, data };
@@ -141,10 +142,10 @@ export class ColorService {
 export class GsmService {
   static async getGSM() {
     try {
-      const { data, error } = await supabase
+      const { data, error } = await fetchWithRetry(() => supabase
         .from('gsm')
         .select('*')
-        .order('gsm', { ascending: true });
+        .order('gsm', { ascending: true }));
 
       if (error) throw error;
       return { success: true, data };
@@ -207,10 +208,10 @@ export class QuantityService {
   static async getQuantities() {
     try {
       console.log('[DEBUG] Fetching quantities...');
-      const { data, error } = await supabase
+      const { data, error } = await fetchWithRetry(() => supabase
         .from('quantity')
         .select('*')
-        .order('quantity', { ascending: true });
+        .order('quantity', { ascending: true }));
       console.log('[DEBUG] Quantities fetched:', data, error);
       if (error) throw error;
       return { success: true, data };
@@ -273,10 +274,19 @@ export class CategoryService {
   static async getCategories() {
     try {
       console.log('[DEBUG] Fetching categories...');
-      const { data, error } = await supabase
+
+      // Add timeout to prevent infinite loading
+      const timeoutPromise = new Promise((_, reject) =>
+        setTimeout(() => reject(new Error('Request timeout')), 10000)
+      );
+
+      const categoriesPromise = fetchWithRetry(() => supabase
         .from('categories')
         .select('*')
-        .order('name', { ascending: true });
+        .order('name', { ascending: true }));
+
+      const { data, error } = await Promise.race([categoriesPromise, timeoutPromise]);
+
       console.log('[DEBUG] Categories fetched:', data, error);
       if (error) throw error;
       return { success: true, data };

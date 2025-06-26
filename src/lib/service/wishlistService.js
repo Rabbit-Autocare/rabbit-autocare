@@ -1,64 +1,34 @@
+import { supabase } from '../supabaseClient';
+
 export class WishlistService {
-  static async addToWishlist(product) {
-    try {
-      const response = await fetch("/api/wishlist/add", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          productId: product.id || product.product_code,
-          productName: product.name,
-          productImage: product.main_image_url || product.images?.[0],
-          price: product.price || product.mrp,
-        }),
-      })
-
-      const data = await response.json()
-
-      if (!response.ok) {
-        throw new Error(data.error || "Failed to add to wishlist")
-      }
-
-      return { success: true, data }
-    } catch (error) {
-      console.error("WishlistService.addToWishlist error:", error)
-      return { success: false, error: error.message }
-    }
+  static async addToWishlist({ product_id, variant, combo_id, kit_id }) {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error('Not authenticated');
+    return supabase.from('wishlist_items').insert({
+      user_id: user.id,
+      product_id,
+      variant,
+      combo_id,
+      kit_id,
+    });
   }
 
-  static async removeFromWishlist(productId) {
-    try {
-      const response = await fetch(`/api/wishlist/remove/${productId}`, {
-        method: "DELETE",
-      })
-
-      const data = await response.json()
-
-      if (!response.ok) {
-        throw new Error(data.error || "Failed to remove from wishlist")
-      }
-
-      return { success: true, data }
-    } catch (error) {
-      console.error("WishlistService.removeFromWishlist error:", error)
-      return { success: false, error: error.message }
-    }
+  static async removeFromWishlist(id) {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error('Not authenticated');
+    return supabase.from('wishlist_items').delete().eq('id', id).eq('user_id', user.id);
   }
 
   static async getWishlist() {
-    try {
-      const response = await fetch("/api/wishlist")
-      const data = await response.json()
-
-      if (!response.ok) {
-        throw new Error(data.error || "Failed to get wishlist")
-      }
-
-      return { success: true, wishlist: data.wishlist }
-    } catch (error) {
-      console.error("WishlistService.getWishlist error:", error)
-      return { success: false, error: error.message }
-    }
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error('Not authenticated');
+    return supabase
+      .from('wishlist_items')
+      .select(`
+        id, product_id, variant, combo_id, kit_id, created_at, updated_at,
+        products:product_id (id, name, price, image, category)
+      `)
+      .eq('user_id', user.id)
+      .order('created_at', { ascending: false });
   }
 }

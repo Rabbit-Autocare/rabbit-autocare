@@ -1,9 +1,9 @@
 "use client";
 import { useEffect, useState } from "react";
-import AdminLayout from "../../../components/layouts/AdminLayout";
+import AdminLayout from "@/components/layouts/AdminLayout";
 import EnhancedProductForm from "@/components/admin/ProductForm";
 import MicrodataManagementForm from "@/components/admin/MicrodataManagementForm";
-import "../../../app/globals.css";
+import "@/app/globals.css";
 import Image from "next/image";
 import { ProductService } from "@/lib/service/productService";
 import {

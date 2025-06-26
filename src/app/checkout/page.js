@@ -352,7 +352,11 @@ export default function CheckoutPage() {
           shipping_address: shippingAddress,
           billing_address: billingAddress,
         },
-        items: transformedItems,
+        // Ensure every item has main_image_url
+        items: transformedItems.map(item => ({
+          ...item,
+          main_image_url: item.main_image_url || null
+        })),
         subtotal: orderTotals.subtotal,
         discount_amount: orderTotals.discount || 0,
         total: orderTotals.grandTotal + deliveryCharge,

@@ -49,6 +49,9 @@ export async function createShiprocketOrder(orderData) {
 
 export function mapOrderToShiprocket(order) {
   const shipping = order.user_info?.shipping_address || {};
+  // Calculate discount (use order.discount_amount or similar field)
+  const discount = order.discount_amount || 0;
+
   return {
     order_id: order.order_number,
     order_date: new Date(order.created_at).toISOString().split('T')[0],
@@ -70,7 +73,9 @@ export function mapOrderToShiprocket(order) {
       selling_price: item.price,
     })),
     payment_method: 'Prepaid',
-    sub_total: order.total,
+    sub_total: order.subtotal, // subtotal before discount
+    discount: discount,        // total discount applied
+    total_discount: discount,  // Shiprocket also supports this field
     length: 10,
     breadth: 15,
     height: 10,

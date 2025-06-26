@@ -5,33 +5,27 @@ import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabaseClient';
 import UserLayout from '@/components/layouts/UserLayout';
 import '@/app/globals.css';
+import { useAuth } from '@/hooks/useAuth';
 
 export default function UserCouponsPage() {
   const [coupons, setCoupons] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [userId, setUserId] = useState(null);
+  const { user, sessionChecked } = useAuth();
 
   useEffect(() => {
-    getUser();
-  }, []);
-
-  useEffect(() => {
-    if (userId) {
-      fetchCoupons();
+    // Only fetch coupons if we have confirmed the session state
+    if (sessionChecked) {
+      if (user) {
+        fetchCoupons(user.id);
+      } else {
+        setLoading(false);
+      }
     }
-  }, [userId]);
+  }, [user, sessionChecked]);
 
-  const getUser = async () => {
-    const { data } = await supabase.auth.getUser();
-    if (data?.user) {
-      setUserId(data.user.id);
-    }
-  };
-
-  const fetchCoupons = async () => {
-    setLoading(true);
-
+  const fetchCoupons = async (userId) => {
     try {
+    setLoading(true);
       // Fetch all active coupons
       const { data: allCoupons, error: couponsError } = await supabase
         .from('coupons')
@@ -81,14 +75,40 @@ export default function UserCouponsPage() {
     });
   };
 
+  // Show loading state while session is being checked
+  if (!sessionChecked) {
+    return (
+      <UserLayout>
+        <div className='p-6 flex items-center justify-center'>
+          <div className='bg-white p-8 rounded-lg shadow-md'>
+            <div className='animate-spin rounded-full h-12 w-12 border-b-2 border-blue-700 mx-auto'></div>
+            <p className='text-center mt-4'>Initializing...</p>
+          </div>
+        </div>
+      </UserLayout>
+    );
+  }
+
+  // Show loading state while fetching coupons
+  if (loading) {
+    return (
+      <UserLayout>
+        <div className='p-6 flex items-center justify-center'>
+          <div className='bg-white p-8 rounded-lg shadow-md'>
+            <div className='animate-spin rounded-full h-12 w-12 border-b-2 border-blue-700 mx-auto'></div>
+            <p className='text-center mt-4'>Loading coupons...</p>
+          </div>
+        </div>
+      </UserLayout>
+    );
+  }
+
   return (
     <UserLayout>
       <div className='max-w-4xl mx-auto p-6'>
         <h1 className='text-2xl font-bold mb-6'>Your Coupons</h1>
 
-        {loading ? (
-          <p className='text-center py-8'>Loading your coupons...</p>
-        ) : coupons.length === 0 ? (
+        {coupons.length === 0 ? (
           <div className='bg-white p-8 rounded-lg shadow-md text-center'>
             <h3 className='text-xl font-medium mb-2'>No Coupons Available</h3>
             <p className='text-gray-600'>

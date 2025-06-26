@@ -1,7 +1,8 @@
 "use client"
 import { useEffect, useRef, useState } from "react"
-import { CategoryService } from "@/lib/service/microdataService"
+import { useCategories } from "@/hooks/useCategories"
 import { useRouter } from "next/navigation"
+import LoadingErrorBoundary from "@/components/ui/LoadingErrorBoundary"
 
 const images = [
   "/assets/images/carinterior.png",
@@ -18,11 +19,10 @@ export default function CarInteriorSection() {
   const [isAnimating, setIsAnimating] = useState(false)
   const [isMobile, setIsMobile] = useState(false)
   const [titles, setTitles] = useState(["Interior", "Exterior", "Fiber Cloth", "Kits & Combos"])
-  const [isLoading, setIsLoading] = useState(true)
-  const [error, setError] = useState(null)
   const [categories, setCategories] = useState([])
 
   const router = useRouter()
+  const { categories: fetchedCategories, loading: isLoading, error } = useCategories()
 
   useEffect(() => {
     const handleResize = () => {
@@ -33,31 +33,16 @@ export default function CarInteriorSection() {
     return () => window.removeEventListener("resize", handleResize)
   }, [])
 
+  // Update categories and titles when fetched categories change
   useEffect(() => {
-    const fetchCategories = async () => {
-      try {
-        setIsLoading(true)
-        const result = await CategoryService.getCategories()
-
-        if (result.success && result.data) {
-          setCategories(result.data)
-          const categoryNames = result.data.map((category) => category.name)
-          setTitles(categoryNames)
-          setDisplayedTitle(categoryNames[0] || "Interior")
-        } else {
-          setError("Failed to fetch categories")
-          console.error("Error fetching categories:", result.error)
-        }
-      } catch (err) {
-        setError("Failed to fetch categories")
-        console.error("Error fetching categories:", err)
-      } finally {
-        setIsLoading(false)
-      }
+    if (fetchedCategories && fetchedCategories.length > 0) {
+      setCategories(fetchedCategories)
+      const categoryNames = fetchedCategories.map((category) => category.name)
+      setTitles(categoryNames)
+      setDisplayedTitle(categoryNames[0] || "Interior")
+      console.log('[DEBUG] CarInteriorSection: Categories updated from hook:', fetchedCategories)
     }
-
-    fetchCategories()
-  }, [])
+  }, [fetchedCategories])
 
   useEffect(() => {
     if (titles.length > 0 && !displayedTitle) {
@@ -69,25 +54,25 @@ export default function CarInteriorSection() {
   const getVisibleCards = () => {
     const cards = []
     const totalCards = images.length
-    
+
     // Helper function to get wrapped index
     const getWrappedIndex = (index) => {
       if (index < 0) return totalCards + index
       if (index >= totalCards) return index - totalCards
       return index
     }
-    
+
     // Left card (previous with wrapping)
     const leftIndex = getWrappedIndex(current - 1)
     cards.push({ index: leftIndex, position: 'left' })
-    
+
     // Center card (current)
     cards.push({ index: current, position: 'center' })
-    
+
     // Right card (next with wrapping)
     const rightIndex = getWrappedIndex(current + 1)
     cards.push({ index: rightIndex, position: 'right' })
-    
+
     return cards
   }
 
@@ -141,7 +126,7 @@ export default function CarInteriorSection() {
 
   const animateSlide = (direction) => {
     if (isAnimating) return
-    
+
     setIsAnimating(true)
 
     // Calculate new index with wrapping
@@ -215,108 +200,116 @@ export default function CarInteriorSection() {
   }
 
   return (
-    <div className="relative w-full h-[450px] md:h-[500px] lg:h-[550px] xl:h-[600px] py-16 flex flex-col items-center overflow-hidden bg-white">
-      {isLoading && (
-        <div className="absolute inset-0 flex items-center justify-center bg-white bg-opacity-75 z-50">
-          <div className="text-lg font-semibold">Loading categories...</div>
+    <LoadingErrorBoundary
+      loading={isLoading}
+      error={error}
+      onRetry={() => window.location.reload()}
+      timeout={10000}
+      loadingComponent={
+        <div className="relative w-full h-[450px] md:h-[500px] lg:h-[550px] xl:h-[600px] py-16 flex flex-col items-center overflow-hidden bg-white">
+          <div className="absolute inset-0 flex items-center justify-center bg-white bg-opacity-75 z-50">
+            <div className="text-lg font-semibold">Loading categories...</div>
+          </div>
         </div>
-      )}
+      }
+    >
+      <div className="relative w-full h-[450px] md:h-[500px] lg:h-[550px] xl:h-[600px] py-16 flex flex-col items-center overflow-hidden bg-white">
+        {error && (
+          <div className="absolute top-4 left-1/2 transform -translate-x-1/2 bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded z-50">
+            {error}
+          </div>
+        )}
 
-      {error && (
-        <div className="absolute top-4 left-1/2 transform -translate-x-1/2 bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded z-50">
-          {error}
+        {/* Dynamic Background Text */}
+        <div
+          className="absolute bottom-[130px] md:bottom-[125px] lg:bottom-30 xl:bottom-30 font-extrabold text-gray-100 uppercase pointer-events-none select-none z-0 text-center w-full px-4 tracking-wider"
+          style={{
+            fontSize: "clamp(24px, 10vw, 136px)",
+            whiteSpace: "nowrap",
+            overflow: "hidden",
+            textOverflow: "ellipsis",
+          }}
+          title={`Click to shop ${displayedTitle} - Browse all ${displayedTitle} products`}
+        >
+          {displayedTitle}
         </div>
-      )}
 
-      {/* Dynamic Background Text */}
-      <div
-        className="absolute bottom-[130px] md:bottom-[125px] lg:bottom-30 xl:bottom-30 font-extrabold text-gray-100 uppercase pointer-events-none select-none z-0 text-center w-full px-4 tracking-wider"
-        style={{
-          fontSize: "clamp(24px, 10vw, 136px)",
-          whiteSpace: "nowrap",
-          overflow: "hidden",
-          textOverflow: "ellipsis",
-        }}
-        title={`Click to shop ${displayedTitle} - Browse all ${displayedTitle} products`}
-      >
-        {displayedTitle}
-      </div>
+        {/* Cards Container */}
+        <div
+          ref={containerRef}
+          className={`relative flex justify-center items-center w-full h-[350px] z-10 ${
+            isMobile ? 'px-4' : 'md:px-0 px-4 xl:px-4'
+          }`}
+        >
+          {images.map((image, imageIndex) => {
+            const categoryInfo = categories[imageIndex] || { name: titles[imageIndex] || "Category" }
 
-      {/* Cards Container */}
-      <div
-        ref={containerRef}
-        className={`relative flex justify-center items-center w-full h-[350px] z-10 ${
-          isMobile ? 'px-4' : 'md:px-0 px-4 xl:px-4'
-        }`}
-      >
-        {images.map((image, imageIndex) => {
-          const categoryInfo = categories[imageIndex] || { name: titles[imageIndex] || "Category" }
+            return (
+              <div
+                key={`${imageIndex}`}
+                ref={(el) => (cardRefs.current[imageIndex] = el)}
+                className="absolute overflow-hidden shadow-xl cursor-pointer"
+                style={{
+                  width: isMobile ? 'calc(100vw - 32px)' : '400px',
+                  height: isMobile ? '200px' : '250px',
+                  display: 'none', // Initially hidden
+                }}
+                onClick={() => handleCardClick(imageIndex, titles[imageIndex])}
+                title={`Click to shop ${categoryInfo.name} - Direct link to ${categoryInfo.name} products`}
+              >
+                <img
+                  src={image || "/placeholder.svg"}
+                  alt={`Car ${imageIndex}`}
+                  className="w-full h-full object-cover"
+                />
+              </div>
+            )
+          })}
+        </div>
 
-          return (
-            <div
-              key={`${imageIndex}`}
-              ref={(el) => (cardRefs.current[imageIndex] = el)}
-              className="absolute overflow-hidden shadow-xl cursor-pointer"
-              style={{
-                width: isMobile ? 'calc(100vw - 32px)' : '400px',
-                height: isMobile ? '200px' : '250px',
-                display: 'none', // Initially hidden
-              }}
-              onClick={() => handleCardClick(imageIndex, titles[imageIndex])}
-              title={`Click to shop ${categoryInfo.name} - Direct link to ${categoryInfo.name} products`}
+        {/* Controls */}
+        <div className="relative mt-10 z-10 w-full flex justify-center">
+          <div className="relative flex items-center justify-center w-[350px]">
+            <button
+              onClick={prev}
+              disabled={isAnimating || isLoading}
+              className="absolute left-0 text-4xl w-10 h-10 flex items-center justify-center md:mt-10 xl:mt-10 cursor-pointer hover:bg-[#601e8d] hover:text-white   "
             >
-              <img
-                src={image || "/placeholder.svg"}
-                alt={`Car ${imageIndex}`}
-                className="w-full h-full object-cover"
-              />
-            </div>
-          )
-        })}
-      </div>
+              ‹
+            </button>
 
-      {/* Controls */}
-      <div className="relative mt-10 z-10 w-full flex justify-center">
-        <div className="relative flex items-center justify-center w-[350px]">
-          <button
-            onClick={prev}
-            disabled={isAnimating || isLoading}
-            className="absolute left-0 text-4xl w-10 h-10 flex items-center justify-center md:mt-10 xl:mt-10 cursor-pointer hover:bg-[#601e8d] hover:text-white   "
-          >
-            ‹
-          </button>
+            <h2
+              className="text-2xl tracking-wider md:mt-10 xl:mt-10 font-bold text-black text-center mx-12 whitespace-nowrap overflow-hidden text-ellipsis cursor-pointer hover:text-[#601e8d]"
+              style={{
+                maxWidth: isMobile ? "292px" : "558px",
+              }}
+              onClick={() => handleCardClick(current, titles[current])}
+            >
+              {`${titles[current] || "Category"}`}
+            </h2>
 
-          <h2
-            className="text-2xl tracking-wider md:mt-10 xl:mt-10 font-bold text-black text-center mx-12 whitespace-nowrap overflow-hidden text-ellipsis cursor-pointer hover:text-[#601e8d]"
-            style={{
-              maxWidth: isMobile ? "292px" : "558px",
-            }}
-            onClick={() => handleCardClick(current, titles[current])}
-          >
-            {`${titles[current] || "Category"}`}
-          </h2>
+            <button
+              onClick={next}
+              disabled={isAnimating || isLoading}
+              className="absolute right-0 text-4xl w-10 h-10 flex items-center justify-center md:mt-10 xl:mt-10 cursor-pointer hover:bg-[#601e8d] hover:text-white  "
+            >
+              ›
+            </button>
+          </div>
+        </div>
 
-          <button
-            onClick={next}
-            disabled={isAnimating || isLoading}
-            className="absolute right-0 text-4xl w-10 h-10 flex items-center justify-center md:mt-10 xl:mt-10 cursor-pointer hover:bg-[#601e8d] hover:text-white  "
-          >
-            ›
-          </button>
+        {/* Position Indicator */}
+        <div className="flex justify-center mt-4 space-x-2">
+          {images.map((_, index) => (
+            <div
+              key={index}
+              className={`w-2 h-2 rounded-full transition-colors duration-300 ${
+                index === current ? 'bg-[#601e8d]' : 'bg-gray-300'
+              }`}
+            />
+          ))}
         </div>
       </div>
-
-      {/* Position Indicator */}
-      <div className="flex justify-center mt-4 space-x-2">
-        {images.map((_, index) => (
-          <div
-            key={index}
-            className={`w-2 h-2 rounded-full transition-colors duration-300 ${
-              index === current ? 'bg-[#601e8d]' : 'bg-gray-300'
-            }`}
-          />
-        ))}
-      </div>
-    </div>
+    </LoadingErrorBoundary>
   )
 }

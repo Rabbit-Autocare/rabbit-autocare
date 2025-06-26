@@ -12,6 +12,14 @@ import '../../app/globals.css';
  * Allows users to view and edit their profile information with enhanced UI
  */
 export default function MyAccount() {
+  // Force reload if just logged in (to ensure session hydration)
+  useEffect(() => {
+    if (typeof window !== "undefined" && localStorage.getItem("justLoggedIn") === "true") {
+      localStorage.removeItem("justLoggedIn");
+      window.location.reload();
+    }
+  }, []);
+
   const { user: authUser, loading: authLoading } = useAuth();
   const [updating, setUpdating] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
@@ -62,28 +70,28 @@ export default function MyAccount() {
 
       setOriginalData(profileData);
       setIsEditing(false);
-      
+
       // Show success message with animation
       const successMsg = document.createElement('div');
       successMsg.className = 'fixed top-4 right-4 bg-green-500 text-white px-6 py-3 rounded-lg shadow-lg z-50 transform transition-all duration-300 translate-x-full';
       successMsg.textContent = 'Profile updated successfully!';
       document.body.appendChild(successMsg);
-      
+
       setTimeout(() => successMsg.classList.remove('translate-x-full'), 100);
       setTimeout(() => {
         successMsg.classList.add('translate-x-full');
         setTimeout(() => document.body.removeChild(successMsg), 300);
       }, 3000);
-      
+
     } catch (error) {
       console.error('Error updating profile:', error);
-      
+
       // Show error message
       const errorMsg = document.createElement('div');
       errorMsg.className = 'fixed top-4 right-4 bg-red-500 text-white px-6 py-3 rounded-lg shadow-lg z-50 transform transition-all duration-300 translate-x-full';
       errorMsg.textContent = 'Failed to update profile. Please try again.';
       document.body.appendChild(errorMsg);
-      
+
       setTimeout(() => errorMsg.classList.remove('translate-x-full'), 100);
       setTimeout(() => {
         errorMsg.classList.add('translate-x-full');

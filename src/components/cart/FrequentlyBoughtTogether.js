@@ -24,28 +24,11 @@ export default function FrequentlyBoughtTogether() {
 			setLoading(true);
 			setError(null);
 
-			// Get all combos
-			const allCombos = await ComboService.getCombos();
+			// Use simplified method for cart drawer
+			const allCombos = await ComboService.getCombosForCart();
 
-			// Filter combos that contain cart items with the same variant
-			const matchingCombos = allCombos.filter(combo => {
-				// Check if any product in the combo matches a cart item with the same variant
-				return combo.combo_products.some(comboProduct => {
-					return cartItems.some(cartItem => {
-						// Match product ID
-						const productMatch = cartItem.product_id === comboProduct.product_id ||
-							cartItem.product?.id === comboProduct.product_id;
-
-						// Match variant ID
-						const variantMatch = cartItem.variant?.id === comboProduct.variant_id;
-
-						return productMatch && variantMatch;
-					});
-				});
-			});
-
-			// Transform the combos to include necessary data
-			const transformedCombos = matchingCombos.map(combo => ({
+			// For cart drawer, show all combos as suggestions (simplified logic)
+			const transformedCombos = allCombos.map(combo => ({
 				id: combo.id,
 				name: combo.name,
 				description: combo.description,
@@ -53,19 +36,17 @@ export default function FrequentlyBoughtTogether() {
 				original_price: combo.original_price,
 				price: combo.price,
 				discount_percent: combo.discount_percent,
-				products: combo.combo_products.map(cp => ({
-					product_id: cp.product_id,
-					variant_id: cp.variant_id,
-					quantity: cp.quantity,
-					product: cp.product,
-					variant: cp.variant
-				}))
+				products: [] // Simplified for cart drawer
 			}));
 
 			setFrequentlyBought(transformedCombos);
 		} catch (error) {
 			console.error("Error fetching combo products:", error);
-			setError(`Failed to load suggestions: ${error.message}`);
+			if (error.message === 'Request timeout') {
+				setError("Loading suggestions is taking longer than expected. Please try again.");
+			} else {
+				setError(`Failed to load suggestions: ${error.message}`);
+			}
 			setFrequentlyBought([]);
 		} finally {
 			setLoading(false);

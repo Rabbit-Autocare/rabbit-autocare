@@ -33,7 +33,7 @@ export class KitsCombosService {
         throw error;
       }
 
-      console.log("Raw kits data from Supabase:", data);
+      // console.log("Raw kits data from Supabase:", data);
 
       // Transform image URLs to use consistent path
       const transformedData = data.map(kit => ({
@@ -42,7 +42,7 @@ export class KitsCombosService {
         main_image_url: kit.main_image_url || kit.image_url || `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/product-images/products/kits/${kit.id}.jpg`
       }));
 
-      console.log("Transformed kits data:", transformedData);
+      // console.log("Transformed kits data:", transformedData);
       return transformedData;
     } catch (error) {
       console.error('Error in getKits:', error);
@@ -127,7 +127,7 @@ export class KitsCombosService {
         throw error;
       }
 
-      console.log("Raw combos data from Supabase:", data);
+      // console.log("Raw combos data from Supabase:", data);
 
       // Transform image URLs to use consistent path
       const transformedData = data.map(combo => ({
@@ -136,7 +136,7 @@ export class KitsCombosService {
         main_image_url: combo.main_image_url || combo.image_url || `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/product-images/products/combos/${combo.id}.jpg`
       }));
 
-      console.log("Transformed combos data:", transformedData);
+      // console.log("Transformed combos data:", transformedData);
       return transformedData;
     } catch (error) {
       console.error('Error in getCombos:', error);

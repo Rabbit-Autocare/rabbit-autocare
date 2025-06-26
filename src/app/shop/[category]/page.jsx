@@ -154,12 +154,18 @@ export default function ShopPage() {
         inStock: inStockOnly
       });
 
+      // Add timeout to prevent infinite loading
+      const timeoutPromise = new Promise((_, reject) =>
+        setTimeout(() => reject(new Error('Request timeout')), 15000)
+      )
+
       let products = [];
 
       if (currentCategory === "kits-combos") {
         console.log("Fetching kits and combos...");
         try {
-          const kitsAndCombos = await KitsCombosService.getKitsAndCombos();
+          const kitsAndCombosPromise = KitsCombosService.getKitsAndCombos();
+          const kitsAndCombos = await Promise.race([kitsAndCombosPromise, timeoutPromise]);
           console.log("Raw Kits and Combos data:", kitsAndCombos);
 
           if (Array.isArray(kitsAndCombos)) {
@@ -198,9 +204,8 @@ export default function ShopPage() {
             }
           });
 
-          console.log("Filter parameters:", filterParams);
-          const response = await ProductService.getProductsByCategory(currentCategory, filterParams);
-          console.log("Raw API Response:", response);
+          const responsePromise = ProductService.getProductsByCategory(currentCategory, filterParams);
+          const response = await Promise.race([responsePromise, timeoutPromise]);
 
           if (response?.success && Array.isArray(response.products)) {
             products = response.products;
@@ -220,102 +225,217 @@ export default function ShopPage() {
 
       console.log("Products before transformation:", products);
 
-      if (!Array.isArray(products) || products.length === 0) {
-        console.log("No products found or invalid products array");
-        setProducts([]);
-        setTotalCount(0);
-        setError("No products available in this category. Please try another category or check back later.");
+      // Apply filters to products - Special handling for kits-combos
+      let filteredProducts = products;
+
+      if (currentCategory === "kits-combos") {
+        // Special filtering for kits and combos
+        console.log("Applying special filtering for kits and combos");
+        console.log("Initial products count:", filteredProducts.length);
+        console.log("Current filter values:", {
+          minPrice,
+          maxPrice,
+          selectedRating,
+          inStockOnly
+        });
+
+        // Auto-adjust price range to include all kits and combos
+        if (filteredProducts.length > 0) {
+          const prices = filteredProducts.map(product => parseFloat(product.price) || 0);
+          const minProductPrice = Math.min(...prices);
+          const maxProductPrice = Math.max(...prices);
+
+          console.log(`Product price range: ${minProductPrice} - ${maxProductPrice}`);
+
+          // Update price range if current range doesn't include all products
+          if (minPrice && parseFloat(minPrice) > minProductPrice) {
+            console.log(`Adjusting minPrice from ${minPrice} to ${minProductPrice}`);
+            setMinPrice(minProductPrice.toString());
+          }
+          if (maxPrice && parseFloat(maxPrice) < maxProductPrice) {
+            console.log(`Adjusting maxPrice from ${maxPrice} to ${maxProductPrice}`);
+            setMaxPrice(maxProductPrice.toString());
+          }
+
+          // Update price range state if needed
+          if (priceRange[0] > minProductPrice || priceRange[1] < maxProductPrice) {
+            const newPriceRange = [
+              Math.min(priceRange[0], minProductPrice),
+              Math.max(priceRange[1], maxProductPrice)
+            ];
+            console.log(`Updating price range from [${priceRange[0]}, ${priceRange[1]}] to [${newPriceRange[0]}, ${newPriceRange[1]}]`);
+            setPriceRange(newPriceRange);
+          }
+        }
+
+        // Apply price filter for kits/combos
+        if (minPrice || maxPrice) {
+          const beforePriceFilter = filteredProducts.length;
+          filteredProducts = filteredProducts.filter(product => {
+            const price = parseFloat(product.price) || 0;
+            const min = minPrice ? parseFloat(minPrice) : 0;
+            const max = maxPrice ? parseFloat(maxPrice) : Infinity;
+            const passes = price >= min && price <= max;
+            if (!passes) {
+              console.log(`Price filter removed: ${product.name} (price: ${price}, range: ${min}-${max})`);
+            }
+            return passes;
+          });
+          console.log(`Price filter: ${beforePriceFilter} -> ${filteredProducts.length}`);
+        }
+
+        // Apply rating filter for kits/combos
+        if (selectedRating > 0) {
+          const beforeRatingFilter = filteredProducts.length;
+          filteredProducts = filteredProducts.filter(product => {
+            const rating = parseFloat(product.rating) || 0;
+            const passes = rating >= selectedRating;
+            if (!passes) {
+              console.log(`Rating filter removed: ${product.name} (rating: ${rating}, required: ${selectedRating})`);
+            }
+            return passes;
+          });
+          console.log(`Rating filter: ${beforeRatingFilter} -> ${filteredProducts.length}`);
+        }
+
+        // Apply in-stock filter for kits/combos
+        if (inStockOnly) {
+          const beforeStockFilter = filteredProducts.length;
+          filteredProducts = filteredProducts.filter(product => {
+            const stock = parseInt(product.stock_quantity) || 0;
+            const passes = stock > 0;
+            if (!passes) {
+              console.log(`Stock filter removed: ${product.name} (stock: ${stock})`);
+            }
+            return passes;
+          });
+          console.log(`Stock filter: ${beforeStockFilter} -> ${filteredProducts.length}`);
+        }
+
+        // Apply sorting for kits/combos
+        let sortedProducts = [...filteredProducts];
+        switch (sort) {
+          case "price-low-high":
+            sortedProducts.sort((a, b) => (parseFloat(a.price) || 0) - (parseFloat(b.price) || 0));
+            break;
+          case "price-high-low":
+            sortedProducts.sort((a, b) => (parseFloat(b.price) || 0) - (parseFloat(a.price) || 0));
+            break;
+          case "newest":
+            sortedProducts.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+            break;
+          case "rating":
+            sortedProducts.sort((a, b) => (parseFloat(b.rating) || 0) - (parseFloat(a.rating) || 0));
+            break;
+          case "name":
+            sortedProducts.sort((a, b) => a.name.localeCompare(b.name));
+            break;
+          default: // popularity
+            sortedProducts.sort((a, b) => (parseFloat(b.popularity_score) || 0) - (parseFloat(a.popularity_score) || 0));
+        }
+
+        setProducts(sortedProducts);
+        setTotalCount(sortedProducts.length);
+        console.log("Final filtered and sorted kits/combos:", sortedProducts.length);
         return;
       }
 
-      // Transform all products using ProductService.formatProductForDisplay
-      const transformedProducts = products
-        .map(product => {
-          try {
-            console.log("Transforming product:", product);
-            const transformed = ProductService.formatProductForDisplay(product);
-            console.log("Transformed result:", transformed);
-            return transformed;
-          } catch (error) {
-            console.error("Error transforming product:", error, product);
-            return null;
-          }
-        })
-        .filter(product => {
-          if (!product) {
-            console.log("Filtered out null product");
-            return false;
-          }
-
-          // Special handling for kits and combos
-          if (currentCategory === "kits-combos") {
-            // For kits and combos, only check basic validity
-            const isValid = product.price > 0 && product.name && product.description;
-            if (!isValid) {
-              console.log(`Kit/Combo "${product.name}" filtered out - missing required fields`);
-            }
-            return isValid;
-          }
-
-          // Regular product filtering
-          const matchesSize = selectedSize.length === 0 ||
-            (product.variants && product.variants.some(v => selectedSize.includes(v.size)));
-
-          const matchesColor = selectedColor.length === 0 ||
-            (product.variants && product.variants.some(v => selectedColor.includes(v.color)));
-
-          const matchesGsm = selectedGsm.length === 0 ||
-            (product.variants && product.variants.some(v => selectedGsm.includes(v.gsm)));
-
-          const matchesQuantity = selectedQuantity.length === 0 ||
-            (product.variants && product.variants.some(v => selectedQuantity.includes(v.quantity)));
-
-          const matchesPrice = (!minPrice || product.minPrice >= parseFloat(minPrice)) &&
-            (!maxPrice || product.maxPrice <= parseFloat(maxPrice));
-
-          const matchesRating = !selectedRating || product.rating >= selectedRating;
-
-          const matchesStock = !inStockOnly || product.totalStock > 0;
-
-          const hasValidVariants = Array.isArray(product.variants) &&
-            product.variants.length > 0 &&
-            product.variants.some(variant => variant.price > 0);
-
-          const hasValidPrice = product.minPrice > 0 || product.maxPrice > 0;
-
-          // Calculate matches
-          const matches = matchesSize && matchesColor && matchesGsm && matchesQuantity &&
-            matchesPrice && matchesRating && matchesStock && hasValidVariants && hasValidPrice;
-
-          // Log detailed filter information
-          if (!matches) {
-            console.log(`Product "${product.name}" filtered out because:`, {
-              size: !matchesSize ? `No variants match selected sizes: ${selectedSize.join(', ')}` : 'matches',
-              color: !matchesColor ? `No variants match selected colors: ${selectedColor.join(', ')}` : 'matches',
-              gsm: !matchesGsm ? `No variants match selected GSM: ${selectedGsm.join(', ')}` : 'matches',
-              quantity: !matchesQuantity ? `No variants match selected quantities: ${selectedQuantity.join(', ')}` : 'matches',
-              price: !matchesPrice ? `Price ${product.minPrice}-${product.maxPrice} outside range ${minPrice}-${maxPrice}` : 'matches',
-              rating: !matchesRating ? `Rating ${product.rating} below selected ${selectedRating}` : 'matches',
-              stock: !matchesStock ? 'No stock available' : 'matches',
-              variants: !hasValidVariants ? 'No valid variants' : 'has valid variants',
-              price: !hasValidPrice ? 'No valid price' : 'has valid price'
-            });
-          }
-
-          return matches;
+      // Regular product filtering (for non-kits-combos categories)
+      // Apply size filter
+      if (selectedSize.length > 0) {
+        filteredProducts = filteredProducts.filter(product => {
+          const variants = product.variants || [];
+          return variants.some(variant => selectedSize.includes(variant.size));
         });
-
-      console.log("Final transformed product data:", transformedProducts);
-
-      if (transformedProducts.length > 0) {
-        setProducts(transformedProducts);
-        setTotalCount(transformedProducts.length);
-      } else {
-        console.log("No valid products found after transformation and filtering");
-        setProducts([]);
-        setTotalCount(0);
-        setError("No products match your selected filters. Please try adjusting your filters.");
       }
+
+      // Apply color filter
+      if (selectedColor.length > 0) {
+        filteredProducts = filteredProducts.filter(product => {
+          const variants = product.variants || [];
+          return variants.some(variant => selectedColor.includes(variant.color));
+        });
+      }
+
+      // Apply GSM filter
+      if (selectedGsm.length > 0) {
+        filteredProducts = filteredProducts.filter(product => {
+          const variants = product.variants || [];
+          return variants.some(variant => selectedGsm.includes(variant.gsm));
+        });
+      }
+
+      // Apply quantity filter
+      if (selectedQuantity.length > 0) {
+        filteredProducts = filteredProducts.filter(product => {
+          const variants = product.variants || [];
+          return variants.some(variant => selectedQuantity.includes(variant.quantity));
+        });
+      }
+
+      // Apply price filter
+      if (minPrice || maxPrice) {
+        filteredProducts = filteredProducts.filter(product => {
+          const variants = product.variants || [];
+          return variants.some(variant => {
+            const price = parseFloat(variant.price) || 0;
+            const min = minPrice ? parseFloat(minPrice) : 0;
+            const max = maxPrice ? parseFloat(maxPrice) : Infinity;
+            return price >= min && price <= max;
+          });
+        });
+      }
+
+      // Apply rating filter
+      if (selectedRating > 0) {
+        filteredProducts = filteredProducts.filter(product => {
+          const rating = parseFloat(product.rating) || 0;
+          return rating >= selectedRating;
+        });
+      }
+
+      // Apply in-stock filter
+      if (inStockOnly) {
+        filteredProducts = filteredProducts.filter(product => {
+          const variants = product.variants || [];
+          return variants.some(variant => (variant.stock || 0) > 0);
+        });
+      }
+
+      // Apply sorting
+      let sortedProducts = [...filteredProducts];
+      switch (sort) {
+        case "price-low-high":
+          sortedProducts.sort((a, b) => {
+            const aPrice = Math.min(...(a.variants || []).map(v => parseFloat(v.price) || 0));
+            const bPrice = Math.min(...(b.variants || []).map(v => parseFloat(v.price) || 0));
+            return aPrice - bPrice;
+          });
+          break;
+        case "price-high-low":
+          sortedProducts.sort((a, b) => {
+            const aPrice = Math.max(...(a.variants || []).map(v => parseFloat(v.price) || 0));
+            const bPrice = Math.max(...(b.variants || []).map(v => parseFloat(v.price) || 0));
+            return bPrice - aPrice;
+          });
+          break;
+        case "newest":
+          sortedProducts.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+          break;
+        case "rating":
+          sortedProducts.sort((a, b) => (parseFloat(b.rating) || 0) - (parseFloat(a.rating) || 0));
+          break;
+        case "name":
+          sortedProducts.sort((a, b) => a.name.localeCompare(b.name));
+          break;
+        default: // popularity
+          sortedProducts.sort((a, b) => (parseFloat(b.popularity_score) || 0) - (parseFloat(a.popularity_score) || 0));
+      }
+
+      setProducts(sortedProducts);
+      setTotalCount(sortedProducts.length);
+      console.log("Final filtered and sorted products:", sortedProducts.length);
+
     } catch (err) {
       console.error("Error in fetchProducts:", err);
       setError(err.message || "Failed to load products. Please try again later.");

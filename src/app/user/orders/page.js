@@ -5,27 +5,26 @@ import { supabase } from '@/lib/supabaseClient';
 import UserLayout from '@/components/layouts/UserLayout';
 import '@/app/globals.css';
 import Image from 'next/image';
+import { useAuth } from '@/hooks/useAuth';
 
 export default function OrderHistoryPage() {
   const [orders, setOrders] = useState([]);
-  const [userId, setUserId] = useState(null);
   const [loading, setLoading] = useState(true);
   const router = useRouter();
 
   useEffect(() => {
-    getUser();
-  }, []);
+    // Only fetch orders if we have confirmed the session state
+    if (sessionChecked) {
+      if (user) {
+        fetchOrders(user.id);
+      } else {
+        setLoading(false);
+      }
+    }
+  }, [user, sessionChecked]);
 
-  useEffect(() => {
-    if (userId) fetchOrders();
-  }, [userId]);
-
-  const getUser = async () => {
-    const { data } = await supabase.auth.getUser();
-    if (data?.user) setUserId(data.user.id);
-  };
-
-  const fetchOrders = async () => {
+  const fetchOrders = async (userId) => {
+    try {
     setLoading(true);
     const { data, error } = await supabase
       .from('orders')
@@ -33,8 +32,13 @@ export default function OrderHistoryPage() {
       .eq('user_id', userId)
       .order('created_at', { ascending: false });
 
-    if (!error) setOrders(data);
+      if (error) throw error;
+      setOrders(data || []);
+    } catch (error) {
+      console.error('Error fetching orders:', error);
+    } finally {
     setLoading(false);
+    }
   };
 
   const formatDate = (dateString) => {
@@ -48,6 +52,7 @@ export default function OrderHistoryPage() {
         <div className='p-6 text-center'>Loading orders...</div>
       </UserLayout>
     );
+  }
   }
 
   return (

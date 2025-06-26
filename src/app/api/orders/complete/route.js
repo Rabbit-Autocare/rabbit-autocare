@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { supabase } from '@/lib/supabaseClient';
 import { sendOrderConfirmation, sendAdminNotification } from '@/lib/service/emailService';
+import { createShiprocketOrder, mapOrderToShiprocket } from '@/lib/shiprocket';
 
 export async function POST(req) {
   try {
@@ -65,7 +66,7 @@ export async function POST(req) {
       );
     }
 
-    // Process inventory and create sales records
+    // Process inventory and send emails
     await processOrderItems(order);
 
     // Send emails
@@ -76,9 +77,20 @@ export async function POST(req) {
       console.error('Error sending emails:', emailError);
     }
 
+    // --- SHIPROCKET INTEGRATION START ---
+    try {
+      const shiprocketPayload = mapOrderToShiprocket(order);
+      console.log('Shiprocket payload:', shiprocketPayload);
+      const shiprocketResult = await createShiprocketOrder(shiprocketPayload);
+      console.log('Shiprocket order created:', shiprocketResult);
+    } catch (shiprocketError) {
+      console.error('Shiprocket order error:', shiprocketError?.response?.data || shiprocketError.message || shiprocketError);
+      // Optionally: log this in your DB for admin review
+    }
+    // --- SHIPROCKET INTEGRATION END ---
+
     return NextResponse.json({
       success: true,
-      message: 'Order created and completed successfully',
       order_id: order.id,
       order_number: order.order_number,
     });

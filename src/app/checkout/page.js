@@ -375,9 +375,17 @@ export default function CheckoutPage() {
           receipt: orderNumber,
         }),
       });
+
+      // Debug: log the full response
       const razorpayOrderData = await razorpayOrderRes.json();
+      console.log('Razorpay order API response:', razorpayOrderData);
+
       if (!razorpayOrderData?.success || !razorpayOrderData?.id) {
-        throw new Error('Failed to create payment order. Please try again.');
+        // Show backend error message if available
+        throw new Error(
+          razorpayOrderData?.error?.message ||
+          'Failed to create payment order. Please try again.'
+        );
       }
       // Initialize Razorpay checkout
       const options = {

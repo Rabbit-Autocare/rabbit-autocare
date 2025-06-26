@@ -12,6 +12,7 @@ export default function AddressForm({ userId, onAddressAdded, onCancel, editingA
     phone: '',
     is_default: false,
   });
+  const [pincodeStatus, setPincodeStatus] = useState({ loading: false, error: null, verified: false });
 
   useEffect(() => {
     if (editingAddress) {
@@ -26,7 +27,12 @@ export default function AddressForm({ userId, onAddressAdded, onCancel, editingA
         phone: editingAddress.phone || '',
         is_default: editingAddress.is_default || false,
       });
+      // If address is being edited, assume pincode is already verified
+      if (editingAddress.postal_code) {
+        setPincodeStatus({ loading: false, error: null, verified: true });
+      }
     } else {
+      // Reset form for new address
       setFormData({
         name: '',
         address_line1: '',
@@ -38,6 +44,7 @@ export default function AddressForm({ userId, onAddressAdded, onCancel, editingA
         phone: '',
         is_default: false,
       });
+      setPincodeStatus({ loading: false, error: null, verified: false });
     }
   }, [editingAddress]);
 
@@ -47,6 +54,38 @@ export default function AddressForm({ userId, onAddressAdded, onCancel, editingA
       ...formData,
       [name]: type === 'checkbox' ? checked : value,
     });
+    // If user changes postal code, reset verification
+    if (name === 'postal_code') {
+      setPincodeStatus({ loading: false, error: null, verified: false });
+    }
+  };
+
+  const handlePincodeVerify = async () => {
+    if (!formData.postal_code || formData.postal_code.length !== 6) {
+      setPincodeStatus({ loading: false, error: 'Please enter a valid 6-digit pincode.', verified: false });
+      return;
+    }
+
+    setPincodeStatus({ loading: true, error: null, verified: false });
+    try {
+      const response = await fetch(`https://api.postalpincode.in/pincode/${formData.postal_code}`);
+      const data = await response.json();
+
+      if (data && data[0].Status === 'Success') {
+        const postOffice = data[0].PostOffice[0];
+        setFormData(prev => ({
+          ...prev,
+          city: postOffice.District,
+          state: postOffice.State,
+        }));
+        setPincodeStatus({ loading: false, error: null, verified: true });
+      } else {
+        setPincodeStatus({ loading: false, error: 'Invalid pincode. Please check and try again.', verified: false });
+      }
+    } catch (error) {
+      console.error('Pincode API error:', error);
+      setPincodeStatus({ loading: false, error: 'Could not verify pincode. Please enter manually.', verified: false });
+    }
   };
 
   const handleSubmit = async (e) => {
@@ -87,16 +126,51 @@ export default function AddressForm({ userId, onAddressAdded, onCancel, editingA
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <div>
+            <label className="block text-sm font-medium text-gray-700">Postal Code</label>
+            <div className="flex items-center space-x-2">
+              <input
+                type="text"
+                name="postal_code"
+                value={formData.postal_code}
+                onChange={handleInputChange}
+                required
+                className="mt-1 block w-full border-gray-300 rounded-md shadow-sm"
+              />
+              <button
+                type="button"
+                onClick={handlePincodeVerify}
+                disabled={pincodeStatus.loading || formData.postal_code.length !== 6}
+                className="mt-1 px-3 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {pincodeStatus.loading ? '...' : 'Verify'}
+              </button>
+            </div>
+            {pincodeStatus.error && <p className="text-xs text-red-600 mt-1">{pincodeStatus.error}</p>}
+            {pincodeStatus.verified && <p className="text-xs text-green-600 mt-1">✓ Pincode Verified</p>}
+          </div>
+          <div>
             <label className="block text-sm font-medium text-gray-700">City</label>
-            <input type="text" name="city" value={formData.city} onChange={handleInputChange} required className="mt-1 block w-full border-gray-300 rounded-md shadow-sm" />
+            <input
+              type="text"
+              name="city"
+              value={formData.city}
+              onChange={handleInputChange}
+              required
+              className="mt-1 block w-full border-gray-300 rounded-md shadow-sm bg-gray-50"
+              readOnly={pincodeStatus.verified}
+            />
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700">State</label>
-            <input type="text" name="state" value={formData.state} onChange={handleInputChange} required className="mt-1 block w-full border-gray-300 rounded-md shadow-sm" />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700">Postal Code</label>
-            <input type="text" name="postal_code" value={formData.postal_code} onChange={handleInputChange} required className="mt-1 block w-full border-gray-300 rounded-md shadow-sm" />
+            <input
+              type="text"
+              name="state"
+              value={formData.state}
+              onChange={handleInputChange}
+              required
+              className="mt-1 block w-full border-gray-300 rounded-md shadow-sm bg-gray-50"
+              readOnly={pincodeStatus.verified}
+            />
           </div>
         </div>
          <div>

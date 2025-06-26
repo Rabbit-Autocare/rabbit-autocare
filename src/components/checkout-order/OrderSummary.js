@@ -21,7 +21,7 @@ function getVariantDisplayText(variant, isMicrofiber) {
   return '';
 }
 
-export default function OrderSummary({ items, updateItemQuantity, coupon, orderTotals, loading, onPlaceOrder }) {
+export default function OrderSummary({ items, updateItemQuantity, coupon, orderTotals, deliveryCharge, loading, onPlaceOrder }) {
   const renderProductItem = (item) => (
     <div key={item.id} className="group relative">
       <div className="bg-white p-6 rounded-[4px] border border-gray-200 hover:border-gray-300 hover:shadow-sm transition-all duration-300">
@@ -283,31 +283,36 @@ export default function OrderSummary({ items, updateItemQuantity, coupon, orderT
         <div className="bg-gray-50 rounded-[4px] p-6 border border-gray-200">
           <div className="space-y-4">
             <div className="flex justify-between items-center text-lg">
-              <span className="text-gray-700 font-medium">Subtotal ({orderTotals.itemCount} items)</span>
-              <span className="font-semibold text-black">₹{orderTotals.subtotal}</span>
+              <span className="text-gray-600">Subtotal</span>
+              <span className="font-semibold text-black">₹{orderTotals.subtotal.toFixed(2)}</span>
             </div>
 
-            {coupon && (
-              <div className="flex justify-between items-center text-lg text-[#601E8D]">
-                <span className="font-medium">Discount ({coupon.code})</span>
-                <span className="font-semibold">-₹{orderTotals.discount}</span>
+            {orderTotals.discount > 0 && (
+              <div className="flex justify-between items-center text-lg text-green-600">
+                <span>
+                  Discount{" "}
+                  {coupon && <span className="text-sm font-mono bg-green-100 p-1 rounded-sm">{coupon.code}</span>}
+                </span>
+                <span className="font-semibold">- ₹{orderTotals.discount.toFixed(2)}</span>
               </div>
             )}
 
-            <div className="border-t-2 border-gray-200 pt-4">
-              <div className="flex justify-between items-center">
-                <span className="text-2xl font-bold text-black">Total</span>
-                <span className="text-3xl font-bold text-[#601E8D]">₹{orderTotals.grandTotal}</span>
-              </div>
-            </div>
-
-            {coupon && (
-              <div className="bg-purple-50 rounded-[4px] p-3 text-center border border-purple-200">
-                <p className="text-sm font-medium text-[#601E8D]">
-                  🎉 You saved ₹{orderTotals.discount} on this order!
-                </p>
+            {deliveryCharge > 0 && (
+              <div className="flex justify-between items-center text-lg">
+                <span className="text-gray-600">Delivery Charges</span>
+                <span className="font-semibold text-black">₹{deliveryCharge.toFixed(2)}</span>
               </div>
             )}
+          </div>
+        </div>
+
+        {/* Grand Total */}
+        <div className="p-6 bg-gray-50 border-t-2 border-dashed border-gray-200">
+          <div className="flex justify-between items-center">
+            <span className="text-2xl font-bold text-black">Grand Total</span>
+            <span className="text-3xl font-extrabold text-[#601E8D]">
+              ₹{(orderTotals.grandTotal + deliveryCharge).toFixed(2)}
+            </span>
           </div>
         </div>
 

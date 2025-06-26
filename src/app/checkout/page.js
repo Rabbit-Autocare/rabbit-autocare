@@ -83,6 +83,7 @@ export default function CheckoutPage() {
   const [loading, setLoading] = useState(true);
   const [paymentProcessing, setPaymentProcessing] = useState(false);
   const [paymentError, setPaymentError] = useState(null);
+  const [deliveryCharge, setDeliveryCharge] = useState(0);
   const [orderTotals, setOrderTotals] = useState({
     subtotal: 0,
     discount: 0,
@@ -106,13 +107,58 @@ export default function CheckoutPage() {
     }
   }, [userId, cartItems]);
 
-  // Recalculate totals when coupon changes
+  // Recalculate totals when items or coupon change
   useEffect(() => {
     if (transformedItems.length > 0) {
       const totals = calculateOrderTotals(transformedItems, coupon);
       setOrderTotals(totals);
     }
   }, [transformedItems, coupon]);
+
+  // Recalculate delivery charge when address or cart total changes
+  useEffect(() => {
+    const calculateDeliveryCharge = async () => {
+      const cartValue = orderTotals.subtotal - (orderTotals.discount || 0);
+
+      if (cartValue > 499) {
+        setDeliveryCharge(0);
+        return;
+      }
+
+      if (!selectedShippingAddressId) {
+        setDeliveryCharge(0); // No address, no charge yet
+        return;
+      }
+
+      try {
+        const { data: address, error } = await supabase
+          .from('addresses')
+          .select('state')
+          .eq('id', selectedShippingAddressId)
+          .single();
+
+        if (error || !address) {
+          console.error('Could not fetch address for delivery charge calc:', error);
+          setDeliveryCharge(99); // Default to higher charge on error
+          return;
+        }
+
+        const state = address.state.toLowerCase().trim();
+        const specialStates = ['haryana', 'delhi', 'chandigarh'];
+
+        if (specialStates.includes(state)) {
+          setDeliveryCharge(59);
+        } else {
+          setDeliveryCharge(99);
+        }
+      } catch (e) {
+        console.error('Exception during delivery charge calc:', e);
+        setDeliveryCharge(99); // Default on exception
+      }
+    };
+
+    calculateDeliveryCharge();
+  }, [selectedShippingAddressId, orderTotals.subtotal, orderTotals.discount]);
 
   const getUser = async () => {
     const { data } = await supabase.auth.getUser();
@@ -309,7 +355,7 @@ export default function CheckoutPage() {
         items: transformedItems,
         subtotal: orderTotals.subtotal,
         discount_amount: orderTotals.discount || 0,
-        total: orderTotals.grandTotal,
+        total: orderTotals.grandTotal + deliveryCharge,
         coupon_id: coupon?.id || null,
         status: 'pending',
         payment_status: 'pending',
@@ -320,7 +366,7 @@ export default function CheckoutPage() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          amount: orderTotals.grandTotal,
+          amount: orderTotals.grandTotal + deliveryCharge,
           currency: 'INR',
           receipt: orderNumber,
         }),
@@ -668,6 +714,7 @@ export default function CheckoutPage() {
                       updateItemQuantity={updateItemQuantity}
                       coupon={coupon}
                       orderTotals={orderTotals}
+                      deliveryCharge={deliveryCharge}
                       loading={loading}
                       onPlaceOrder={handlePlaceOrder}
                     />

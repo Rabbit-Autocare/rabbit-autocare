@@ -430,9 +430,9 @@ export default function BottomNavbar() {
             ) : user ? (
               userCoupons.length > 0 ? (
                 <div className="space-y-3 mb-3">
-                  {userCoupons.map((coupon) => (
+                  {userCoupons.map((coupon, idx) => (
                     <CouponCard
-                      key={coupon.id}
+                      key={coupon.id || idx}
                       code={coupon.code}
                       discount={coupon.discount}
                       validUpto={coupon.expiry}

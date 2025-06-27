@@ -1,11 +1,12 @@
 "use client"
 import { supabase } from "@/lib/supabaseClient.js"
 import { useState, useEffect, useMemo } from "react"
-import { ChevronLeft, ChevronRight, X } from "lucide-react"
+import { ChevronLeft, ChevronRight, X ,ShoppingCart} from "lucide-react"
 import { useCart } from "@/contexts/CartContext.jsx"
 import Image from "next/image"
 import { useRouter } from 'next/navigation'
 import { WishlistService } from '@/lib/service/wishlistService';
+import { FaShoppingCart } from "react-icons/fa"
 // ...existing imports...
 export default function FeaturedProductCard({ product, className = "", isLastCard = false }) {
   const { addToCart, user, openCart } = useCart()
@@ -733,7 +734,13 @@ export default function FeaturedProductCard({ product, className = "", isLastCar
                     disabled={isWishlisted}
                     className={`text-xs ${isWishlisted ? "text-red-500" : "text-black"}`}
                   >
-                    {isWishlisted ? "Wishlisted" : "Add"}
+                    {isWishlisted ? (
+                      "Wishlisted"
+                    ) : (
+                      <div className="relative w-4 h-4 xs:w-5 xs:h-5">
+                        <Image src="/assets/shine.svg" alt="wishlist" fill className="object-contain" />
+                      </div>
+                    )}
                   </button>
                 </div>
               </div>
@@ -753,9 +760,7 @@ export default function FeaturedProductCard({ product, className = "", isLastCar
                 ) : (
                   <>
                     Add to Cart
-                    <div className="relative w-4 h-4 xs:w-5 xs:h-5">
-                      <Image src="/assets/featured/cartstar.svg" alt="cart-star" fill className="object-contain" />
-                    </div>
+                    <ShoppingCart className="w-4 h-4 xs:w-5 xs:h-5" />
                   </>
                 )}
               </button>
@@ -776,4 +781,3 @@ export default function FeaturedProductCard({ product, className = "", isLastCar
     </div>
   )
 }
-   

@@ -133,7 +133,7 @@ export default function MyAccount() {
   if (!authUser) {
     return (
       <UserLayout>
-        <div className='min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 via-white to-purple-50'>
+        <div className='min-h-screen flex items-center justify-center'>
           <div className='text-center max-w-md mx-auto px-6'>
             <div className='w-24 h-24 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full flex items-center justify-center mx-auto mb-6'>
               <svg className='w-12 h-12 text-white' fill='none' stroke='currentColor' viewBox='0 0 24 24'>
@@ -153,22 +153,22 @@ export default function MyAccount() {
 
   return (
     <UserLayout>
-      <div className='min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 py-6 px-4 sm:px-6 lg:px-8'>
-        <div className='max-w-4xl mx-auto'>
+      <div className='min-h-screen py-6 px-4 sm:px-6 lg:px-8 mt-7'>
+        <div className='max-w-4xl xl:max-w-[1240px]  mx-auto'>
           {/* Header Section */}
-          <div className='text-center mb-8'>
-            <h1 className='text-4xl sm:text-5xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent mb-4'>
-              My Profile
+          <div className='text-center mb-8 '>
+            <h1 className="flex items-center text-[20px] font-semibold tracking-wide border-l-7 border-l-[#601e8d] pl-2 text-black h-7">
+             My Profile
             </h1>
-            <p className='text-lg text-gray-600 max-w-2xl mx-auto'>
+            {/* <p className='text-lg text-gray-600 max-w-2xl mx-auto'>
               Manage your personal information and keep your profile up to date
-            </p>
+            </p> */}
           </div>
 
           {/* Profile Card */}
-          <div className='bg-white/80 backdrop-blur-sm rounded-3xl shadow-2xl border border-white/20 overflow-hidden'>
+          <div className='bg-white/80 backdrop-blur-sm rounded-[4px] shadow-2xl border border-white/20 overflow-hidden xl:min-h-[650px]'>
             {/* Profile Header */}
-            <div className='bg-gradient-to-r from-blue-500 to-purple-600 px-6 sm:px-8 py-8 sm:py-12'>
+            <div className='bg-[#601e8d] px-6 sm:px-8 py-8 sm:py-12'>
               <div className='flex flex-col sm:flex-row items-center space-y-4 sm:space-y-0 sm:space-x-8'>
                 {/* Avatar */}
                 <div className='relative group'>
@@ -215,7 +215,7 @@ export default function MyAccount() {
                   {!isEditing ? (
                     <button
                       onClick={() => setIsEditing(true)}
-                      className='inline-flex items-center px-4 py-2 bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white font-medium rounded-lg transition-all duration-300 transform hover:scale-105 shadow-lg'
+                      className='inline-flex items-center px-4 py-2 bg-[#601e8d] hover:from-blue-600 hover:to-purple-700 text-white font-medium rounded-[4px] transition-all duration-300 transform hover:scale-105 shadow-lg'
                     >
                       <svg className='w-4 h-4 mr-2' fill='none' stroke='currentColor' viewBox='0 0 24 24'>
                         <path strokeLinecap='round' strokeLinejoin='round' strokeWidth={2} d='M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z' />
@@ -255,7 +255,7 @@ export default function MyAccount() {
               </div>
 
               {/* Form Fields */}
-              <div className='grid grid-cols-1 lg:grid-cols-2 gap-6'>
+              <div className='grid grid-cols-1 lg:grid-cols-2 gap-6 xl:gap-10 space-y-0'>
                 {/* Full Name */}
                 <div className='lg:col-span-2'>
                   <label htmlFor='name' className='block text-sm font-semibold text-gray-700 mb-2'>
@@ -268,7 +268,7 @@ export default function MyAccount() {
                       value={profileData.name}
                       onChange={(e) => setProfileData({ ...profileData, name: e.target.value })}
                       disabled={!isEditing}
-                      className={`w-full px-4 py-3 border-2 rounded-xl transition-all duration-300 ${
+                      className={`w-full px-4 py-3 border-2 rounded-[4px] transition-all duration-300 ${
                         isEditing
                           ? 'border-gray-200 focus:border-blue-500 focus:ring-4 focus:ring-blue-500/20 bg-white'
                           : 'border-gray-100 bg-gray-50 cursor-default'
@@ -295,7 +295,7 @@ export default function MyAccount() {
                       value={profileData.phone_number}
                       onChange={(e) => setProfileData({ ...profileData, phone_number: e.target.value })}
                       disabled={!isEditing}
-                      className={`w-full px-4 py-3 border-2 rounded-xl transition-all duration-300 ${
+                      className={`w-full px-4 py-3 border-2 rounded-[4px] transition-all duration-300 ${
                         isEditing
                           ? 'border-gray-200 focus:border-blue-500 focus:ring-4 focus:ring-blue-500/20 bg-white'
                           : 'border-gray-100 bg-gray-50 cursor-default'
@@ -321,7 +321,7 @@ export default function MyAccount() {
                       id='email'
                       value={profileData.email}
                       disabled
-                      className='w-full px-4 py-3 border-2 border-gray-100 bg-gray-50 rounded-xl text-gray-600 font-medium cursor-not-allowed'
+                      className='w-full px-4 py-3 border-2 border-gray-100 bg-gray-50 rounded-[4px] text-gray-600 font-medium cursor-not-allowed'
                     />
                     <div className='absolute right-3 top-3 opacity-30'>
                       <svg className='w-5 h-5 text-gray-400' fill='none' stroke='currentColor' viewBox='0 0 24 24'>
@@ -339,7 +339,7 @@ export default function MyAccount() {
               </div>
 
               {/* Account Stats */}
-              <div className='mt-8 pt-8 border-t border-gray-200'>
+              {/* <div className='mt-8 pt-8 border-t border-gray-200'>
                 <h4 className='text-lg font-semibold text-gray-800 mb-4'>Account Statistics</h4>
                 <div className='grid grid-cols-1 sm:grid-cols-3 gap-4'>
                   <div className='bg-gradient-to-r from-blue-50 to-blue-100 rounded-xl p-4 text-center'>
@@ -370,7 +370,7 @@ export default function MyAccount() {
                     <p className='font-semibold text-gray-800'>Active</p>
                   </div>
                 </div>
-              </div>
+              </div> */}
             </div>
           </div>
         </div>

@@ -5,9 +5,9 @@ import '../../app/globals.css';
 
 export default function UserLayout({ children }) {
   return (
-    <div className='flex flex-1'>
+    <div className='flex flex-col md:flex-row'>
       <UserSidebar />
-      <main className='flex-1 p-6'>{children}</main>
+      <main className='flex-1 md:p-6'>{children}</main>
     </div>
   );
 }

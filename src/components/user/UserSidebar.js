@@ -24,7 +24,7 @@ export default function UserSidebar() {
   return (
     <>
       {/* Desktop Sidebar - Vertical Layout */}
-      <aside className="hidden md:flex w-60 bg-white shadow-lg min-h-screen rounded-l-2xl flex-col justify-between relative">
+      <aside className="hidden md:flex w-60 bg-white shadow-lg min-h-screen rounded-l-2xl flex-col relative">
         <div>
           <nav className="flex flex-col gap-2 mt-6 px-2">
             {menu.map((item) => {
@@ -45,15 +45,17 @@ export default function UserSidebar() {
                 </Link>
               );
             })}
+
+            {/* Logout Button - Now positioned below menu items */}
+            <div className="px-2 mt-4">
+              <button
+                onClick={handleLogout}
+                className="w-full flex items-center justify-center gap-2 bg-red-500 hover:bg-red-600 text-white py-2 rounded-lg text-base font-semibold transition-all"
+              >
+                <FaSignOutAlt /> Log Out
+              </button>
+            </div>
           </nav>
-        </div>
-        <div className="p-4 border-t">
-          <button
-            onClick={handleLogout}
-            className="w-full flex items-center justify-center gap-2 bg-red-500 hover:bg-red-600 text-white py-2 rounded-lg text-base font-semibold transition-all"
-          >
-            <FaSignOutAlt /> Log Out
-          </button>
         </div>
       </aside>
 
@@ -97,7 +99,7 @@ export default function UserSidebar() {
               className="flex items-center justify-center gap-2 bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-full text-sm font-semibold transition-all shadow-sm"
             >
               <FaSignOutAlt className="text-sm flex-shrink-0" />
-              <span className="hidden sm:inline">Log Out</span>
+              <span className="">Log Out</span>
             </button>
           </div>
         </div>

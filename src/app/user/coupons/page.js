@@ -142,13 +142,15 @@ export default function UserCouponsPage() {
   return (
     <UserLayout>
       <div className='max-w-7xl mx-auto p-6'>
-        <h1 className='text-3xl font-bold mb-8'>Your Available Coupons</h1>
+         <h1 className="flex items-center text-[20px] font-semibold tracking-wide border-l-7 border-l-black pl-2 text-black h-7">
+             Coupons
+            </h1>
 
         {/* Display CouponCard components if userCoupons exist */}
         {userCoupons.length > 0 && (
-          <div className="mb-10">
+          <div className="mt-14">
             {/* <h2 className="text-2xl font-semibold mb-6 text-gray-800">Your Special Coupons</h2> */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 mb-8">
+            <div className="grid grid-cols-1 md:grid-cols-1 lg:grid-cols-2 xl:grid-cols-4 gap-6 mb-8">
               {userCoupons.map((coupon, idx) => (
                 <CouponCard
                   key={coupon.id || idx}

@@ -19,6 +19,7 @@ export default function FeaturedProductCard({ product, className = "", isLastCar
   const [selectedColor, setSelectedColor] = useState(null)
   const [selectedSize, setSelectedSize] = useState(null)
   const [uniqueColorsAndSizes, setUniqueColorsAndSizes] = useState({ colors: [], sizes: [] })
+  const [wishlistItemId, setWishlistItemId] = useState(null)
 
   // Check if product is microfiber category
   const isMicrofiber = useMemo(() => {
@@ -27,6 +28,52 @@ export default function FeaturedProductCard({ product, className = "", isLastCar
       (typeof product?.category_name === "string" && product?.category_name?.toLowerCase()?.includes("microfiber"))
     )
   }, [product])
+
+  // Check if current product variant is in wishlist
+  useEffect(() => {
+    const checkWishlistStatus = async () => {
+      if (!user || !product) return;
+
+      try {
+        const { data, error } = await WishlistService.getWishlist();
+        if (error) {
+          console.error('Error checking wishlist status:', error);
+          return;
+        }
+
+        // Check if current product with selected variant is in wishlist
+        const currentVariant = isMicrofiber
+          ? getVariantForCombination(selectedColor, selectedSize)
+          : selectedVariant;
+
+        const wishlistItem = data?.find(item => {
+          if (item.product_id !== product.id) return false;
+
+          if (isMicrofiber && selectedColor && selectedSize) {
+            // For microfiber, check color and size combination
+            return item.variant?.color === selectedColor && item.variant?.size === selectedSize;
+          } else if (currentVariant) {
+            // For non-microfiber, check variant match
+            return item.variant?.id === currentVariant.id;
+          }
+
+          return !item.variant; // Default variant
+        });
+
+        if (wishlistItem) {
+          setIsWishlisted(true);
+          setWishlistItemId(wishlistItem.id);
+        } else {
+          setIsWishlisted(false);
+          setWishlistItemId(null);
+        }
+      } catch (error) {
+        console.error('Error checking wishlist status:', error);
+      }
+    };
+
+    checkWishlistStatus();
+  }, [user, product, selectedVariant, selectedColor, selectedSize, isMicrofiber]);
 
   // Get color for display (could be hex, color name, etc.)
   const getColorStyle = (color) => {
@@ -403,25 +450,70 @@ export default function FeaturedProductCard({ product, className = "", isLastCar
   }
 
   const handleAddToWishlist = async () => {
+    if (!user) {
+      alert("Please login to add items to wishlist.");
+      return;
+    }
+
     try {
       let variantToSave = null;
+
       if (isMicrofiber && selectedColor && selectedSize) {
-        variantToSave = getVariantForCombination(selectedColor, selectedSize);
+        const variant = getVariantForCombination(selectedColor, selectedSize);
+        if (!variant) {
+          alert("Please select a valid color and size combination.");
+          return;
+        }
+        variantToSave = {
+          ...variant,
+          color: selectedColor,
+          size: selectedSize,
+          displayText: `${selectedColor} / ${selectedSize}`
+        };
       } else if (selectedVariant) {
-        variantToSave = selectedVariant;
+        variantToSave = {
+          ...selectedVariant,
+          displayText: getVariantDisplayText(selectedVariant)
+        };
+      } else {
+        // Default variant for products without variants
+        variantToSave = {
+          id: 'default',
+          price: product.price || product.mrp,
+          displayText: 'Default'
+        };
       }
 
-      await WishlistService.addToWishlist({
-        product_id: product.id,
-        variant: variantToSave,
-      });
-      setIsWishlisted(true);
+      if (isWishlisted && wishlistItemId) {
+        // Remove from wishlist
+        const { error } = await WishlistService.removeFromWishlist(wishlistItemId);
+        if (error) {
+          console.error('Error removing from wishlist:', error);
+          alert('Could not remove from wishlist.');
+        } else {
+          setIsWishlisted(false);
+          setWishlistItemId(null);
+        }
+      } else {
+        // Add to wishlist
+        const { data, error } = await WishlistService.addToWishlist({
+          product_id: product.id,
+          variant: variantToSave,
+        });
+
+        if (error) {
+          console.error('Error adding to wishlist:', error);
+          alert('Could not add to wishlist.');
+        } else {
+          setIsWishlisted(true);
+          setWishlistItemId(data?.[0]?.id);
+        }
+      }
     } catch (err) {
-      console.error('Error adding to wishlist:', err);
-      alert('Could not add to wishlist.');
+      console.error('Error with wishlist operation:', err);
+      alert('Could not update wishlist.');
     }
   };
-
 
   const formatPrice = (price) => {
     return new Intl.NumberFormat("en-IN", {
@@ -726,19 +818,40 @@ export default function FeaturedProductCard({ product, className = "", isLastCar
           {/* Action Buttons */}
           <div className="space-y-2 xl:space-y-4 relative z-10 mt-4 sm:mt-6">
             <div className="flex items-center w-full">
-              <div className="border-1 border-black px-2 py-2 xs:px-3 xs:py-2 sm:px-4 sm:py-2 mr-1 rounded-[4px]">
+              <div className={`border-1 px-2 py-2 xs:px-3 xs:py-2 sm:px-4 sm:py-2 mr-1 rounded-[4px] transition-all duration-200 ${
+                isWishlisted
+                  ? "border-red-500 bg-red-50"
+                  : "border-black hover:bg-gray-50"
+              }`}>
                 <div className="relative w-4 h-4 xs:w-5 xs:h-5 cursor-pointer">
                   <button
                     type="button"
                     onClick={handleAddToWishlist}
-                    disabled={isWishlisted}
-                    className={`text-xs ${isWishlisted ? "text-red-500" : "text-black"}`}
+                    disabled={!user}
+                    className={`text-xs transition-all duration-200 ${
+                      isWishlisted
+                        ? "text-red-500"
+                        : "text-black hover:text-purple-600"
+                    } ${!user ? "opacity-50 cursor-not-allowed" : ""}`}
+                    title={!user ? "Login to add to wishlist" : isWishlisted ? "Remove from wishlist" : "Add to wishlist"}
                   >
                     {isWishlisted ? (
-                      "Wishlisted"
+                      <div className="relative w-4 h-4 xs:w-5 xs:h-5">
+                        <Image
+                          src="/assets/shine.svg"
+                          alt="wishlisted"
+                          fill
+                          className="object-contain animate-pulse"
+                        />
+                      </div>
                     ) : (
                       <div className="relative w-4 h-4 xs:w-5 xs:h-5">
-                        <Image src="/assets/shine.svg" alt="wishlist" fill className="object-contain" />
+                        <Image
+                          src="/assets/shine.svg"
+                          alt="add to wishlist"
+                          fill
+                          className="object-contain opacity-60 hover:opacity-100 transition-opacity duration-200"
+                        />
                       </div>
                     )}
                   </button>

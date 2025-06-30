@@ -5,9 +5,9 @@ import Link from "next/link"
 import Image from "next/image"
 import { useCart } from "@/hooks/useCart"
 import { CategoryService } from "@/lib/service/microdataService"
-import { UserService } from "@/lib/service/userService"
 import { useAuth } from "@/hooks/useAuth"
 import CouponCard from "@/components/ui/CouponCard"
+import { createSupabaseBrowserClient } from '@/lib/supabase/browser-client'
 
 // Category image mapping from ExtraNavbar
 const categoryImageMap = {
@@ -113,13 +113,14 @@ export default function BottomNavbar() {
   useEffect(() => {
     const fetchUserCoupons = async () => {
       if (user?.id) {
-        const result = await UserService.getUserCoupons(user.id);
-        if (result.success) {
-          setUserCoupons(result.data);
-        }
+        const supabase = createSupabaseBrowserClient();
+        const { data: userCoupons, error } = await supabase
+          .from('user_coupons')
+          .select('*, coupons (*)')
+          .eq('user_id', user.id);
+        if (!error) setUserCoupons(userCoupons || []);
       }
     };
-
     if (!authLoading) {
       fetchUserCoupons();
     }

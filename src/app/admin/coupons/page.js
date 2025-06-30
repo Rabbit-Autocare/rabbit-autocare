@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import AdminLayout from '@/components/layouts/AdminLayout';
 import CouponForm from '@/components/forms/CouponForm';
-import '../../../app/globals.css';
+import '@/app/globals.css';
 import { Plus, AlertCircle, Trash2, Gift } from 'lucide-react';
 import Image from 'next/image';
 
@@ -163,20 +163,20 @@ export default function CouponsPage() {
     });
   };
 
-  if (loading && currentView === 'list') {
-    return (
-      <AdminLayout>
-        <div className='p-6 max-w-6xl mx-auto'>
-          <div className="flex items-center justify-center h-64">
-            <div className="text-center">
-              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600 mx-auto mb-4"></div>
-              <p className="text-gray-600">Loading coupons...</p>
-            </div>
-          </div>
-        </div>
-      </AdminLayout>
-    );
-  }
+  // if (loading && currentView === 'list') {
+  //   return (
+  //     <AdminLayout>
+  //       <div className='p-6 max-w-6xl mx-auto'>
+  //         <div className="flex items-center justify-center h-64">
+  //           <div className="text-center">
+  //             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600 mx-auto mb-4"></div>
+  //             <p className="text-gray-600">Loading coupons...</p>
+  //           </div>
+  //         </div>
+  //       </div>
+  //     </AdminLayout>
+  //   );
+  // }
 
   return (
     <AdminLayout>

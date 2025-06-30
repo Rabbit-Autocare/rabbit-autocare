@@ -19,23 +19,15 @@ export default function AdminOrdersPage() {
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
-  const [supabase, setSupabase] = useState(null);
+
+  // Initialize Supabase client
+  const supabase = createSupabaseBrowserClient();
 
   useEffect(() => {
-    // Initialize the Supabase client
-    const supabaseClient = createSupabaseBrowserClient();
-    setSupabase(supabaseClient);
+    fetchOrders();
   }, []);
 
-  useEffect(() => {
-    if (supabase) {
-      fetchOrders();
-    }
-  }, [supabase]);
-
   const fetchOrders = async () => {
-    if (!supabase) return;
-
     setLoading(true);
     setError(null);
     try {
@@ -114,20 +106,20 @@ export default function AdminOrdersPage() {
     return matchesSearch && matchesStatus;
   });
 
-  if (loading) {
-    return (
-      <AdminLayout>
-        <div className='p-6'>
-          <div className='flex items-center justify-center h-64'>
-            <div className='text-center'>
-              <div className='animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600 mx-auto mb-4'></div>
-              <p className='text-gray-600'>Loading orders...</p>
-            </div>
-          </div>
-        </div>
-      </AdminLayout>
-    );
-  }
+  // if (loading) {
+  //   return (
+  //     <AdminLayout>
+  //       <div className='p-6'>
+  //         <div className='flex items-center justify-center h-64'>
+  //           <div className='text-center'>
+  //             <div className='animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600 mx-auto mb-4'></div>
+  //             <p className='text-gray-600'>Loading orders...</p>
+  //           </div>
+  //         </div>
+  //       </div>
+  //     </AdminLayout>
+  //   );
+  // }
 
   return (
     <AdminLayout>

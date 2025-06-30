@@ -11,10 +11,28 @@ if (!supabaseUrl || !supabaseAnonKey) {
 // Export the browser client creation function for compatibility
 export { createSupabaseBrowserClient } from './browser-client';
 
-// Creates a Supabase client for server components
+// Creates a Supabase client for server components (async cookies API)
+export async function createSupabaseServerClientAsync() {
+  const cookieStore = await cookies();
+  return createServerClient(supabaseUrl, supabaseAnonKey, {
+    cookies: {
+      async get(name) {
+        return (await cookieStore.get(name))?.value;
+      },
+      async set(name, value, options) {
+        await cookieStore.set({ name, value, ...options });
+      },
+      async remove(name, options) {
+        await cookieStore.set({ name, value: '', ...options });
+      },
+    },
+  });
+}
+
+// Deprecated: Synchronous version (for backward compatibility)
+// Use createSupabaseServerClientAsync instead
 export function createSupabaseServerClient() {
   const cookieStore = cookies();
-
   return createServerClient(supabaseUrl, supabaseAnonKey, {
     cookies: {
       get(name) {

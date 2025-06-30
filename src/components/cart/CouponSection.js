@@ -4,7 +4,7 @@ import { useCart } from "@/hooks/useCart";
 import { Check, Ticket, X, Loader2, Tag, ChevronLeft, ChevronRight } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import CouponCard from "@/components/ui/CouponCard";
-import { UserService } from "@/lib/service/userService";
+import { createSupabaseBrowserClient } from '@/lib/supabase/browser-client';
 
 export default function CouponSection() {
 	const { coupon, applyCoupon, couponLoading, couponError } = useCart();
@@ -21,17 +21,20 @@ export default function CouponSection() {
 			setAvailableCoupons([]);
 			return;
 		}
-
 		try {
 			setCouponsLoading(true);
-			const result = await UserService.getUserCoupons(user.id);
-			if (result.success) {
-				setAvailableCoupons(result.data);
+			const supabase = createSupabaseBrowserClient();
+			const { data: userCoupons, error } = await supabase
+				.from('user_coupons')
+				.select('*, coupons (*)')
+				.eq('user_id', user.id);
+			if (!error) {
+				setAvailableCoupons(userCoupons || []);
 			} else {
 				setAvailableCoupons([]);
 			}
 		} catch (error) {
-			console.error("Error fetching user coupons:", error);
+			console.error('Error fetching user coupons:', error);
 			setAvailableCoupons([]);
 		} finally {
 			setCouponsLoading(false);

@@ -79,6 +79,27 @@ export async function middleware(req) {
     res.headers.set('x-middleware-debug', 'Admin-Access-Granted');
   }
 
+  // User routes protection logic
+  if (req.nextUrl.pathname.startsWith('/user')) {
+    const {
+      data: { session },
+      error: sessionError,
+    } = await supabase.auth.getSession();
+
+    // If no session, redirect to login
+    if (!session) {
+      const redirectRes = NextResponse.redirect(new URL('/login', req.url));
+      redirectRes.headers.set(
+        'x-middleware-debug',
+        'No-User-Session-Redirecting-to-Login'
+      );
+      return redirectRes;
+    }
+
+    // If user has session, allow access
+    res.headers.set('x-middleware-debug', 'User-Access-Granted');
+  }
+
   return res;
 }
 
@@ -90,5 +111,6 @@ export const config = {
     '/profile/:path*',
     '/cart/:path*',
     '/admin/:path*',
+    '/user/:path*',
   ],
 };

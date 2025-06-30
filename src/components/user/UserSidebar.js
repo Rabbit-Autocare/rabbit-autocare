@@ -1,8 +1,8 @@
 'use client';
 import Link from 'next/link';
 import { useRouter, usePathname } from 'next/navigation';
-import { supabase } from '../../lib/supabaseClient';
-import '../../app/globals.css';
+import { createSupabaseBrowserClient } from '@/lib/supabase/browser-client';
+import '@/app/globals.css';
 import { FaSignOutAlt } from 'react-icons/fa';
 
 export default function UserSidebar() {
@@ -10,6 +10,7 @@ export default function UserSidebar() {
   const pathname = usePathname();
 
   const handleLogout = async () => {
+    const supabase = createSupabaseBrowserClient();
     await supabase.auth.signOut();
     router.push('/login');
   };
@@ -28,7 +29,9 @@ export default function UserSidebar() {
         <div>
           <nav className="flex flex-col gap-2 mt-6 px-2">
             {menu.map((item) => {
-              const active = pathname === item.href;
+              const isActive = item.href === '/user'
+                ? pathname === item.href
+                : pathname.startsWith(item.href);
               const isMyProfile = item.label === 'My Profile';
 
               return (
@@ -36,10 +39,10 @@ export default function UserSidebar() {
                   key={item.href}
                   href={item.href}
                   className={`flex items-center gap-3 px-5 py-3 rounded-[100px] transition-all font-medium text-base
-                    ${active ? 'bg-[#601e8d] text-white shadow-md' : 'text-gray-700 hover:bg-purple-50'}
+                    ${isActive ? 'bg-[#601e8d] text-white shadow-md' : 'text-gray-700 hover:bg-purple-50'}
                     ${isMyProfile ? 'md:mt-12' : ''}
                   `}
-                  style={active ? { fontWeight: 700 } : {}}
+                  style={isActive ? { fontWeight: 700 } : {}}
                 >
                   {item.label}
                 </Link>
@@ -70,19 +73,21 @@ export default function UserSidebar() {
             }}
           >
             {menu.map((item) => {
-              const active = pathname === item.href;
+              const isActive = item.href === '/user'
+                ? pathname === item.href
+                : pathname.startsWith(item.href);
 
               return (
                 <Link
                   key={item.href}
                   href={item.href}
                   className={`flex items-center justify-center px-4 py-2 rounded-full transition-all font-medium text-sm whitespace-nowrap flex-shrink-0 min-w-fit border
-                    ${active
+                    ${isActive
                       ? 'bg-[#601e8d] text-white shadow-md border-[#601e8d]'
                       : 'text-gray-700 hover:bg-purple-50 border-gray-200 bg-white'
                     }
                   `}
-                  style={active ? { fontWeight: 700 } : {}}
+                  style={isActive ? { fontWeight: 700 } : {}}
                 >
                   {item.label}
                 </Link>

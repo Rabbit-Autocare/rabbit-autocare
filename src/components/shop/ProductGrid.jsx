@@ -1,7 +1,7 @@
 "use client"
 
 import ProductCard from "./ProductCard"
-
+ 
 const ProductGrid = ({ products, loading, error, hasActiveFilters, onClearFilters }) => {
   // Loading state
   if (loading) {

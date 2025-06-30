@@ -8,12 +8,21 @@ let categoriesPromise = null
 let lastFetchTime = 0
 const CACHE_DURATION = 5 * 60 * 1000 // 5 minutes
 
-export function useCategories() {
-  const [categories, setCategories] = useState(categoriesCache || [])
-  const [loading, setLoading] = useState(!categoriesCache)
-  const [error, setError] = useState(null)
+export function useCategories(initialCategories = null, initialError = null) {
+  const [categories, setCategories] = useState(initialCategories || categoriesCache || [])
+  const [loading, setLoading] = useState(!initialCategories && !categoriesCache)
+  const [error, setError] = useState(initialError)
 
   const fetchCategories = useCallback(async () => {
+    // If we have initial data, use it and don't fetch immediately
+    if (initialCategories && !categoriesCache) {
+      categoriesCache = initialCategories
+      lastFetchTime = Date.now()
+      setCategories(initialCategories)
+      setLoading(false)
+      return
+    }
+
     // Return cached data if still valid
     if (categoriesCache && (Date.now() - lastFetchTime) < CACHE_DURATION) {
       setCategories(categoriesCache)
@@ -67,11 +76,14 @@ export function useCategories() {
       categoriesPromise = null
       setLoading(false)
     }
-  }, [])
+  }, [initialCategories])
 
   useEffect(() => {
-    fetchCategories()
-  }, [fetchCategories])
+    // Only fetch if we don't have initial data
+    if (!initialCategories) {
+      fetchCategories()
+    }
+  }, [fetchCategories, initialCategories])
 
   const refreshCategories = async () => {
     // Clear cache and refetch

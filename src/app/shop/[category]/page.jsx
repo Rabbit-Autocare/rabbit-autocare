@@ -9,7 +9,7 @@ import FilterSidebar from "@/components/shop/FilterSidebar"
 import ProductGrid from "@/components/shop/ProductGrid"
 import { Filter, ArrowUpDown, X } from "lucide-react"
 
-export default function ShopPage() {
+export default function ShopPage({ initialCategories, initialError }) {
   const router = useRouter()
   const { category: categoryParam } = useParams()
   const [currentCategory, setCurrentCategory] = useState(categoryParam)
@@ -19,7 +19,7 @@ export default function ShopPage() {
   const [products, setProducts] = useState([])
   const [allProducts, setAllProducts] = useState([]) // Store all products for filter options
   const [loading, setLoading] = useState(true)
-  const [error, setError] = useState(null)
+  const [error, setError] = useState(initialError)
   const [totalCount, setTotalCount] = useState(0)
 
   // Mobile states
@@ -603,7 +603,7 @@ export default function ShopPage() {
     { value: "name", label: "Name (A-Z)" },
   ]
 
-  const [categories, setCategories] = useState([])
+  const [categories, setCategories] = useState(initialCategories)
 
   useEffect(() => {
     const fetchCategories = async () => {

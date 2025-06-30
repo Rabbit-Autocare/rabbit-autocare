@@ -34,20 +34,10 @@ export default function ProductPage() {
           return;
         }
       } catch (err) {
-        console.log('API route failed, trying direct Supabase:', err.message);
-
-        // If API route fails, try direct Supabase access
-        try {
-          productData = await ProductService.getProductDirect(productCode);
-          if (productData && productData.id) {
-            setProduct(productData);
-            setLoading(false);
-            return;
-          }
-        } catch (directErr) {
-          console.log('Direct Supabase also failed:', directErr.message);
-          // Continue to redirect logic below
-        }
+        console.log('Product not found via API route:', err.message);
+        // If not a product, redirect to /kitcombo/[id]
+        router.replace(`/kitcombo/${productCode}`);
+        return;
       }
 
       // If not a product, redirect to /kitcombo/[id]

@@ -4,7 +4,7 @@
  * @param {number} retries - Number of retries (default: 3)
  * @param {number} delay - Delay between retries in ms (default: 500)
  * @returns {Promise<any>} - The result of the fetch function
- */
+ */ 
 export async function fetchWithRetry(fetchFn, retries = 3, delay = 500) {
   let lastError;
   for (let i = 0; i < retries; i++) {
@@ -19,3 +19,4 @@ export async function fetchWithRetry(fetchFn, retries = 3, delay = 500) {
   }
   throw lastError;
 }
+ 

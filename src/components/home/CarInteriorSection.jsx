@@ -11,7 +11,9 @@ const images = [
   "/assets/about/img/mission.png",
 ]
 
-export default function CarInteriorSection() {
+export default function CarInteriorSection({ initialCategories = [], initialError = null }) {
+  const { categories: fetchedCategories, loading: isLoading, error } = useCategories(initialCategories, initialError);
+
   const [current, setCurrent] = useState(0)
   const [displayedTitle, setDisplayedTitle] = useState("")
   const cardRefs = useRef([])
@@ -22,7 +24,6 @@ export default function CarInteriorSection() {
   const [categories, setCategories] = useState([])
 
   const router = useRouter()
-  const { categories: fetchedCategories, loading: isLoading, error } = useCategories()
 
   useEffect(() => {
     const handleResize = () => {

@@ -1,5 +1,4 @@
 import { createServerClient } from '@supabase/ssr';
-import { cookies } from 'next/headers';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
@@ -11,42 +10,8 @@ if (!supabaseUrl || !supabaseAnonKey) {
 // Export the browser client creation function for compatibility
 export { createSupabaseBrowserClient } from './browser-client';
 
-// Creates a Supabase client for server components (async cookies API)
-export async function createSupabaseServerClientAsync() {
-  const cookieStore = await cookies();
-  return createServerClient(supabaseUrl, supabaseAnonKey, {
-    cookies: {
-      async get(name) {
-        return (await cookieStore.get(name))?.value;
-      },
-      async set(name, value, options) {
-        await cookieStore.set({ name, value, ...options });
-      },
-      async remove(name, options) {
-        await cookieStore.set({ name, value: '', ...options });
-      },
-    },
-  });
-}
-
-// Deprecated: Synchronous version (for backward compatibility)
-// Use createSupabaseServerClientAsync instead
-export function createSupabaseServerClient() {
-  const cookieStore = cookies();
-  return createServerClient(supabaseUrl, supabaseAnonKey, {
-    cookies: {
-      get(name) {
-        return cookieStore.get(name)?.value;
-      },
-      set(name, value, options) {
-        cookieStore.set({ name, value, ...options });
-      },
-      remove(name, options) {
-        cookieStore.set({ name, value: '', ...options });
-      },
-    },
-  });
-}
+// Export the server client creation function for server components
+export { createSupabaseServerClient } from './server-client';
 
 // Creates a Supabase client for middleware
 export function createMiddlewareClient(request, response) {

@@ -7,7 +7,8 @@ import '@/app/globals.css';
 import Image from 'next/image';
 import { useAuth } from '@/hooks/useAuth';
 
-export default function OrderHistoryPage() {
+export default function OrdersPage() {
+  const { user, sessionChecked } = useAuth();
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const router = useRouter();
@@ -52,7 +53,6 @@ export default function OrderHistoryPage() {
         <div className='p-6 text-center'>Loading orders...</div>
       </UserLayout>
     );
-  }
   }
 
   return (

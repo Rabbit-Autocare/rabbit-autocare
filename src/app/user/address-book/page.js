@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabaseClient';
 import UserLayout from '@/components/layouts/UserLayout';
-import { MapPin, Phone, Edit3, Trash2, Plus, Home, Briefcase, Star, Check, X, User, Building } from 'lucide-react';
+import { MapPin, Phone, Edit3, Trash2, Plus, Home, Briefcase, Star, Check, X, User, Building, MoreVertical } from 'lucide-react';
 import '@/app/globals.css';
 import { useAuth } from '@/hooks/useAuth';
 
@@ -11,6 +11,7 @@ export default function AddressBookPage() {
   const [loading, setLoading] = useState(true);
   const [showAddForm, setShowAddForm] = useState(false);
   const [editingId, setEditingId] = useState(null);
+  const [activeDropdown, setActiveDropdown] = useState(null); // Moved to top level
   const { user, sessionChecked } = useAuth();
   const [formData, setFormData] = useState({
     full_name: '',
@@ -201,6 +202,15 @@ export default function AddressBookPage() {
     }
   };
 
+  // Dropdown functions moved to component level
+  const toggleDropdown = (addressId) => {
+    setActiveDropdown(activeDropdown === addressId ? null : addressId);
+  };
+
+  const closeDropdown = () => {
+    setActiveDropdown(null);
+  };
+
   // Show loading state while session is being checked
   if (!sessionChecked) {
     return (
@@ -231,24 +241,26 @@ export default function AddressBookPage() {
 
   return (
     <UserLayout>
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 p-6">
+      <div className="min-h-screen p-6">
         <div className="max-w-7xl mx-auto">
 
           {/* Header */}
           <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center mb-8 space-y-4 lg:space-y-0">
-            <div>
-              <h1 className="text-4xl font-bold bg-gradient-to-r from-slate-800 to-slate-600 bg-clip-text text-transparent">
-                Address Book
-              </h1>
-              <p className="text-slate-600 mt-2 flex items-center space-x-2">
-                <MapPin className="w-4 h-4" />
-                <span>Manage your delivery addresses</span>
-              </p>
-            </div>
+          <div>
+            <h1 className="flex items-center text-[20px] font-semibold tracking-wide border-l-7 border-l-black pl-2 text-black h-7">
+              Save Address
+            </h1>
+
+            {/* <p className="text-slate-600 mt-2 flex items-center space-x-2">
+              <MapPin className="w-4 h-4" />
+              <span>Manage your delivery addresses</span>
+            </p> */}
+          </div>
+
             {!showAddForm && (
               <button
                 onClick={() => setShowAddForm(true)}
-                className="group bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white px-6 py-3 rounded-2xl font-medium shadow-lg shadow-blue-500/25 transition-all duration-300 transform hover:scale-105 flex items-center space-x-2"
+                className="group bg-black text-white px-6 py-3 rounded-[4px] font-medium shadow-lg shadow-blue-500/25 transition-all duration-300 transform hover:scale-105 flex items-center space-x-2"
               >
                 <Plus className="w-5 h-5 group-hover:rotate-90 transition-transform duration-300" />
                 <span>Add New Address</span>
@@ -447,83 +459,106 @@ export default function AddressBookPage() {
             </div>
           ) : (
             /* Address Cards */
-            <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-2 gap-6">
               {addresses.map((address) => (
                 <div
                   key={address.id}
-                  className={`group bg-white/80 backdrop-blur-sm p-6 rounded-3xl shadow-xl shadow-slate-200/50 border transition-all duration-300 transform hover:-translate-y-1 ${
-                    address.is_default
-                      ? 'border-yellow-300 bg-gradient-to-br from-yellow-50 to-white ring-2 ring-yellow-200'
-                      : 'border-white/50 hover:shadow-2xl hover:shadow-slate-300/50'
-                  }`}
+                  className="bg-white border border-gray-200 rounded-[4px] p-0 hover:shadow-md transition-shadow duration-200 relative"
                 >
-                  {/* Address Type Badge and Default Star */}
-                  <div className="flex items-center justify-between mb-4">
-                    <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium border ${getAddressTypeColor(address.address_type)}`}>
-                      {getAddressTypeIcon(address.address_type)}
-                      <span className="ml-1 capitalize">{address.address_type}</span>
-                    </span>
-
-                    {address.is_default && (
-                      <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800 border border-yellow-200">
-                        <Star className="w-3 h-3 mr-1 fill-current" />
-                        Default
-                      </span>
-                    )}
-                  </div>
-
-                  {/* Address Content */}
-                  <div className="space-y-3 mb-6">
-                    <h3 className="font-bold text-lg text-gray-800 flex items-center">
-                      <User className="w-4 h-4 mr-2 text-gray-500" />
-                      {address.full_name}
-                    </h3>
-
-                    <div className="text-gray-600 space-y-1">
-                      <p className="flex items-start">
-                        <MapPin className="w-4 h-4 mr-2 mt-0.5 text-gray-400 flex-shrink-0" />
-                        <span className="leading-relaxed">{address.street}</span>
-                      </p>
-                      <p className="ml-6 text-sm">
-                        {address.city}, {address.state} {address.postal_code}
-                      </p>
-                    </div>
-
-                    <p className="flex items-center text-gray-600">
-                      <Phone className="w-4 h-4 mr-2 text-gray-400" />
-                      {address.phone}
-                    </p>
-                  </div>
-
-                  {/* Action Buttons */}
-                  <div className="flex items-center justify-between pt-4 border-t border-gray-100">
+                  {/* Header with Address Type and Actions */}
+                  <div className="flex items-center justify-between p-6 pb-4">
                     <div className="flex items-center space-x-2">
-                      <button
-                        onClick={() => handleEdit(address)}
-                        className="flex items-center space-x-1 px-3 py-2 text-blue-600 hover:text-blue-700 hover:bg-blue-50 rounded-lg transition-colors duration-200 text-sm font-medium"
-                      >
-                        <Edit3 className="w-4 h-4" />
-                        <span>Edit</span>
-                      </button>
-
-                      {!address.is_default && (
-                        <button
-                          onClick={() => handleSetDefault(address.id)}
-                          className="flex items-center space-x-1 px-3 py-2 text-yellow-600 hover:text-yellow-700 hover:bg-yellow-50 rounded-lg transition-colors duration-200 text-sm font-medium"
-                        >
-                          <Star className="w-4 h-4" />
-                          <span>Default</span>
-                        </button>
+                      <span className="text-lg font-medium text-gray-900 capitalize">
+                        {address.address_type}
+                      </span>
+                      {address.is_default && (
+                        <span className="text-sm text-orange-600 font-medium">
+                          Default
+                        </span>
                       )}
                     </div>
 
-                    <button
-                      onClick={() => handleDelete(address.id)}
-                      className="flex items-center space-x-1 px-3 py-2 text-red-600 hover:text-red-700 hover:bg-red-50 rounded-lg transition-colors duration-200 text-sm font-medium"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                      <span>Delete</span>
-                    </button>
+                    <div className="relative">
+                      <button
+                        onClick={() => toggleDropdown(address.id)}
+                        className="p-1 hover:bg-gray-100 rounded-full transition-colors duration-200"
+                      >
+                        <MoreVertical className="w-5 h-5 text-gray-500 cursor-pointer" />
+                      </button>
+
+                      {/* Dropdown Menu */}
+                      {activeDropdown === address.id && (
+                        <>
+                          <div
+                            className="fixed inset-0 z-10"
+                            onClick={closeDropdown}
+                          ></div>
+                          <div
+                            className="absolute right-0 top-8 z-20 bg-white border border-gray-200 rounded-[4px] shadow-lg overflow-hidden"
+                            style={{ width: '113px', height: '75px' }}
+                          >
+                            <button
+                              onClick={() => {
+                                handleEdit(address);
+                                closeDropdown();
+                              }}
+                              className="w-full h-1/2 px-4 text-left text-sm text-gray-700 hover:bg-gray-50 transition-colors duration-200 border-b border-gray-200 flex items-center cursor-pointer"
+                            >
+                              Edit
+                            </button>
+                            {/* {!address.is_default && (
+                              <button
+                                onClick={() => {
+                                  handleSetDefault(address.id);
+                                  closeDropdown();
+                                }}
+                                className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50 transition-colors duration-200"
+                              >
+                                Set Default
+                              </button>
+                            )} */}
+                            <button
+                              onClick={() => {
+                                handleDelete(address.id);
+                                closeDropdown();
+                              }}
+                              className="w-full h-1/2 px-4 text-left text-sm text-red-600 hover:bg-red-50 transition-colors duration-200 flex items-center cursor-pointer"
+                            >
+                              Delete
+                            </button>
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Full width border below heading */}
+                  <div className="border-b border-gray-200"></div>
+
+                  {/* Address Details */}
+                  <div className="space-y-3 p-6 pt-4">
+                    {/* Name */}
+                    <div className="text-base tracking-wide font-medium text-gray-900">
+                      {address.full_name}
+                    </div>
+
+                    {/* Address */}
+                    <div className="text-sm tracking-wide text-gray-600 leading-relaxed">
+                      {address.street}<br />
+                      {address.city}, {address.state} {address.postal_code}
+                    </div>
+
+                    {/* Phone Number */}
+                    <div className="text-sm tracking-wide text-gray-600">
+                      <span className="font-medium text-black">Phone Number:</span> {address.phone}
+                    </div>
+
+                    {/* Email */}
+                    {address.email && (
+                      <div className="text-sm tracking-wide text-gray-600">
+                        <span className="font-medium">Email:</span> {address.email}
+                      </div>
+                    )}
                   </div>
                 </div>
               ))}

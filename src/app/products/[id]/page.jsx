@@ -1,85 +1,110 @@
-"use client"
+'use client';
 
-import { useState, useEffect } from "react"
-import { ProductService } from "@/lib/service/productService"
-import { KitService } from "@/lib/service/kitService"
-import { ComboService } from "@/lib/service/comboService"
-import ProductDetail from "@/components/shop/ProductDetail"
-import { usePathname, useRouter } from "next/navigation"
-import { Loader2 } from "lucide-react"
+import { useState, useEffect } from 'react';
+import { ProductService } from '@/lib/service/productService';
+import ProductDetail from '@/components/shop/ProductDetail';
+import { usePathname, useRouter } from 'next/navigation';
 
 export default function ProductPage() {
-	const pathname = usePathname()
-	const productCode = pathname.split("/").pop()
-	const [product, setProduct] = useState(null)
-	const [loading, setLoading] = useState(true)
-	const [error, setError] = useState(null)
-	const router = useRouter()
+  const pathname = usePathname();
+  const productCode = pathname.split('/').pop();
+  const [product, setProduct] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const router = useRouter();
 
-	useEffect(() => {
-		const fetchProduct = async () => {
-			if (!productCode) {
-				setError("Product code is missing from URL")
-				setLoading(false)
-				return
-			}
+  useEffect(() => {
+    const fetchProduct = async () => {
+      if (!productCode) {
+        setError('Product code is missing from URL');
+        setLoading(false);
+        return;
+      }
 
-			setLoading(true)
-			setError(null)
-			let productData = null
-			try {
-				// Try fetching as a product
-				productData = await ProductService.getProduct(productCode)
-				if (productData && productData.id) {
-					setProduct(productData)
-					setLoading(false)
-					return
-				}
-			} catch (err) {
-				// Ignore error, try as kit/combo
-			}
+      setLoading(true);
+      setError(null);
+      let productData = null;
 
-			// If not a product, redirect to /kitcombo/[id]
-			router.replace(`/kitcombo/${productCode}`)
-		}
-		fetchProduct()
-		// eslint-disable-next-line
-	}, [productCode])
+      try {
+        // Try fetching as a product using the API route first
+        productData = await ProductService.getProduct(productCode);
+        if (productData && productData.id) {
+          setProduct(productData);
+          setLoading(false);
+          return;
+        }
+      } catch (err) {
+        console.log('API route failed, trying direct Supabase:', err.message);
 
-	if (loading) {
-		return (
-			<div className="flex justify-center items-center min-h-[500px]">
-				<Loader2 className="h-16 w-16 animate-spin text-blue-500" />
-				<p className="ml-4 text-gray-600">Loading product details...</p>
-			</div>
-		)
-	}
+        // If API route fails, try direct Supabase access
+        try {
+          productData = await ProductService.getProductDirect(productCode);
+          if (productData && productData.id) {
+            setProduct(productData);
+            setLoading(false);
+            return;
+          }
+        } catch (directErr) {
+          console.log('Direct Supabase also failed:', directErr.message);
+          // Continue to redirect logic below
+        }
+      }
 
-	if (error) {
-		return (
-			<div className="flex justify-center items-center min-h-[500px]">
-				<div className="text-center">
-					<h2 className="text-xl font-semibold text-red-600 mb-2">Error</h2>
-					<p className="text-gray-700">{error}</p>
-				</div>
-			</div>
-		)
-	}
+      // If not a product, redirect to /kitcombo/[id]
+      router.replace(`/kitcombo/${productCode}`);
+    };
 
-	if (!product) {
-		return (
-			<div className="flex justify-center items-center min-h-[500px]">
-				<div className="text-center">
-					<h2 className="text-xl font-semibold text-gray-800 mb-2">Product Not Found</h2>
-					<p className="text-gray-600">The product you are looking for does not exist or has been removed.</p>
-				</div>
-			</div>
-		)
-	}
+    fetchProduct();
+  }, [productCode, router]);
 
-	return (
-		<div className="container mx-auto px-4 py-8">
-			<ProductDetail product={product} />
-		</div>
-	)
+  if (loading) {
+    return (
+      <div className='min-h-screen flex items-center justify-center'>
+        <div className='text-center'>
+          <img
+            src='/assets/loader.gif'
+            alt='Loading...'
+            className='h-48 w-48 mx-auto mb-4'
+          />
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className='min-h-screen flex items-center justify-center bg-gray-50'>
+        <div className='text-center max-w-md mx-auto p-6'>
+          <div className='bg-red-50 border border-red-200 rounded-lg p-4'>
+            <h3 className='text-lg font-semibold text-red-800 mb-2'>Error</h3>
+            <p className='text-red-600'>{error}</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (!product) {
+    return (
+      <div className='min-h-screen flex items-center justify-center bg-gray-50'>
+        <div className='text-center max-w-md mx-auto p-6'>
+          <div className='bg-yellow-50 border border-yellow-200 rounded-lg p-4'>
+            <h3 className='text-lg font-semibold text-yellow-800 mb-2'>
+              Product Not Found
+            </h3>
+            <p className='text-yellow-600'>
+              The product you are looking for does not exist or has been
+              removed.
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className='min-h-screen bg-white'>
+      <ProductDetail product={product} />
+    </div>
+  );
 }

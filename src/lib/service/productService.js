@@ -1,88 +1,150 @@
 // Enhanced ProductService with direct category/subcategory storage
 
-const API_BASE_URL = "/api/products"
-const GETBYCATEGORY = "/api/products/by-category"
+import { createSupabaseBrowserClient } from '@/lib/supabase/browser-client';
+
+const API_BASE_URL = '/api/products';
+const GETBYCATEGORY = '/api/products/by-category';
 
 export class ProductService {
+  // Get Supabase client instance
+  static getSupabaseClient() {
+    return createSupabaseBrowserClient();
+  }
+
   // ============= PRODUCTS =============
 
   static async getProducts({ code, limit, sort, filters = {} } = {}) {
-    const params = new URLSearchParams()
-    if (code) params.append("code", code)
-    if (limit) params.append("limit", limit)
-    if (sort) params.append("sort", sort)
+    const params = new URLSearchParams();
+    if (code) params.append('code', code);
+    if (limit) params.append('limit', limit);
+    if (sort) params.append('sort', sort);
 
     // Add filters to params
     Object.entries(filters).forEach(([key, value]) => {
-      if (value !== undefined && value !== null && value !== "") {
+      if (value !== undefined && value !== null && value !== '') {
         if (Array.isArray(value)) {
-          value.forEach((item) => params.append(key + "[]", item))
+          value.forEach((item) => params.append(key + '[]', item));
         } else {
-          params.append(key, value)
+          params.append(key, value);
         }
       }
-    })
+    });
 
-    const url = params.toString() ? `${API_BASE_URL}?${params}` : API_BASE_URL
+    const url = params.toString() ? `${API_BASE_URL}?${params}` : API_BASE_URL;
 
     try {
-      const res = await fetch(url)
+      const res = await fetch(url);
       if (!res.ok) {
-        const errorText = await res.text()
+        const errorText = await res.text();
         try {
-          const errorJson = JSON.parse(errorText)
-          throw new Error(errorJson.error || `API error: ${res.status}`)
+          const errorJson = JSON.parse(errorText);
+          throw new Error(errorJson.error || `API error: ${res.status}`);
         } catch (e) {
-          throw new Error(`API error: ${errorText || res.statusText || res.status}`)
+          throw new Error(
+            `API error: ${errorText || res.statusText || res.status}`
+          );
         }
       }
 
-      const data = await res.json()
+      const data = await res.json();
       const products = Array.isArray(data.products)
         ? data.products
         : Array.isArray(data.data)
-          ? data.data
-          : Array.isArray(data)
-            ? data
-            : []
-      const total = data.total || products.length
+        ? data.data
+        : Array.isArray(data)
+        ? data
+        : [];
+      const total = data.total || products.length;
 
-      const transformedProducts = products.map((product) => this.transformProductData(product))
+      const transformedProducts = products.map((product) =>
+        this.transformProductData(product)
+      );
 
       return {
         success: data.success || true,
         products: transformedProducts,
         total: total,
-      }
+      };
     } catch (error) {
-      console.error("Error in getProducts:", error)
-      throw error
+      console.error('Error in getProducts:', error);
+      throw error;
     }
   }
 
   static async getProduct(productIdentifier, includeRelations = false) {
     try {
-      const params = new URLSearchParams()
-      const url = `${API_BASE_URL}/${productIdentifier}${params.toString() ? `?${params}` : ""}`
+      const params = new URLSearchParams();
+      const url = `${API_BASE_URL}/${productIdentifier}${
+        params.toString() ? `?${params}` : ''
+      }`;
 
-      const res = await fetch(url)
+      const res = await fetch(url);
       if (!res.ok) {
-        const errorText = await res.text()
+        const errorText = await res.text();
         try {
-          const errorJson = JSON.parse(errorText)
-          throw new Error(errorJson.error || `API error: ${res.status}`)
+          const errorJson = JSON.parse(errorText);
+          throw new Error(errorJson.error || `API error: ${res.status}`);
         } catch (e) {
-          throw new Error(`API error: ${errorText || res.statusText || res.status}`)
+          throw new Error(
+            `API error: ${errorText || res.statusText || res.status}`
+          );
         }
       }
 
-      const data = await res.json()
-      const product = data.product || data
+      const data = await res.json();
+      const product = data.product || data;
 
-      return this.transformProductData(product)
+      return this.transformProductData(product);
     } catch (error) {
-      console.error("Error in getProduct:", error)
-      throw error
+      console.error('Error in getProduct:', error);
+      throw error;
+    }
+  }
+
+  // Direct Supabase method for getting product by ID or code
+  static async getProductDirect(productIdentifier) {
+    try {
+      const supabase = this.getSupabaseClient();
+
+      // Try to fetch by product_code first, then by id
+      let query = supabase.from('products').select(`
+          *,
+          product_variants (
+            id,
+            gsm,
+            size,
+            color,
+            color_hex,
+            quantity,
+            unit,
+            price,
+            stock,
+            compare_at_price
+          )
+        `);
+
+      // Check if productIdentifier is a number (id) or string (code)
+      if (!isNaN(productIdentifier)) {
+        query = query.eq('id', parseInt(productIdentifier));
+      } else {
+        query = query.eq('product_code', productIdentifier);
+      }
+
+      const { data: product, error } = await query.single();
+
+      if (error) {
+        console.error('Error fetching product from Supabase:', error);
+        throw new Error('Failed to fetch product');
+      }
+
+      if (!product) {
+        throw new Error('Product not found');
+      }
+
+      return this.transformProductData(product);
+    } catch (error) {
+      console.error('Error in getProductDirect:', error);
+      throw error;
     }
   }
 
@@ -92,13 +154,15 @@ export class ProductService {
         ...data,
         variants: Array.isArray(data.variants)
           ? data.variants.map((variant) => ({
-              id: variant.id || `var_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-              gsm: variant.gsm || "",
-              size: variant.size || "",
-              color: variant.color || "",
+              id:
+                variant.id ||
+                `var_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+              gsm: variant.gsm || '',
+              size: variant.size || '',
+              color: variant.color || '',
               color_hex: variant.color_hex || null,
-              quantity: variant.quantity || "",
-              unit: variant.unit || "ml",
+              quantity: variant.quantity || '',
+              unit: variant.unit || 'ml',
               price: Number.parseFloat(variant.price) || 0,
               stock: Number.parseInt(variant.stock) || 0,
               compare_at_price: variant.compareAtPrice || null,
@@ -107,29 +171,31 @@ export class ProductService {
         subcategory_names: Array.isArray(data.subcategory_names)
           ? data.subcategory_names
           : data.subcategory_names
-            ? [data.subcategory_names]
-            : [],
+          ? [data.subcategory_names]
+          : [],
         key_features: Array.isArray(data.key_features) ? data.key_features : [],
         taglines: Array.isArray(data.taglines) ? data.taglines : [],
-      }
+      };
 
       const res = await fetch(API_BASE_URL, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(transformedData),
-      })
+      });
 
       if (!res.ok) {
         const errorText = await res.text();
         console.error('API Error Response:', {
           status: res.status,
           statusText: res.statusText,
-          errorText: errorText
+          errorText: errorText,
         });
 
         try {
           const errorJson = JSON.parse(errorText);
-          throw new Error(errorJson.error || errorJson.message || `API error: ${res.status}`);
+          throw new Error(
+            errorJson.error || errorJson.message || `API error: ${res.status}`
+          );
         } catch (e) {
           if (errorText) {
             throw new Error(`API error: ${errorText}`);
@@ -142,11 +208,11 @@ export class ProductService {
       const json = await res.json();
       return this.transformProductData(json.product || json);
     } catch (error) {
-      console.error("Error in createProduct:", error);
-      console.error("Error details:", {
+      console.error('Error in createProduct:', error);
+      console.error('Error details:', {
         message: error.message,
         stack: error.stack,
-        data: data
+        data: data,
       });
       throw error;
     }
@@ -159,13 +225,15 @@ export class ProductService {
         ...updateData,
         variants: Array.isArray(updateData.variants)
           ? updateData.variants.map((variant) => ({
-              id: variant.id || `var_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-              gsm: variant.gsm || "",
-              size: variant.size || "",
-              color: variant.color || "",
+              id:
+                variant.id ||
+                `var_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+              gsm: variant.gsm || '',
+              size: variant.size || '',
+              color: variant.color || '',
               color_hex: variant.color_hex || null,
-              quantity: variant.quantity || "",
-              unit: variant.unit || "ml",
+              quantity: variant.quantity || '',
+              unit: variant.unit || 'ml',
               price: Number.parseFloat(variant.price) || 0,
               stock: Number.parseInt(variant.stock) || 0,
               compare_at_price: variant.compareAtPrice || null,
@@ -174,76 +242,84 @@ export class ProductService {
         subcategory_names: Array.isArray(updateData.subcategory_names)
           ? updateData.subcategory_names
           : updateData.subcategory_names
-            ? [updateData.subcategory_names]
-            : [],
-        key_features: Array.isArray(updateData.key_features) ? updateData.key_features : [],
+          ? [updateData.subcategory_names]
+          : [],
+        key_features: Array.isArray(updateData.key_features)
+          ? updateData.key_features
+          : [],
         taglines: Array.isArray(updateData.taglines) ? updateData.taglines : [],
-      }
+      };
 
       const res = await fetch(API_BASE_URL, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(transformedData),
-      })
+      });
 
       if (!res.ok) {
-        const errorText = await res.text()
+        const errorText = await res.text();
         try {
-          const errorJson = JSON.parse(errorText)
-          throw new Error(errorJson.error || `API error: ${res.status}`)
+          const errorJson = JSON.parse(errorText);
+          throw new Error(errorJson.error || `API error: ${res.status}`);
         } catch (e) {
-          throw new Error(`API error: ${errorText || res.statusText || res.status}`)
+          throw new Error(
+            `API error: ${errorText || res.statusText || res.status}`
+          );
         }
       }
 
-      const json = await res.json()
-      return this.transformProductData(json.product || json)
+      const json = await res.json();
+      return this.transformProductData(json.product || json);
     } catch (error) {
-      console.error("Error in updateProduct:", error)
-      throw error
+      console.error('Error in updateProduct:', error);
+      throw error;
     }
   }
 
   static async deleteProduct(id) {
     try {
       const res = await fetch(`${API_BASE_URL}?id=${id}`, {
-        method: "DELETE",
-      })
+        method: 'DELETE',
+      });
 
       if (!res.ok) {
-        const errorText = await res.text()
+        const errorText = await res.text();
         try {
-          const errorJson = JSON.parse(errorText)
-          throw new Error(errorJson.error || `API error: ${res.status}`)
+          const errorJson = JSON.parse(errorText);
+          throw new Error(errorJson.error || `API error: ${res.status}`);
         } catch (e) {
-          throw new Error(`API error: ${errorText || res.statusText || res.status}`)
+          throw new Error(
+            `API error: ${errorText || res.statusText || res.status}`
+          );
         }
       }
 
-      const json = await res.json()
-      return json
+      const json = await res.json();
+      return json;
     } catch (error) {
-      console.error("Error in deleteProduct:", error)
-      throw error
+      console.error('Error in deleteProduct:', error);
+      throw error;
     }
   }
 
   // ============= PRODUCTS BY CATEGORY =============
 
-  static async getProductsByCategory(categoryName, { limit, sort, filters = {} } = {}) {
+  static async getProductsByCategory(
+    categoryName,
+    { limit, sort, filters = {} } = {}
+  ) {
     try {
-      if (!categoryName || categoryName === "all") {
-        return this.getProducts({ limit, sort, filters })
+      if (!categoryName || categoryName === 'all') {
+        return this.getProducts({ limit, sort, filters });
       }
 
-      const combinedFilters = { ...filters, category: categoryName }
-      return this.getProducts({ limit, sort, filters: combinedFilters })
+      const combinedFilters = { ...filters, category: categoryName };
+      return this.getProducts({ limit, sort, filters: combinedFilters });
     } catch (error) {
-      console.error("Error in getProductsByCategory:", error)
-      throw error
+      console.error('Error in getProductsByCategory:', error);
+      throw error;
     }
   }
-
 
   // ============= DATA TRANSFORMATION =============
 
@@ -257,7 +333,7 @@ export class ProductService {
       ...product,
       category: product.category_name,
       subcategory: product.subcategory_name,
-      variants: variants.map(variant => {
+      variants: variants.map((variant) => {
         if (product.is_microfiber) {
           return {
             id: variant.id,
@@ -267,7 +343,7 @@ export class ProductService {
             color_hex: variant.color_hex || null,
             stock: variant.stock || 0,
             price: variant.price || 0,
-            compareAtPrice: variant.compare_at_price || null
+            compareAtPrice: variant.compare_at_price || null,
           };
         } else {
           return {
@@ -278,10 +354,10 @@ export class ProductService {
             color_hex: variant.color_hex || null,
             stock: variant.stock || 0,
             price: variant.price || 0,
-            compareAtPrice: variant.compare_at_price || null
+            compareAtPrice: variant.compare_at_price || null,
           };
         }
-      })
+      }),
     };
 
     return transformedData;
@@ -300,14 +376,19 @@ export class ProductService {
     if (!transformedProduct || !transformedProduct.id) return null;
 
     const variants = transformedProduct.variants || [];
-    const totalStock = variants.reduce((sum, variant) => sum + (variant.stock || 0), 0);
+    const totalStock = variants.reduce(
+      (sum, variant) => sum + (variant.stock || 0),
+      0
+    );
     const availableVariants = variants.filter((v) => (v.stock || 0) > 0).length;
-    const minPrice = variants.length > 0 ? Math.min(...variants.map((v) => v.price || 0)) : 0;
-    const maxPrice = variants.length > 0 ? Math.max(...variants.map((v) => v.price || 0)) : 0;
+    const minPrice =
+      variants.length > 0 ? Math.min(...variants.map((v) => v.price || 0)) : 0;
+    const maxPrice =
+      variants.length > 0 ? Math.max(...variants.map((v) => v.price || 0)) : 0;
 
     // Ensure we have valid price data
     if (minPrice === 0 && maxPrice === 0) {
-      console.log("Product has no valid price data:", product.name);
+      console.log('Product has no valid price data:', product.name);
       return null;
     }
 
@@ -321,39 +402,42 @@ export class ProductService {
   }
 
   static extractProducts(response) {
-    if (!response) return []
+    if (!response) return [];
     if (Array.isArray(response.products)) {
-      return response.products
+      return response.products;
     }
     if (Array.isArray(response.data)) {
-      return response.data
+      return response.data;
     }
     if (Array.isArray(response)) {
-      return response
+      return response;
     }
-    return []
+    return [];
   }
 
   static extractTotalCount(response) {
-    if (response && typeof response.total === "number") {
-      return response.total
+    if (response && typeof response.total === 'number') {
+      return response.total;
     }
-    return this.extractProducts(response).length
+    return this.extractProducts(response).length;
   }
 
   static hasCategoryData(product) {
     return (
-      product && product.category_name !== undefined && product.category_name !== null && product.category_name !== ""
-    )
+      product &&
+      product.category_name !== undefined &&
+      product.category_name !== null &&
+      product.category_name !== ''
+    );
   }
 
   static getLowestPrice(variants) {
-    if (!Array.isArray(variants) || variants.length === 0) return 0
-    return Math.min(...variants.map((v) => Number.parseFloat(v.price) || 0))
+    if (!Array.isArray(variants) || variants.length === 0) return 0;
+    return Math.min(...variants.map((v) => Number.parseFloat(v.price) || 0));
   }
 
   static getHighestPrice(variants) {
-    if (!Array.isArray(variants) || variants.length === 0) return 0
-    return Math.max(...variants.map((v) => Number.parseFloat(v.price) || 0))
+    if (!Array.isArray(variants) || variants.length === 0) return 0;
+    return Math.max(...variants.map((v) => Number.parseFloat(v.price) || 0));
   }
 }

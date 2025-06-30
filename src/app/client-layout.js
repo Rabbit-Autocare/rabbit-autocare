@@ -201,6 +201,18 @@ export default function ClientLayout({ children }) {
       if (!navbarContainer) {
         navbarContainer = document.createElement("div")
         navbarContainer.id = "navbar-portal"
+        // Set initial hidden styles immediately
+        navbarContainer.style.cssText = `
+          position: fixed !important;
+          top: 0 !important;
+          left: 0 !important;
+          right: 0 !important;
+          z-index: 99999 !important;
+          pointer-events: none !important;
+          opacity: 0 !important;
+          transform: translateY(-100%) !important;
+          transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+        `
         document.body.appendChild(navbarContainer)
       }
       setPortalContainer(navbarContainer)
@@ -221,6 +233,18 @@ export default function ClientLayout({ children }) {
       if (!mobileNavbarContainer) {
         mobileNavbarContainer = document.createElement("div")
         mobileNavbarContainer.id = "mobile-navbar-portal"
+        // Set initial hidden styles immediately
+        mobileNavbarContainer.style.cssText = `
+          position: fixed !important;
+          top: 0 !important;
+          left: 0 !important;
+          right: 0 !important;
+          z-index: 99998 !important;
+          pointer-events: none !important;
+          opacity: 0 !important;
+          transform: translateY(-100%) !important;
+          transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+        `
         document.body.appendChild(mobileNavbarContainer)
       }
       setMobilePortalContainer(mobileNavbarContainer)
@@ -267,10 +291,10 @@ export default function ClientLayout({ children }) {
         left: 0 !important;
         right: 0 !important;
         z-index: 99999 !important;
-        pointer-events: ${showMainNavbar ? "auto" : "none"};
-        opacity: ${showMainNavbar ? "1" : "0"};
-        transform: translateY(${showMainNavbar ? "0" : "-100%"});
-        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        pointer-events: ${showMainNavbar ? "auto" : "none"} !important;
+        opacity: ${showMainNavbar ? "1" : "0"} !important;
+        transform: translateY(${showMainNavbar ? "0" : "-100%"}) !important;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
       `
     }
   }, [showMainNavbar, portalContainer])
@@ -283,10 +307,10 @@ export default function ClientLayout({ children }) {
         left: 0 !important;
         right: 0 !important;
         z-index: 99998 !important;
-        pointer-events: ${showMobileNavbar ? "auto" : "none"};
-        opacity: ${showMobileNavbar ? "1" : "0"};
-        transform: translateY(${showMobileNavbar ? "0" : "-100%"});
-        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        pointer-events: ${showMobileNavbar ? "auto" : "none"} !important;
+        opacity: ${showMobileNavbar ? "1" : "0"} !important;
+        transform: translateY(${showMobileNavbar ? "0" : "-100%"}) !important;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
       `
     }
   }, [showMobileNavbar, mobilePortalContainer])

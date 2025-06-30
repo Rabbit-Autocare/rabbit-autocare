@@ -1,21 +1,18 @@
 // app/login/page.jsx
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import { supabase } from '@/lib/supabaseClient';
+import { createSupabaseBrowserClient } from '@/lib/supabase/browser-client';
 
 export default function LoginPage() {
   const router = useRouter();
   const [user, setUser] = useState(null);
   const [userData, setUserData] = useState(null);
   const [loading, setLoading] = useState(true);
+  const supabase = createSupabaseBrowserClient();
 
-  useEffect(() => {
-    checkUser();
-  }, []);
-
-  const checkUser = async () => {
+  const checkUser = useCallback(async () => {
     try {
       const {
         data: { session },
@@ -57,7 +54,11 @@ export default function LoginPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [supabase, router]);
+
+  useEffect(() => {
+    checkUser();
+  }, [checkUser]);
 
   const handleGoogleSignIn = async () => {
     try {

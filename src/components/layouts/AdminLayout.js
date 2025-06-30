@@ -1,6 +1,6 @@
 import React from 'react';
 import AdminSidebar from '../admin/AdminSidebar';
-import '../../app/globals.css';
+import '@/app/globals.css';
 
 export default function AdminLayout({ children }) {
   return (

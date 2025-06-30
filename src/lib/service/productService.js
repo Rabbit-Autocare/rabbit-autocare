@@ -2,7 +2,7 @@
 
 const API_BASE_URL = "/api/products"
 const GETBYCATEGORY = "/api/products/by-category"
-
+ 
 export class ProductService {
   // ============= PRODUCTS =============
 

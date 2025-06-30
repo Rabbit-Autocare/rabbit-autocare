@@ -1,6 +1,6 @@
 import { supabase } from '@/lib/supabaseClient';
 import { StockService } from './stockService';
-
+ 
 export class KitService {
   static async uploadKitImage(kitId, imageFile) {
     try {

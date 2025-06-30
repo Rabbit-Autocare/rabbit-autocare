@@ -12,6 +12,8 @@ import {
 } from "@/lib/service/microdataService"
 
 const FilterSidebar = ({
+  initialCategories = [],
+  initialError = null,
   selectedSize,
   setSelectedSize,
   minPrice,
@@ -37,14 +39,23 @@ const FilterSidebar = ({
 }) => {
   // State for all filter options
   const [filterOptions, setFilterOptions] = useState({
-    categories: [],
+    categories: initialCategories.length
+      ? [
+          { value: "all", label: "All Products" },
+          ...initialCategories.map(cat => ({
+            value: cat.name.toLowerCase().replace(/\s+/g, '-'),
+            label: cat.name,
+            is_microfiber: cat.is_microfiber || false
+          }))
+        ]
+      : [],
     sizes: [],
     colors: [],
     gsmValues: [],
     quantities: [],
     priceRange: [0, 1000],
   })
-  const [loading, setLoading] = useState(true)
+  const [loading, setLoading] = useState(!initialCategories.length)
 
   // Fetch all filter data on component mount
   useEffect(() => {
@@ -78,7 +89,8 @@ const FilterSidebar = ({
         })
 
         // Set all filter options
-        setFilterOptions({
+        setFilterOptions(prevOptions => ({
+          ...prevOptions,
           categories: [
             { value: "all", label: "All Products" },
             ...(categoriesRes.data || []).map(cat => ({
@@ -109,7 +121,7 @@ const FilterSidebar = ({
             minProductPrice === Infinity ? 0 : minProductPrice,
             maxProductPrice === 0 ? 1000 : maxProductPrice
           ]
-        })
+        }))
 
         // Initialize price range state
         if (priceRange[1] === 1000) {
@@ -136,8 +148,12 @@ const FilterSidebar = ({
       }
     }
 
-    fetchFilterData()
-  }, [])
+    if (!initialCategories.length) {
+      fetchFilterData()
+    } else {
+      setLoading(false)
+    }
+  }, [initialCategories])
 
   // Handle price range change
   const handlePriceRangeChange = (e) => {

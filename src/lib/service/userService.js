@@ -1,11 +1,11 @@
-import { createSupabaseServerClientAsync } from '@/lib/supabase/index';
+import { createSupabaseServerClient } from '@/lib/supabase/server-client';
 
 export class UserService {
   // ============= USER PROFILE =============
 
   static async getUserProfile(userId) {
     try {
-      const supabase = await createSupabaseServerClientAsync();
+      const supabase = await createSupabaseServerClient();
 
       const { data, error } = await supabase
         .from('auth_users')
@@ -25,7 +25,7 @@ export class UserService {
 
   static async getUserOrders(userId) {
     try {
-      const supabase = await createSupabaseServerClientAsync();
+      const supabase = await createSupabaseServerClient();
 
       const { data, error } = await supabase
         .from('orders')
@@ -43,7 +43,7 @@ export class UserService {
 
   static async getUserOrderDetails(orderId, userId) {
     try {
-      const supabase = await createSupabaseServerClientAsync();
+      const supabase = await createSupabaseServerClient();
 
       const { data, error } = await supabase
         .from('orders')
@@ -64,7 +64,7 @@ export class UserService {
 
   static async getUserAddresses(userId) {
     try {
-      const supabase = await createSupabaseServerClientAsync();
+      const supabase = await createSupabaseServerClient();
 
       const { data, error } = await supabase
         .from('addresses')
@@ -85,7 +85,7 @@ export class UserService {
 
   static async getUserCoupons(userId) {
     try {
-      const supabase = await createSupabaseServerClientAsync();
+      const supabase = await createSupabaseServerClient();
 
       // 1. Fetch user's coupon IDs from auth_users table
       const { data: userData, error: userError } = await supabase
@@ -162,7 +162,7 @@ export class UserService {
 
   static async getUserSession() {
     try {
-      const supabase = await createSupabaseServerClientAsync();
+      const supabase = await createSupabaseServerClient();
 
       const { data: { user }, error } = await supabase.auth.getUser();
 
@@ -178,7 +178,7 @@ export class UserService {
 
   static async updateUserProfile(userId, updateData) {
     try {
-      const supabase = await createSupabaseServerClientAsync();
+      const supabase = await createSupabaseServerClient();
 
       const { data, error } = await supabase
         .from('auth_users')
@@ -202,7 +202,7 @@ export class UserService {
 
   static async createUserAddress(addressData) {
     try {
-      const supabase = await createSupabaseServerClientAsync();
+      const supabase = await createSupabaseServerClient();
 
       const { data, error } = await supabase
         .from('addresses')
@@ -222,7 +222,7 @@ export class UserService {
 
   static async updateUserAddress(addressId, updateData) {
     try {
-      const supabase = await createSupabaseServerClientAsync();
+      const supabase = await createSupabaseServerClient();
 
       const { data, error } = await supabase
         .from('addresses')
@@ -243,7 +243,7 @@ export class UserService {
 
   static async deleteUserAddress(addressId) {
     try {
-      const supabase = await createSupabaseServerClientAsync();
+      const supabase = await createSupabaseServerClient();
 
       const { error } = await supabase
         .from('addresses')

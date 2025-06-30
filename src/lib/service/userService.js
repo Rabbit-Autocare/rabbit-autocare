@@ -1,11 +1,11 @@
-import { createSupabaseServerClientAsync } from '@/lib/supabase/index';
+import { createSupabaseServerClient } from '@/lib/supabase/server-client';
 
 export class UserService {
   // ============= USER PROFILE =============
 
   static async getUserProfile(userId) {
     try {
-      const supabase = await createSupabaseServerClientAsync();
+      const supabase = await createSupabaseServerClient();
 
       const { data, error } = await supabase
         .from('auth_users')
@@ -25,7 +25,7 @@ export class UserService {
 
   static async getUserOrders(userId) {
     try {
-      const supabase = await createSupabaseServerClientAsync();
+      const supabase = await createSupabaseServerClient();
 
       const { data, error } = await supabase
         .from('orders')
@@ -43,7 +43,7 @@ export class UserService {
 
   static async getUserOrderDetails(orderId, userId) {
     try {
-      const supabase = await createSupabaseServerClientAsync();
+      const supabase = await createSupabaseServerClient();
 
       const { data, error } = await supabase
         .from('orders')
@@ -64,7 +64,7 @@ export class UserService {
 
   static async getUserAddresses(userId) {
     try {
-      const supabase = await createSupabaseServerClientAsync();
+      const supabase = await createSupabaseServerClient();
 
       const { data, error } = await supabase
         .from('addresses')
@@ -85,45 +85,75 @@ export class UserService {
 
   static async getUserCoupons(userId) {
     try {
-      const supabase = await createSupabaseServerClientAsync();
+      const supabase = await createSupabaseServerClient();
 
-      // Fetch user's specific coupons
-      const { data: userCoupons, error: userCouponsError } = await supabase
-        .from('user_coupons')
-        .select(`
-          *,
-          coupons (*)
-        `)
-        .eq('user_id', userId);
+      // 1. Fetch user's coupon IDs from auth_users table
+      const { data: userData, error: userError } = await supabase
+        .from('auth_users')
+        .select('coupons')
+        .eq('id', userId)
+        .single();
 
-      if (userCouponsError) throw userCouponsError;
+      if (userError) throw userError;
 
-      // Fetch all available coupons
-      const { data: allCoupons, error: allCouponsError } = await supabase
+      // Convert the user's coupons array to a Set for faster lookups
+      const userCouponIds = new Set(userData?.coupons || []);
+
+      // 2. Fetch all active coupons
+      const { data: allActiveCoupons, error: activeCouponsError } = await supabase
         .from('coupons')
         .select('*')
-        .eq('is_active', true)
-        .order('created_at', { ascending: false });
+        .eq('is_active', true);
 
-      if (allCouponsError) throw allCouponsError;
+      if (activeCouponsError) throw activeCouponsError;
 
-      // Filter out used coupons
-      const usedCouponIds = new Set(userCoupons.map(uc => uc.coupon_id));
-      const availableCoupons = allCoupons.filter(coupon => !usedCouponIds.has(coupon.id));
+      // 3. Fetch details for all of the user's coupons (even if inactive)
+      let userCouponsDetails = [];
+      if (userCouponIds.size > 0) {
+        const { data, error } = await supabase
+          .from('coupons')
+          .select('*')
+          .in('id', [...userCouponIds]);
+        if (error) throw error;
+        userCouponsDetails = data || [];
+      }
+
+      // 4. Helper to format coupon data consistently
+      const formatCoupon = (coupon) => {
+        const discount = coupon.discount_percent
+          ? `${coupon.discount_percent}%`
+          : coupon.discount_amount
+          ? `₹${coupon.discount_amount}`
+          : 'Offer';
+        return {
+          id: coupon.id,
+          code: coupon.code,
+          description: coupon.description,
+          discount: discount,
+          validUpto: coupon.expiry_date,
+        };
+      };
+
+      // 5. Process both lists
+      const processedUserCoupons = userCouponsDetails.map(formatCoupon);
+      const processedAvailableCoupons = (allActiveCoupons || [])
+        .filter(coupon => !userCouponIds.has(coupon.id))
+        .map(formatCoupon);
 
       return {
         success: true,
         data: {
-          userCoupons: userCoupons || [],
-          availableCoupons: availableCoupons || []
-        }
+          userCoupons: processedUserCoupons,
+          availableCoupons: processedAvailableCoupons,
+        },
       };
     } catch (error) {
-      console.error('Error fetching user coupons:', error);
+      const errorMessage = error.message || JSON.stringify(error);
+      console.error('Error fetching user coupons:', errorMessage);
       return {
         success: false,
-        error: error.message,
-        data: { userCoupons: [], availableCoupons: [] }
+        error: errorMessage,
+        data: { userCoupons: [], availableCoupons: [] },
       };
     }
   }
@@ -132,7 +162,7 @@ export class UserService {
 
   static async getUserSession() {
     try {
-      const supabase = await createSupabaseServerClientAsync();
+      const supabase = await createSupabaseServerClient();
 
       const { data: { user }, error } = await supabase.auth.getUser();
 
@@ -148,7 +178,7 @@ export class UserService {
 
   static async updateUserProfile(userId, updateData) {
     try {
-      const supabase = await createSupabaseServerClientAsync();
+      const supabase = await createSupabaseServerClient();
 
       const { data, error } = await supabase
         .from('auth_users')
@@ -172,7 +202,7 @@ export class UserService {
 
   static async createUserAddress(addressData) {
     try {
-      const supabase = await createSupabaseServerClientAsync();
+      const supabase = await createSupabaseServerClient();
 
       const { data, error } = await supabase
         .from('addresses')
@@ -192,7 +222,7 @@ export class UserService {
 
   static async updateUserAddress(addressId, updateData) {
     try {
-      const supabase = await createSupabaseServerClientAsync();
+      const supabase = await createSupabaseServerClient();
 
       const { data, error } = await supabase
         .from('addresses')
@@ -213,7 +243,7 @@ export class UserService {
 
   static async deleteUserAddress(addressId) {
     try {
-      const supabase = await createSupabaseServerClientAsync();
+      const supabase = await createSupabaseServerClient();
 
       const { error } = await supabase
         .from('addresses')

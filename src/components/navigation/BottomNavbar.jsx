@@ -8,6 +8,7 @@ import { CategoryService } from "@/lib/service/microdataService"
 import { useAuth } from "@/hooks/useAuth"
 import CouponCard from "@/components/ui/CouponCard"
 import { createSupabaseBrowserClient } from '@/lib/supabase/browser-client'
+import { ClientUserService } from "@/lib/service/client-userService"
 
 // Category image mapping from ExtraNavbar
 const categoryImageMap = {
@@ -25,6 +26,7 @@ export default function BottomNavbar() {
   const [loading, setLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState("")
   const [userCoupons, setUserCoupons] = useState([])
+  const [availableCoupons, setAvailableCoupons] = useState([])
   const { openCart, cartCount } = useCart()
   const { user, loading: authLoading } = useAuth()
 
@@ -111,20 +113,38 @@ export default function BottomNavbar() {
 
   // Fetch user's coupons
   useEffect(() => {
-    const fetchUserCoupons = async () => {
+    const fetchCoupons = async () => {
+      console.log('BottomNavbar - Fetching coupons for user:', user?.id);
       if (user?.id) {
-        const supabase = createSupabaseBrowserClient();
-        const { data: userCoupons, error } = await supabase
-          .from('user_coupons')
-          .select('*, coupons (*)')
-          .eq('user_id', user.id);
-        if (!error) setUserCoupons(userCoupons || []);
+        const { success, data, error } = await ClientUserService.getUserCoupons(user.id);
+        console.log('BottomNavbar - Fetch result:', { success, data, error });
+        if (success) {
+          setUserCoupons(data.userCoupons || []);
+          setAvailableCoupons(data.availableCoupons || []);
+          console.log('BottomNavbar - Updated state:', {
+            userCoupons: data.userCoupons,
+            availableCoupons: data.availableCoupons
+          });
+        } else {
+          console.error('BottomNavbar - Failed to fetch coupons:', error);
+        }
       }
     };
     if (!authLoading) {
-      fetchUserCoupons();
+      fetchCoupons();
     }
   }, [user?.id, authLoading]);
+
+  // Add a debug log when state changes
+  useEffect(() => {
+    console.log('BottomNavbar - Current coupon state:', {
+      userCoupons,
+      availableCoupons,
+      isCouponsOpen,
+      authLoading,
+      user: !!user
+    });
+  }, [userCoupons, availableCoupons, isCouponsOpen, authLoading, user]);
 
   // Fetch categories using CategoryService - Exact same logic as ExtraNavbar
   useEffect(() => {
@@ -425,20 +445,38 @@ export default function BottomNavbar() {
           {/* <h3 className="font-semibold text-lg mb-4 text-gray-800">Your Available Coupons</h3> */}
           <div className="coupon-scroll-area">
             {authLoading ? (
-              <div className="text-center ">
+              <div className="text-center p-4">
                 <p className="text-gray-500">Loading...</p>
               </div>
             ) : user ? (
-              userCoupons.length > 0 ? (
-                <div className="space-y-3 mb-3">
-                  {userCoupons.map((coupon, idx) => (
-                    <CouponCard
-                      key={coupon.id || idx}
-                      code={coupon.code}
-                      discount={coupon.discount}
-                      validUpto={coupon.expiry}
-                    />
-                  ))}
+              (userCoupons.length > 0 || availableCoupons.length > 0) ? (
+                <div className="space-y-3">
+                  {userCoupons.length > 0 && (
+                    <>
+                      <h4 className="font-semibold text-sm text-gray-600 px-2 pt-2">Your Coupons</h4>
+                      {userCoupons.map((coupon) => (
+                        <CouponCard
+                          key={`user-${coupon.id}`}
+                          code={coupon.code}
+                          discount={coupon.discount}
+                          validUpto={coupon.validUpto}
+                        />
+                      ))}
+                    </>
+                  )}
+                  {availableCoupons.length > 0 && (
+                    <>
+                      <h4 className="font-semibold text-sm text-gray-600 px-2 pt-4">Available Coupons</h4>
+                      {availableCoupons.map((coupon) => (
+                        <CouponCard
+                          key={`avail-${coupon.id}`}
+                          code={coupon.code}
+                          discount={coupon.discount}
+                          validUpto={coupon.validUpto}
+                        />
+                      ))}
+                    </>
+                  )}
                 </div>
               ) : (
                 <div className="text-center py-8 text-gray-500">

@@ -1,7 +1,7 @@
 "use client"
 
 import { createContext, useContext, useState, useEffect } from 'react'
-import { supabase } from '@/lib/supabaseClient'
+import { createSupabaseBrowserClient } from '@/lib/supabase/browser-client'
 
 export const AuthContext = createContext()
 
@@ -11,10 +11,13 @@ export function AuthProvider({ children }) {
   const [loading, setLoading] = useState(true)
   const [sessionChecked, setSessionChecked] = useState(false)
 
+  // Initialize supabase client immediately
+  const supabase = createSupabaseBrowserClient()
+
   useEffect(() => {
     console.log('[AuthContext] Initializing AuthContext...')
 
-    // Check initial session
+    // Check initial session immediately
     const checkInitialSession = async () => {
       try {
         const { data: { session }, error } = await supabase.auth.getSession()
@@ -59,7 +62,7 @@ export function AuthProvider({ children }) {
     return () => {
       subscription?.unsubscribe()
     }
-  }, [])
+  }, [supabase])
 
   const checkUserRole = async (user) => {
     console.log(`[AuthContext] Checking profile for user: ${user.id}`);
@@ -124,6 +127,7 @@ export function AuthProvider({ children }) {
     isAdmin,
     loading,
     sessionChecked,
+    supabase, // Expose supabase client
     signIn,
     signOut
   }

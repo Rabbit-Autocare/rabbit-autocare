@@ -2,18 +2,44 @@
 
 import { createSupabaseBrowserClient } from '@/lib/supabase/browser-client';
 
-const API_BASE_URL = '/api/products';
-const GETBYCATEGORY = '/api/products/by-category';
+// No server-side imports at module level
+
+// Check if we're in a server environment
+const isServer = typeof window === 'undefined';
+
+// Base URLs - use full URLs for server-side calls
+const getBaseUrl = () => {
+  if (isServer) {
+    return (
+      process.env.NEXT_PUBLIC_SITE_URL ||
+      process.env.VERCEL_URL ||
+      'http://localhost:3000'
+    );
+  }
+  return '';
+};
+
+const API_BASE_URL = isServer
+  ? `${getBaseUrl()}/api/products`
+  : '/api/products';
+const GETBYCATEGORY = isServer
+  ? `${getBaseUrl()}/api/products/by-category`
+  : '/api/products/by-category';
+const CATEGORIES_API_URL = isServer
+  ? `${getBaseUrl()}/api/products/category`
+  : '/api/products/category';
 
 export class ProductService {
   // Get Supabase client instance
   static getSupabaseClient() {
     return createSupabaseBrowserClient();
-  }
+  } // Note: For server-side operations, use ServerProductService instead
 
   // ============= PRODUCTS =============
 
   static async getProducts({ code, limit, sort, filters = {} } = {}) {
+    // Always use fetch API approach for client components
+    // Server components should use the direct methods separately
     const params = new URLSearchParams();
     if (code) params.append('code', code);
     if (limit) params.append('limit', limit);
@@ -71,6 +97,8 @@ export class ProductService {
     }
   }
 
+  // Note: For server-side operations, use ServerProductService instead
+
   static async getProduct(productIdentifier, includeRelations = false) {
     try {
       const params = new URLSearchParams();
@@ -101,52 +129,7 @@ export class ProductService {
     }
   }
 
-  // Direct Supabase method for getting product by ID or code
-  static async getProductDirect(productIdentifier) {
-    try {
-      const supabase = this.getSupabaseClient();
-
-      // Try to fetch by product_code first, then by id
-      let query = supabase.from('products').select(`
-          *,
-          product_variants (
-            id,
-            gsm,
-            size,
-            color,
-            color_hex,
-            quantity,
-            unit,
-            price,
-            stock,
-            compare_at_price
-          )
-        `);
-
-      // Check if productIdentifier is a number (id) or string (code)
-      if (!isNaN(productIdentifier)) {
-        query = query.eq('id', parseInt(productIdentifier));
-      } else {
-        query = query.eq('product_code', productIdentifier);
-      }
-
-      const { data: product, error } = await query.single();
-
-      if (error) {
-        console.error('Error fetching product from Supabase:', error);
-        throw new Error('Failed to fetch product');
-      }
-
-      if (!product) {
-        throw new Error('Product not found');
-      }
-
-      return this.transformProductData(product);
-    } catch (error) {
-      console.error('Error in getProductDirect:', error);
-      throw error;
-    }
-  }
+  // Note: For server-side operations, use ServerProductService instead
 
   static async createProduct(data) {
     try {
@@ -301,6 +284,50 @@ export class ProductService {
       throw error;
     }
   }
+
+  // ============= CATEGORIES =============
+
+  static async getCategories() {
+    // Always use fetch API approach for client components
+    // Server components should use the direct methods separately
+    try {
+      const res = await fetch(CATEGORIES_API_URL);
+
+      if (!res.ok) {
+        const errorText = await res.text();
+        try {
+          const errorJson = JSON.parse(errorText);
+          throw new Error(errorJson.error || `API error: ${res.status}`);
+        } catch (e) {
+          throw new Error(
+            `API error: ${errorText || res.statusText || res.status}`
+          );
+        }
+      }
+
+      const data = await res.json();
+
+      // Handle different response formats
+      const categories = Array.isArray(data.categories)
+        ? data.categories
+        : Array.isArray(data.data)
+        ? data.data
+        : Array.isArray(data)
+        ? data
+        : [];
+
+      return {
+        success: data.success !== false,
+        data: categories,
+        total: data.total || categories.length,
+      };
+    } catch (error) {
+      console.error('Error in getCategories:', error);
+      throw error;
+    }
+  }
+
+  // Note: For server-side operations, use ServerProductService instead
 
   // ============= PRODUCTS BY CATEGORY =============
 

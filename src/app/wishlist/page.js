@@ -2,7 +2,7 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabaseClient';
 import Image from 'next/image';
-import { Heart, ShoppingCart, Trash2, Star, Package, Box, Gift } from 'lucide-react';
+import { ShoppingCart, Trash2, Star, Package, Box, Gift } from 'lucide-react';
 import { WishlistService } from '@/lib/service/wishlistService'; // Add this import
 
 export default function WishlistPage() {
@@ -15,7 +15,7 @@ export default function WishlistPage() {
   const fetchWishlist = async () => {
     try {
       const { data: { user }, error: userError } = await supabase.auth.getUser();
-      
+
       if (userError || !user) {
         console.error('User not authenticated:', userError);
         setLoading(false);
@@ -76,7 +76,7 @@ export default function WishlistPage() {
     } catch (error) {
       console.error('Unexpected error:', error);
     }
-    
+
     setLoading(false);
   };
 
@@ -101,7 +101,7 @@ export default function WishlistPage() {
 
   const handleAddToCart = async (item) => {
     setAddingToCartId(item.id);
-    
+
     try {
       const cartItem = {
         user_id: user.id,
@@ -123,8 +123,8 @@ export default function WishlistPage() {
       const { error } = await supabase
         .from('cart_items')
         .upsert(cartItem, {
-          onConflict: user.id && item.product_id ? 'user_id,product_id' : 
-                     user.id && item.combo_id ? 'user_id,combo_id' : 
+          onConflict: user.id && item.product_id ? 'user_id,product_id' :
+                     user.id && item.combo_id ? 'user_id,combo_id' :
                      'user_id,kit_id'
         });
 
@@ -136,7 +136,7 @@ export default function WishlistPage() {
     } catch (error) {
       console.error('Unexpected error adding to cart:', error);
     }
-    
+
     setAddingToCartId(null);
   };
 
@@ -208,7 +208,7 @@ export default function WishlistPage() {
           <div className="flex items-center justify-center min-h-[400px]">
             <div className="text-center">
               <div className="w-16 h-16 border-4 border-gray-300 border-t-purple-600 rounded-full animate-spin mx-auto mb-4"></div>
-              <p className="text-gray-600 text-lg">Loading your wishlist...</p>
+              <p className="text-gray-600 text-lg">Loading your shine list...</p>
             </div>
           </div>
         </div>
@@ -222,10 +222,12 @@ export default function WishlistPage() {
         <div className="container mx-auto px-6 py-12">
           <div className="text-center max-w-md mx-auto">
             <div className="w-32 h-32 bg-gradient-to-br from-gray-100 to-purple-100 rounded-full flex items-center justify-center mx-auto mb-8">
-              <Heart className="w-16 h-16 text-gray-400" />
+              <div className="relative w-16 h-16">
+                <Image src="/assets/shine.svg" alt="shine" fill className="object-contain" />
+              </div>
             </div>
             <h2 className="text-3xl font-bold text-gray-800 mb-4">Please Login</h2>
-            <p className="text-gray-600 mb-8">You need to be logged in to view your wishlist</p>
+            <p className="text-gray-600 mb-8">You need to be logged in to view your shine list</p>
             <button className="bg-gradient-to-r from-black to-purple-600 text-white px-8 py-3 rounded-full font-semibold hover:from-gray-800 hover:to-purple-700 transform hover:scale-105 transition-all duration-300 shadow-lg hover:shadow-xl">
               Login to Continue
             </button>
@@ -241,10 +243,12 @@ export default function WishlistPage() {
         <div className="container mx-auto px-6 py-12">
           <div className="text-center max-w-md mx-auto">
             <div className="w-32 h-32 bg-gradient-to-br from-gray-100 to-purple-100 rounded-full flex items-center justify-center mx-auto mb-8">
-              <Heart className="w-16 h-16 text-gray-400" />
+              <div className="relative w-16 h-16">
+                <Image src="/assets/shine.svg" alt="shine" fill className="object-contain" />
+              </div>
             </div>
-            <h2 className="text-3xl font-bold text-gray-800 mb-4">Your Wishlist is Empty</h2>
-            <p className="text-gray-600 mb-8">Start adding products you love to your wishlist!</p>
+            <h2 className="text-3xl font-bold text-gray-800 mb-4">Your Shine List is Empty</h2>
+            <p className="text-gray-600 mb-8">Start adding products you love to your shine list!</p>
             <button className="bg-gradient-to-r from-black to-purple-600 text-white px-8 py-3 rounded-full font-semibold hover:from-gray-800 hover:to-purple-700 transform hover:scale-105 transition-all duration-300 shadow-lg hover:shadow-xl">
               Continue Shopping
             </button>
@@ -260,9 +264,11 @@ export default function WishlistPage() {
         {/* Header */}
         <div className="text-center mb-12">
           <div className="inline-flex items-center gap-3 bg-white/90 backdrop-blur-sm border border-gray-200 rounded-full px-6 py-3 shadow-lg mb-6">
-            <Heart className="w-6 h-6 text-purple-600 fill-current" />
+            <div className="relative w-6 h-6">
+              <Image src="/assets/shine.svg" alt="shine" fill className="object-contain" />
+            </div>
             <h1 className="text-3xl font-bold bg-gradient-to-r from-black to-purple-600 bg-clip-text text-transparent">
-              My Wishlist
+              My Shine List
             </h1>
           </div>
           <p className="text-gray-600 text-lg">
@@ -277,7 +283,7 @@ export default function WishlistPage() {
             const isRemoving = removingId === item.id;
             const isAddingToCart = addingToCartId === item.id;
             const IconComponent = itemInfo.icon;
-            
+
             return (
               <div
                 key={item.id}
@@ -292,7 +298,9 @@ export default function WishlistPage() {
                 {/* Wishlist Badge */}
                 <div className="absolute -top-2 -right-2 z-10">
                   <div className="bg-gradient-to-r from-black to-purple-600 text-white rounded-full p-2 shadow-lg">
-                    <Heart className="w-4 h-4 fill-current" />
+                    <div className="relative w-4 h-4">
+                      <Image src="/assets/shine.svg" alt="shine" fill className="object-contain" />
+                    </div>
                   </div>
                 </div>
 
@@ -401,7 +409,7 @@ export default function WishlistPage() {
             transform: translateY(0);
           }
         }
-        
+
         .line-clamp-2 {
           display: -webkit-box;
           -webkit-line-clamp: 2;

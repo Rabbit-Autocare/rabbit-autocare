@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { createSupabaseServerClient } from '@/lib/supabase';
+import { createSupabaseServerClient } from '@/lib/supabase/server-client';
 
 export async function GET(request, { params }) {
   try {
@@ -13,7 +13,7 @@ export async function GET(request, { params }) {
     }
 
     // Create Supabase server client
-    const supabase = createSupabaseServerClient();
+    const supabase = await createSupabaseServerClient();
 
     // Build the query to fetch product with variants
     let query = supabase.from('products').select(`

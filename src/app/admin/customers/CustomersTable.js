@@ -45,8 +45,8 @@ export default function CustomersTable({ initialUsers, initialError }) {
         .update({ is_banned: newStatus })
         .eq('id', user.id);
       if (error) throw error;
-      setUsers(prev =>
-        prev.map(u => (u.id === user.id ? { ...u, is_banned: newStatus } : u))
+      setUsers((prev) =>
+        prev.map((u) => (u.id === user.id ? { ...u, is_banned: newStatus } : u))
       );
     } catch {
       alert('Failed to update user status. Please try again.');
@@ -55,10 +55,11 @@ export default function CustomersTable({ initialUsers, initialError }) {
     }
   };
 
-  const filteredUsers = users.filter(user =>
-    (user.name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-    (user.email || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-    (user.phone_number || '').includes(searchTerm)
+  const filteredUsers = users.filter(
+    (user) =>
+      (user.name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (user.email || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (user.phone_number || '').includes(searchTerm)
   );
   const totalPages = Math.ceil(filteredUsers.length / usersPerPage) || 1;
   const displayUsers = filteredUsers.slice(
@@ -93,9 +94,7 @@ export default function CustomersTable({ initialUsers, initialError }) {
       {/* Page Header */}
       <div className='flex justify-between items-center mb-6'>
         <h1 className='text-2xl font-semibold text-gray-900'>Customers</h1>
-        <button
-          className='bg-gray-200 hover:bg-[#601E8D] hover:text-white text-black px-4 py-2 rounded-lg transition text-xs text-sm font-medium flex items-center gap-2'
-        >
+        <button className='bg-gray-200 hover:bg-[#601E8D] hover:text-white text-black px-4 py-2 rounded-lg transition text-sm font-medium flex items-center gap-2'>
           <UserPlus size={16} />
           Add Customer
         </button>
@@ -103,10 +102,10 @@ export default function CustomersTable({ initialUsers, initialError }) {
 
       {/* Error Message */}
       {error && (
-        <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg">
-          <div className="flex items-center gap-2">
-            <AlertCircle className="text-red-500" size={20} />
-            <span className="text-red-700">{error.message || error}</span>
+        <div className='mb-6 p-4 bg-red-50 border border-red-200 rounded-lg'>
+          <div className='flex items-center gap-2'>
+            <AlertCircle className='text-red-500' size={20} />
+            <span className='text-red-700'>{error.message || error}</span>
           </div>
         </div>
       )}
@@ -130,7 +129,7 @@ export default function CustomersTable({ initialUsers, initialError }) {
         {['Order Count', 'Region', 'Date'].map((filter) => (
           <div className='relative' key={filter}>
             <button
-              type="button"
+              type='button'
               className='text-sm text-black bg-gray-100 px-4 py-1.5 rounded-lg flex items-center gap-2 hover:bg-gray-200 transition-colors'
               disabled
             >
@@ -148,42 +147,70 @@ export default function CustomersTable({ initialUsers, initialError }) {
             <tr className='h-12'>
               <th className='px-5 py-4 text-left text-sm font-medium'>Name</th>
               <th className='px-5 py-4 text-left text-sm font-medium'>Email</th>
-              <th className='px-5 py-4 text-left text-sm font-medium'>Phone Number</th>
-              <th className='px-5 py-4 text-left text-sm font-medium'>Location</th>
-              <th className='px-5 py-4 text-left text-sm font-medium'>Total Orders</th>
-              <th className='px-5 py-4 text-left text-sm font-medium'>Status</th>
-              <th className='px-5 py-4 text-left text-sm font-medium'>Actions</th>
+              <th className='px-5 py-4 text-left text-sm font-medium'>
+                Phone Number
+              </th>
+              <th className='px-5 py-4 text-left text-sm font-medium'>
+                Location
+              </th>
+              <th className='px-5 py-4 text-left text-sm font-medium'>
+                Total Orders
+              </th>
+              <th className='px-5 py-4 text-left text-sm font-medium'>
+                Status
+              </th>
+              <th className='px-5 py-4 text-left text-sm font-medium'>
+                Actions
+              </th>
             </tr>
           </thead>
           <tbody className='divide-y divide-[#E0DBE3]'>
             {displayUsers.length === 0 ? (
               <tr>
-                <td colSpan="7" className="px-5 py-8 text-center">
-                  <div className="text-gray-500">
-                    <UserPlus size={48} className="mx-auto mb-4 text-gray-300" />
-                    <p className="text-lg font-medium mb-2">
+                <td colSpan='7' className='px-5 py-8 text-center'>
+                  <div className='text-gray-500'>
+                    <UserPlus
+                      size={48}
+                      className='mx-auto mb-4 text-gray-300'
+                    />
+                    <p className='text-lg font-medium mb-2'>
                       {searchTerm ? 'No customers found' : 'No customers yet'}
                     </p>
-                    <p className="text-sm">
-                      {searchTerm ? 'Try adjusting your search terms.' : 'Customers will appear here once they register.'}
+                    <p className='text-sm'>
+                      {searchTerm
+                        ? 'Try adjusting your search terms.'
+                        : 'Customers will appear here once they register.'}
                     </p>
                   </div>
                 </td>
               </tr>
             ) : (
               displayUsers.map((user) => (
-                <tr key={user.id} className='hover:bg-gray-50 h-12 transition-colors'>
-                  <td className='px-5 py-3 text-black text-sm font-medium'>{user.name || 'Unnamed'}</td>
+                <tr
+                  key={user.id}
+                  className='hover:bg-gray-50 h-12 transition-colors'
+                >
+                  <td className='px-5 py-3 text-black text-sm font-medium'>
+                    {user.name || 'Unnamed'}
+                  </td>
                   <td className='px-5 py-3 text-gray-700'>{user.email}</td>
-                  <td className='px-5 py-3 text-gray-700'>{user.phone_number || '—'}</td>
-                  <td className='px-5 py-3 text-gray-700'>{user.location || '—'}</td>
-                  <td className='px-5 py-3 text-gray-700'>{user.total_orders ?? 0}</td>
+                  <td className='px-5 py-3 text-gray-700'>
+                    {user.phone_number || '—'}
+                  </td>
+                  <td className='px-5 py-3 text-gray-700'>
+                    {user.location || '—'}
+                  </td>
+                  <td className='px-5 py-3 text-gray-700'>
+                    {user.total_orders ?? 0}
+                  </td>
                   <td className='px-5 py-3'>
-                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                      user.is_banned
-                        ? 'bg-red-100 text-red-800'
-                        : 'bg-green-100 text-green-800'
-                    }`}>
+                    <span
+                      className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                        user.is_banned
+                          ? 'bg-red-100 text-red-800'
+                          : 'bg-green-100 text-green-800'
+                      }`}
+                    >
                       {user.is_banned ? 'Banned' : 'Active'}
                     </span>
                   </td>
@@ -218,23 +245,23 @@ export default function CustomersTable({ initialUsers, initialError }) {
             >
               Previous
             </button>
-            {Array.from({ length: totalPages }, (_, i) => i + 1).map(
-              (page) => (
-                <button
-                  key={page}
-                  onClick={() => handlePageChange(page)}
-                  className={`w-10 h-10 flex items-center justify-center text-sm rounded-md transition-colors ${
-                    page === currentPage
-                      ? 'bg-purple-600 text-white'
-                      : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
-                  }`}
-                >
-                  {page}
-                </button>
-              )
-            )}
+            {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+              <button
+                key={page}
+                onClick={() => handlePageChange(page)}
+                className={`w-10 h-10 flex items-center justify-center text-sm rounded-md transition-colors ${
+                  page === currentPage
+                    ? 'bg-purple-600 text-white'
+                    : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
+                }`}
+              >
+                {page}
+              </button>
+            ))}
             <button
-              onClick={() => handlePageChange(Math.min(currentPage + 1, totalPages))}
+              onClick={() =>
+                handlePageChange(Math.min(currentPage + 1, totalPages))
+              }
               className='px-3 py-2 text-sm border border-gray-300 rounded-md hover:bg-gray-50 transition-colors'
               disabled={currentPage === totalPages}
             >

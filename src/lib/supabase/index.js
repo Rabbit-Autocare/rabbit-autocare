@@ -9,7 +9,7 @@ if (!supabaseUrl || !supabaseAnonKey) {
 
 // Export the browser client creation function for compatibility
 export { createSupabaseBrowserClient } from './browser-client';
-
+ 
 // Export the server client creation function for server components
 export { createSupabaseServerClient } from './server-client';
 

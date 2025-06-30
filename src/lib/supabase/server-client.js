@@ -7,7 +7,7 @@ const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 if (!supabaseUrl || !supabaseAnonKey) {
   throw new Error('Missing Supabase environment variables');
 }
-
+ 
 // Creates a Supabase client for server components
 export async function createSupabaseServerClient() {
   const cookieStore = await cookies();

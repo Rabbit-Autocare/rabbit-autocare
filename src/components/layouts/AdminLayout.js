@@ -8,8 +8,6 @@ export default function AdminLayout({ children }) {
       <div className='flex flex-1'>
         <AdminSidebar />
         <div className='flex-1'>
-          {' '}
-          {/* Set left margin to exactly match sidebar width */}
           <main className=''>{children}</main>
         </div>
       </div>

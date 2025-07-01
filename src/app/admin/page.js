@@ -16,6 +16,7 @@ import { createSupabaseBrowserClient } from '@/lib/supabase/browser-client';
 const supabase = createSupabaseBrowserClient();
 import AdminLayout from '@/components/layouts/AdminLayout';
 import AnalyticsTabs from './analytics/AnalyticsTabs';
+import { verifyAdminAuth, fetchAdminDashboardData } from '@/lib/actions/admin-actions';
 
 /**
  * Admin Dashboard Server Component

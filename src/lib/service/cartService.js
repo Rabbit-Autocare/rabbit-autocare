@@ -5,6 +5,7 @@ const supabase = createSupabaseBrowserClient(); // Adjust the import based on yo
 class CartService {
   // Get current user's cart items
   async getCartItems(userId) {
+    if (!userId) return { cartItems: [] };
     try {
       const { data, error } = await supabase
         .from('cart_items')

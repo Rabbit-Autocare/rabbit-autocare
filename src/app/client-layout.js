@@ -316,23 +316,14 @@ export default function ClientLayout({ children }) {
     }
   }, [showMobileNavbar, mobilePortalContainer])
 
-  return (
-    <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
-      <CartProvider>
-        {/* MobileNavbar Portal - Mobile only */}
-        {mobilePortalContainer &&
-          createPortal(
-            <div className="md:hidden">
-              <MobileNavbar
-                isMobileMenuOpen={isMobileMenuOpen}
-                setIsMobileMenuOpen={handleMobileMenuToggle}
-              />
-            </div>,
-            mobilePortalContainer,
-          )}
+  // Only wrap with CartProvider if not in admin area
+  const isAdminRoute = pathname.startsWith('/admin')
 
-        <div style={{ position: "relative" }}>
-          {/* ExtraNavbar */}
+  let content = (
+    <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
+      <div style={{ position: "relative" }}>
+        {/* ExtraNavbar */}
+        {!isAdminRoute && (
           <div
             className={`transition-all duration-300 ease-in-out ${
               showExtraNavbar ? "opacity-100 translate-y-0" : "opacity-0 -translate-y-full pointer-events-none"
@@ -341,22 +332,25 @@ export default function ClientLayout({ children }) {
           >
             <ExtraNavbar />
           </div>
-
-          {/* Content */}
-          <div>{children}</div>
-
-          <Footer />
-        </div>
-
-        {/* MainNavbar Portal - Desktop only */}
-        {portalContainer &&
-          createPortal(
-            <div className="hidden md:block">
-              <MainNavbar />
-            </div>,
-            portalContainer,
-          )}
-      </CartProvider>
+        )}
+        {/* Content */}
+        <div>{children}</div>
+        <Footer />
+      </div>
+      {/* MainNavbar Portal - Desktop only */}
+      {portalContainer && !isAdminRoute &&
+        createPortal(
+          <div className="hidden md:block">
+            <MainNavbar />
+          </div>,
+          portalContainer,
+        )}
     </ThemeProvider>
   )
+
+  if (!isAdminRoute) {
+    content = <CartProvider>{content}</CartProvider>
+  }
+
+  return content
 }

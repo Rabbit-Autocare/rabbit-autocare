@@ -1,1040 +1,1062 @@
-"use client";
-import { useEffect, useState } from "react";
-import { ProductService } from "@/lib/service/productService";
-import { SizeService, ColorService, CategoryService, GsmService, QuantityService } from "@/lib/service/microdataService";
-import { Plus, Trash2, Package, Palette, Ruler, Hash, DollarSign, Archive, Tag, X, Image as ImageIcon } from "lucide-react";
-
-export default function EnhancedProductForm({ product = null, onSuccess, onCancel }) {
-	const [loading, setLoading] = useState(false);
-	const [saving, setSaving] = useState(false);
-	const isEditing = !!product;
-
-	// Form state
-	const [form, setForm] = useState({
-		product_code: "",
-		name: "",
-		category_name: "",
-		description: "",
-		is_microfiber: false,
-		subcategory_names: [],
-		variants: [],
-		main_image_url: "",
-		images: [],
-		key_features: [],
-		taglines: [],
-	});
-
-	// Microdata
-	const [allSizes, setAllSizes] = useState([]);
-	const [allColors, setAllColors] = useState([]);
-	const [allCategories, setAllCategories] = useState([]);
-	const [allGsm, setAllGsm] = useState([]);
-	const [allQuantities, setAllQuantities] = useState([]);
-	const [selectedCategory, setSelectedCategory] = useState(null);
-
-	// UI states
-	const [activeVariantIndex, setActiveVariantIndex] = useState(null);
-	const [bulkActions, setBulkActions] = useState({
-		showBulkPrice: false,
-		bulkPrice: "",
-		showBulkStock: false,
-		bulkStock: "",
-	});
-
-	// New state for image upload
-	const [uploadingImages, setUploadingImages] = useState(false);
-	const [newKeyFeature, setNewKeyFeature] = useState("");
-	const [newTagline, setNewTagline] = useState("");
-
-	useEffect(() => {
-		fetchMasterData();
-	}, [isEditing]);
-
-	const fetchMasterData = async () => {
-		setLoading(true);
-		try {
-			const [sizesRes, colorsRes, categoriesRes, gsmRes, quantitiesRes] = await Promise.all([
-				SizeService.getSizes(),
-				ColorService.getColors(),
-				CategoryService.getCategories(),
-				GsmService.getGSM(),
-				QuantityService.getQuantities(),
-			]);
-
-			setAllSizes(sizesRes.data || []);
-			setAllColors(colorsRes.data || []);
-			setAllCategories(categoriesRes.data || []);
-			setAllGsm(gsmRes.data || []);
-			setAllQuantities(quantitiesRes.data || []);
-
-			// Call populateEditForm after categories are loaded in edit mode
-			if (isEditing) {
-				populateEditForm();
-			}
-
-		} catch (err) {
-			console.error("Error fetching master data:", err);
-			alert("Error fetching form data: " + err.message);
-		} finally {
-			setLoading(false);
-		}
-	};
-
-	const populateEditForm = () => {
-		if (!product) return;
-
-		const mainCategory = allCategories.find(c => c.name === product.category_name);
-		if (mainCategory) {
-			setSelectedCategory(mainCategory);
-		}
-
-		const productVariants = product.variants?.map(variant => {
-			// Get color hex from the color service data
-			const colorData = allColors.find(c => c.color === variant.color);
-			const colorHex = colorData?.hex_code || variant.color_hex;
-
-			if (product.is_microfiber) {
-				return {
-					id: variant.id || null,
-					gsm: variant.gsm || '',
-					size: variant.size || '',
-					color: variant.color || '',
-					color_hex: colorHex,
-					stock: parseInt(variant.stock) || 0,
-					price: parseFloat(variant.price) || 0,
-					compareAtPrice: parseFloat(variant.compare_at_price || variant.compareAtPrice) || null
-				};
-			} else {
-				return {
-					id: variant.id || null,
-					quantity: variant.quantity || '',
-					unit: variant.unit || 'ml',
-					color: variant.color || '',
-					color_hex: colorHex,
-					stock: parseInt(variant.stock) || 0,
-					price: parseFloat(variant.price) || 0,
-					compareAtPrice: parseFloat(variant.compare_at_price || variant.compareAtPrice) || null
-				};
-			}
-		}) || [];
-
-		setForm({
-			product_code: product.product_code || "",
-			name: product.name || "",
-			category_name: product.category_name || "",
-			description: product.description || "",
-			is_microfiber: product.is_microfiber || false,
-			subcategory_names: product.subcategory_names || [],
-			variants: productVariants,
-			main_image_url: product.main_image_url || "",
-			images: product.images || [],
-			key_features: product.key_features || [],
-			taglines: product.taglines || [],
-		});
-	};
-
-	const handleInput = (e) => {
-		const { name, value, type, checked } = e.target;
-		setForm((prev) => ({
-			...prev,
-			[name]: type === "checkbox" ? checked : value
-		}));
-
-		if (name === "category_name") {
-			const category = allCategories.find((c) => c.name === value);
-			setSelectedCategory(category);
-			setForm((prev) => ({
-				...prev,
-				is_microfiber: category?.is_microfiber || false,
-				variants: [] // Clear variants when category changes
-			}));
-		}
-	};
-
-	const handleSubcategoryChange = (categoryName) => {
-		setForm(prev => ({
-			...prev,
-			subcategory_names: prev.subcategory_names.includes(categoryName)
-				? prev.subcategory_names.filter(name => name !== categoryName)
-				: [...prev.subcategory_names, categoryName]
-		}));
-	};
-
-	const handleVariantChange = (index, field, value) => {
-		const newVariants = [...form.variants];
-		// If the field is color, also store the hex code
-		if (field === "color") {
-			const selectedColor = allColors.find(c => c.color === value);
-			newVariants[index] = {
-				...newVariants[index],
-				color: value,
-				color_hex: selectedColor?.hex_code || null,
-			};
-		} else {
-			// Update the field with the direct value
-			newVariants[index] = {
-				...newVariants[index],
-				[field]: value,
-			};
-		}
-		setForm({ ...form, variants: newVariants });
-	};
-
-	const addVariant = () => {
-		const newVariants = [...form.variants];
-		const generateVariantId = () => {
-			// Generate a unique ID using timestamp and random string
-			return `var_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-		};
-
-		if (form.is_microfiber) {
-			newVariants.push({
-				id: generateVariantId(),
-				gsm: "",
-				size: "",
-				color: "",
-				color_hex: null,
-				stock: 0,
-				price: 0,
-				compareAtPrice: null
-			});
-		} else {
-			newVariants.push({
-				id: generateVariantId(),
-				quantity: "",
-				unit: "ml",
-				color: "",
-				color_hex: null,
-				stock: 0,
-				price: 0,
-				compareAtPrice: null
-			});
-		}
-		setForm({ ...form, variants: newVariants });
-	};
-
-	const removeVariant = (index) => {
-		const newVariants = [...form.variants];
-		newVariants.splice(index, 1);
-		setForm({ ...form, variants: newVariants });
-	};
-
-	const duplicateVariant = (index) => {
-		const variantToDuplicate = { ...form.variants[index] };
-		// Generate new ID for the duplicated variant
-		variantToDuplicate.id = `var_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-		const updated = [...form.variants];
-		updated.splice(index + 1, 0, variantToDuplicate);
-		setForm({ ...form, variants: updated });
-	};
-
-	const applyBulkPrice = () => {
-		if (!bulkActions.bulkPrice) return;
-
-		const updated = form.variants.map(variant => ({
-			...variant,
-			price: parseFloat(bulkActions.bulkPrice)
-		}));
-		setForm({ ...form, variants: updated });
-		setBulkActions({ ...bulkActions, showBulkPrice: false, bulkPrice: "" });
-	};
-
-	const applyBulkStock = () => {
-		if (!bulkActions.bulkStock) return;
-
-		const updated = form.variants.map(variant => ({
-			...variant,
-			stock: parseInt(bulkActions.bulkStock)
-		}));
-		setForm({ ...form, variants: updated });
-		setBulkActions({ ...bulkActions, showBulkStock: false, bulkStock: "" });
-	};
-
-	const handleSubmit = async (e) => {
-		e.preventDefault();
-		if (saving) return;
-
-		// Validation
-		if (!form.name.trim()) {
-			alert("Product name is required");
-			return;
-		}
-		if (!form.category_name) {
-			alert("Please select a category");
-			return;
-		}
-		if (form.variants.length === 0) {
-			alert("Please add at least one variant");
-			return;
-		}
-
-		// Validate variants
-		for (let i = 0; i < form.variants.length; i++) {
-			const variant = form.variants[i];
-			if (form.is_microfiber) {
-				if (!variant.gsm || !variant.size || !variant.color) {
-					alert(`Variant ${i + 1}: Please fill all required fields (GSM, size, color)`);
-					return;
-				}
-			} else {
-				if (!variant.quantity) {
-					alert(`Variant ${i + 1}: Please fill quantity`);
-					return;
-				}
-			}
-			if (isNaN(variant.stock) || variant.stock < 0) {
-				alert(`Variant ${i + 1}: Stock must be a non-negative number.`);
-				return;
-			}
-			if (isNaN(variant.price) || variant.price < 0) {
-				alert(`Variant ${i + 1}: Price must be a non-negative number.`);
-				return;
-			}
-		}
-
-		setSaving(true);
-		try {
-			// Create a clean payload with only necessary fields
-			const payload = {
-				product_code: form.product_code,
-				name: form.name,
-				category_name: form.category_name,
-				description: form.description,
-				is_microfiber: form.is_microfiber,
-				subcategory_names: form.subcategory_names,
-				main_image_url: form.main_image_url,
-				images: form.images,
-				key_features: form.key_features,
-				taglines: form.taglines,
-				variants: form.variants.map(variant => {
-					// For microfiber products
-					if (form.is_microfiber) {
-						return {
-							id: variant.id || `var_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-							gsm: variant.gsm,
-							size: variant.size,
-							color: variant.color,
-							color_hex: variant.color_hex,
-							stock: parseInt(variant.stock),
-							price: parseFloat(variant.price),
-							compareAtPrice: variant.compareAtPrice ? parseFloat(variant.compareAtPrice) : null
-						};
-					}
-					// For non-microfiber products
-					return {
-						id: variant.id || `var_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-						quantity: variant.quantity,
-						unit: variant.unit,
-						color: variant.color,
-						color_hex: variant.color_hex,
-						stock: parseInt(variant.stock),
-						price: parseFloat(variant.price),
-						compareAtPrice: variant.compareAtPrice ? parseFloat(variant.compareAtPrice) : null
-					};
-				})
-			};
-
-			console.log("Submitting payload:", JSON.stringify(payload, null, 2)); // Debug log
-
-			if (isEditing) {
-				await ProductService.updateProduct(product.id, payload);
-			} else {
-				await ProductService.createProduct(payload);
-			}
-
-			if (onSuccess) {
-				onSuccess();
-			}
-		} catch (error) {
-			console.error("Error saving product:", error);
-			alert("Error saving product: " + (error.message || "Unknown error occurred"));
-		} finally {
-			setSaving(false);
-		}
-	};
-
-	const handleImageUpload = async (e) => {
-		const files = Array.from(e.target.files);
-		if (files.length === 0) return;
-
-		setUploadingImages(true);
-		const uploadedUrls = [];
-
-		try {
-			for (const file of files) {
-				// Validate file type
-				if (!file.type.startsWith('image/')) {
-					alert('Please upload only image files');
-					continue;
-				}
-
-				// Validate file size (max 5MB)
-				if (file.size > 5 * 1024 * 1024) {
-					alert('File size should be less than 5MB');
-					continue;
-				}
-
-				const formData = new FormData();
-				formData.append('file', file);
-
-				const response = await fetch('/api/upload', {
-					method: 'POST',
-					body: formData,
-				});
-
-				if (!response.ok) {
-					const error = await response.json();
-					throw new Error(error.error || 'Upload failed');
-				}
-
-				const data = await response.json();
-				uploadedUrls.push(data.url);
-			}
-
-			// Update images state with new URLs
-			setForm(prev => ({
-				...prev,
-				images: [...prev.images, ...uploadedUrls]
-			}));
-
-			// Set the first uploaded image as main image if none exists
-			if (!form.main_image_url && uploadedUrls.length > 0) {
-				setForm(prev => ({ ...prev, main_image_url: uploadedUrls[0] }));
-			}
-		} catch (error) {
-			console.error('Error uploading images:', error);
-			alert('Failed to upload images: ' + error.message);
-		} finally {
-			setUploadingImages(false);
-		}
-	};
-
-	const handleSetMainImage = (url) => {
-		setForm(prev => ({ ...prev, main_image_url: url }));
-	};
-
-	const handleRemoveImage = (url) => {
-		setForm(prev => ({
-			...prev,
-			images: prev.images.filter(img => img !== url),
-			main_image_url: prev.main_image_url === url ? (prev.images[0] || "") : prev.main_image_url
-		}));
-	};
-
-	const handleAddKeyFeature = () => {
-		if (!newKeyFeature.trim()) return;
-		setForm(prev => ({
-			...prev,
-			key_features: [...prev.key_features, newKeyFeature.trim()]
-		}));
-		setNewKeyFeature("");
-	};
-
-	const handleRemoveKeyFeature = (index) => {
-		setForm(prev => ({
-			...prev,
-			key_features: prev.key_features.filter((_, i) => i !== index)
-		}));
-	};
-
-	const handleAddTagline = () => {
-		if (!newTagline.trim()) return;
-		setForm(prev => ({
-			...prev,
-			taglines: [...prev.taglines, newTagline.trim()]
-		}));
-		setNewTagline("");
-	};
-
-	const handleRemoveTagline = (index) => {
-		setForm(prev => ({
-			...prev,
-			taglines: prev.taglines.filter((_, i) => i !== index)
-		}));
-	};
-
-	if (loading) {
-		return (
-			<div className="flex items-center justify-center p-8">
-				<div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-				<span className="ml-2">Loading form data...</span>
-			</div>
-		);
-	}
-
-	return (
-		<div className="max-w-6xl mx-auto p-6 bg-white rounded-lg shadow-lg">
-			<div className="flex justify-between items-center mb-6">
-				<h2 className="text-2xl font-bold text-gray-800">
-					{isEditing ? "Edit Product" : "Create New Product"}
-				</h2>
-				<button
-					onClick={onCancel}
-					className="text-gray-500 hover:text-gray-700"
-				>
-					<X size={24} />
-				</button>
-			</div>
-
-			<form onSubmit={handleSubmit} className="space-y-6">
-				{/* Basic Product Info */}
-				<div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-					<div>
-						<label className="block text-sm font-medium text-gray-700 mb-2">
-							<Hash className="inline w-4 h-4 mr-1" />
-							Product Code
-						</label>
-						<input
-							type="text"
-							name="product_code"
-							value={form.product_code}
-							onChange={handleInput}
-							className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-							placeholder="PRD-001"
-						/>
-					</div>
-
-					<div>
-						<label className="block text-sm font-medium text-gray-700 mb-2">
-							<Package className="inline w-4 h-4 mr-1" />
-							Product Name *
-						</label>
-						<input
-							type="text"
-							name="name"
-							value={form.name}
-							onChange={handleInput}
-							required
-							className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-							placeholder="Enter product name"
-						/>
-					</div>
-				</div>
-
-				<div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-					<div>
-						<label className="block text-sm font-medium text-gray-700 mb-2">
-							<Archive className="inline w-4 h-4 mr-1" />
-							Main Category *
-						</label>
-						<select
-							name="category_name"
-							value={form.category_name}
-							onChange={handleInput}
-							required
-							className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-						>
-							<option value="">Select a category</option>
-							{allCategories.map((category) => (
-								<option key={category.name} value={category.name}>
-									{category.name} {category.is_microfiber ? "(Microfiber)" : "(Liquid)"}
-								</option>
-							))}
-						</select>
-					</div>
-
-					<div>
-						<label className="block text-sm font-medium text-gray-700 mb-2">
-							<Tag className="inline w-4 h-4 mr-1" />
-							Additional Categories
-						</label>
-						<div className="max-h-32 overflow-y-auto border border-gray-300 rounded-lg p-2">
-							{allCategories
-								.filter(c => c.name !== form.category_name)
-								.map((category) => (
-									<label key={category.name} className="flex items-center space-x-2 p-1 hover:bg-gray-50 rounded">
-										<input
-											type="checkbox"
-											checked={form.subcategory_names.includes(category.name)}
-											onChange={() => handleSubcategoryChange(category.name)}
-											className="rounded text-blue-600 focus:ring-blue-500"
-										/>
-										<span className="text-sm">
-											{category.name} {category.is_microfiber ? "(Microfiber)" : "(Liquid)"}
-										</span>
-									</label>
-								))}
-						</div>
-					</div>
-				</div>
-
-				<div>
-					<label className="block text-sm font-medium text-gray-700 mb-2">
-						Description
-					</label>
-					<textarea
-						name="description"
-						value={form.description}
-						onChange={handleInput}
-						rows={3}
-						className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-						placeholder="Product description..."
-					/>
-				</div>
-
-				{/* Image Upload Section */}
-				<div className="border-t pt-6">
-					<h3 className="text-lg font-semibold text-gray-800 mb-4">Product Images</h3>
-					<div className="space-y-4">
-						<div className="flex items-center gap-4">
-							<label className="flex-1">
-								<div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center cursor-pointer hover:border-blue-500 transition-colors">
-									<input
-										type="file"
-										multiple
-										accept="image/*"
-										onChange={handleImageUpload}
-										className="hidden"
-									/>
-									<ImageIcon className="mx-auto h-12 w-12 text-gray-400" />
-									<p className="mt-2 text-sm text-gray-600">
-										Click to upload images
-									</p>
-									<p className="text-xs text-gray-500">
-										PNG, JPG, GIF up to 10MB
-									</p>
-								</div>
-							</label>
-						</div>
-
-						{form.images.length > 0 && (
-							<div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-								{form.images.map((url, index) => (
-									<div key={url} className="relative group">
-										<img
-											src={url}
-											alt={`Product image ${index + 1}`}
-											className={`w-full h-32 object-cover rounded-lg ${
-												form.main_image_url === url ? 'ring-2 ring-blue-500' : ''
-											}`}
-										/>
-										<div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-50 transition-opacity rounded-lg flex items-center justify-center gap-2">
-											<button
-												type="button"
-												onClick={() => handleSetMainImage(url)}
-												className="p-1 bg-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
-												title="Set as main image"
-											>
-												<ImageIcon size={16} />
-											</button>
-											<button
-												type="button"
-												onClick={() => handleRemoveImage(url)}
-												className="p-1 bg-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
-												title="Remove image"
-											>
-												<Trash2 size={16} />
-											</button>
-										</div>
-									</div>
-								))}
-							</div>
-						)}
-					</div>
-				</div>
-
-				{/* Key Features Section */}
-				<div className="border-t pt-6">
-					<h3 className="text-lg font-semibold text-gray-800 mb-4">Key Features</h3>
-					<div className="space-y-4">
-						<div className="flex gap-2">
-							<input
-								type="text"
-								value={newKeyFeature}
-								onChange={(e) => setNewKeyFeature(e.target.value)}
-								placeholder="Add a key feature"
-								className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-								onKeyPress={(e) => e.key === 'Enter' && handleAddKeyFeature()}
-							/>
-							<button
-								type="button"
-								onClick={handleAddKeyFeature}
-								className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
-							>
-								Add
-							</button>
-						</div>
-						<div className="space-y-2">
-							{form.key_features.map((feature, index) => (
-								<div key={index} className="flex items-center gap-2 bg-gray-50 p-2 rounded">
-									<span className="flex-1">{feature}</span>
-									<button
-										type="button"
-										onClick={() => handleRemoveKeyFeature(index)}
-										className="text-red-600 hover:text-red-800"
-									>
-										<Trash2 size={16} />
-									</button>
-								</div>
-							))}
-						</div>
-					</div>
-				</div>
-
-				{/* Taglines Section */}
-				<div className="border-t pt-6">
-					<h3 className="text-lg font-semibold text-gray-800 mb-4">Taglines</h3>
-					<div className="space-y-4">
-						<div className="flex gap-2">
-							<input
-								type="text"
-								value={newTagline}
-								onChange={(e) => setNewTagline(e.target.value)}
-								placeholder="Add a tagline"
-								className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-								onKeyPress={(e) => e.key === 'Enter' && handleAddTagline()}
-							/>
-							<button
-								type="button"
-								onClick={handleAddTagline}
-								className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
-							>
-								Add
-							</button>
-						</div>
-						<div className="space-y-2">
-							{form.taglines.map((tagline, index) => (
-								<div key={index} className="flex items-center gap-2 bg-gray-50 p-2 rounded">
-									<span className="flex-1">{tagline}</span>
-									<button
-										type="button"
-										onClick={() => handleRemoveTagline(index)}
-										className="text-red-600 hover:text-red-800"
-									>
-										<Trash2 size={16} />
-									</button>
-								</div>
-							))}
-						</div>
-					</div>
-				</div>
-
-				{/* Variants Section */}
-				<div className="border-t pt-6">
-					<div className="flex justify-between items-center mb-4">
-						<h3 className="text-lg font-semibold text-gray-800">
-							{form.is_microfiber ? "Microfiber Variants" : "Product Sizes"}
-						</h3>
-						<div className="flex gap-2">
-							{form.variants.length > 0 && (
-								<>
-									<button
-										type="button"
-										onClick={() => setBulkActions({ ...bulkActions, showBulkPrice: !bulkActions.showBulkPrice })}
-										className="px-3 py-1 text-sm bg-orange-100 text-orange-700 rounded hover:bg-orange-200"
-									>
-										<DollarSign className="inline w-4 h-4 mr-1" />
-										Bulk Price
-									</button>
-									<button
-										type="button"
-										onClick={() => setBulkActions({ ...bulkActions, showBulkStock: !bulkActions.showBulkStock })}
-										className="px-3 py-1 text-sm bg-purple-100 text-purple-700 rounded hover:bg-purple-200"
-									>
-										<Package className="inline w-4 h-4 mr-1" />
-										Bulk Stock
-									</button>
-								</>
-							)}
-							<button
-								type="button"
-								onClick={addVariant}
-								className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center gap-2"
-							>
-								<Plus size={16} />
-								Add Variant
-							</button>
-						</div>
-					</div>
-
-					{/* Bulk Actions */}
-					{bulkActions.showBulkPrice && (
-						<div className="mb-4 p-3 bg-orange-50 rounded-lg border">
-							<div className="flex items-center gap-2">
-								<input
-									type="number"
-									step="0.01"
-									value={bulkActions.bulkPrice}
-									onChange={(e) => setBulkActions({ ...bulkActions, bulkPrice: e.target.value })}
-									placeholder="Enter price for all variants"
-									className="flex-1 px-3 py-2 border rounded"
-								/>
-								<button
-									type="button"
-									onClick={applyBulkPrice}
-									className="px-4 py-2 bg-orange-600 text-white rounded hover:bg-orange-700"
-								>
-									Apply to All
-								</button>
-							</div>
-						</div>
-					)}
-
-					{bulkActions.showBulkStock && (
-						<div className="mb-4 p-3 bg-purple-50 rounded-lg border">
-							<div className="flex items-center gap-2">
-								<input
-									type="number"
-									value={bulkActions.bulkStock}
-									onChange={(e) => setBulkActions({ ...bulkActions, bulkStock: e.target.value })}
-									placeholder="Enter stock for all variants"
-									className="flex-1 px-3 py-2 border rounded"
-								/>
-								<button
-									type="button"
-									onClick={applyBulkStock}
-									className="px-4 py-2 bg-purple-600 text-white rounded hover:bg-purple-700"
-								>
-									Apply to All
-								</button>
-							</div>
-						</div>
-					)}
-
-					{/* Variants List */}
-					<div className="space-y-4">
-						{form.variants.map((variant, index) => (
-							<div
-								key={index}
-								className={`p-4 border rounded-lg ${
-									activeVariantIndex === index ? 'border-blue-500 bg-blue-50' : 'border-gray-200'
-								}`}
-								onClick={() => setActiveVariantIndex(index)}
-							>
-								<div className="flex justify-between items-start mb-3">
-									<h4 className="font-medium text-gray-800">
-										Variant {index + 1}
-									</h4>
-									<div className="flex gap-1">
-										<button
-											type="button"
-											onClick={(e) => {
-												e.stopPropagation();
-												duplicateVariant(index);
-											}}
-											className="p-1 text-blue-600 hover:bg-blue-100 rounded"
-											title="Duplicate variant"
-										>
-											<Plus size={16} />
-										</button>
-										<button
-											type="button"
-											onClick={(e) => {
-												e.stopPropagation();
-												removeVariant(index);
-											}}
-											className="p-1 text-red-600 hover:bg-red-100 rounded"
-											title="Remove variant"
-										>
-											<Trash2 size={16} />
-										</button>
-									</div>
-								</div>
-
-								{/* Conditionally render fields based on form.is_microfiber */}
-								{form.is_microfiber ? (
-									<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-3">
-										<div>
-											<label className="block text-xs font-medium text-gray-600 mb-1">
-												GSM Value *
-											</label>
-											<select
-												value={variant.gsm || ''}
-												onChange={(e) => handleVariantChange(index, "gsm", e.target.value)}
-												required
-												className="w-full px-2 py-1 text-sm border rounded focus:ring-1 focus:ring-blue-500"
-											>
-												<option value="">Select GSM</option>
-												{allGsm.map((gsm) => (
-													<option key={gsm.id} value={gsm.gsm}>
-														{gsm.gsm}
-													</option>
-												))}
-											</select>
-										</div>
-
-										<div>
-											<label className="block text-xs font-medium text-gray-600 mb-1">
-												<Ruler className="inline w-3 h-3 mr-1" />
-												Size *
-											</label>
-											<select
-												value={variant.size || ''}
-												onChange={(e) => handleVariantChange(index, "size", e.target.value)}
-												required
-												className="w-full px-2 py-1 text-sm border rounded focus:ring-1 focus:ring-blue-500"
-											>
-												<option value="">Select size</option>
-												{allSizes.map((size) => (
-													<option key={size.id} value={size.size_cm}>
-														{size.size_cm}
-													</option>
-												))}
-											</select>
-										</div>
-
-										<div>
-											<label className="block text-xs font-medium text-gray-600 mb-1">
-												<Palette className="inline w-3 h-3 mr-1" />
-												Color *
-											</label>
-											<select
-												value={variant.color || ''}
-												onChange={(e) => handleVariantChange(index, "color", e.target.value)}
-												required
-												className="w-full px-2 py-1 text-sm border rounded focus:ring-1 focus:ring-blue-500"
-											>
-												<option value="">Select color</option>
-												{allColors.map((color) => (
-													<option key={color.id} value={color.color}>
-														{color.color}
-													</option>
-												))}
-											</select>
-											{variant.color_hex && (
-												<div className="flex items-center gap-2 mt-2">
-													<span className="text-xs text-gray-500">Selected:</span>
-													<div
-														className="w-4 h-4 rounded-full border"
-														style={{ backgroundColor: variant.color_hex }}
-													/>
-													<span className="text-sm">{variant.color}</span>
-												</div>
-											)}
-										</div>
-
-										<div>
-											<label className="block text-xs font-medium text-gray-600 mb-1">
-												<Package className="inline w-3 h-3 mr-1" />
-												Stock
-											</label>
-											<input
-												type="number"
-												value={variant.stock || 0}
-												onChange={(e) => handleVariantChange(index, "stock", parseInt(e.target.value))}
-												className="w-full px-2 py-1 text-sm border rounded focus:ring-1 focus:ring-blue-500"
-												placeholder="0"
-											/>
-										</div>
-
-										<div>
-											<label className="block text-xs font-medium text-gray-600 mb-1">
-												<DollarSign className="inline w-3 h-3 mr-1" />
-												Price
-											</label>
-											<input
-												type="number"
-												step="0.01"
-												value={variant.price || 0}
-												onChange={(e) => handleVariantChange(index, "price", parseFloat(e.target.value))}
-												className="w-full px-2 py-1 text-sm border rounded focus:ring-1 focus:ring-blue-500"
-												placeholder="0.00"
-											/>
-										</div>
-									</div>
-								) : (
-									<div className="grid grid-cols-1 md:grid-cols-4 gap-3">
-										<div>
-											<label className="block text-xs font-medium text-gray-600 mb-1">
-												Quantity *
-											</label>
-											<select
-												value={variant.quantity || ''}
-												onChange={(e) => handleVariantChange(index, "quantity", e.target.value)}
-												required
-												className="w-full px-2 py-1 text-sm border rounded focus:ring-1 focus:ring-blue-500"
-											>
-												<option value="">Select Quantity</option>
-												{allQuantities.map((qty) => (
-													<option key={qty.id} value={qty.quantity}>
-														{qty.quantity} {qty.unit}
-													</option>
-												))}
-											</select>
-										</div>
-
-										<div>
-											<label className="block text-xs font-medium text-gray-600 mb-1">
-												Unit *
-											</label>
-											<select
-												value={variant.unit || ''}
-												onChange={(e) => handleVariantChange(index, "unit", e.target.value)}
-												required
-												className="w-full px-2 py-1 text-sm border rounded focus:ring-1 focus:ring-blue-500"
-											>
-												<option value="">Select Unit</option>
-												<option value="ml">ml</option>
-												<option value="L">L</option>
-											</select>
-										</div>
-
-										<div>
-											<label className="block text-xs font-medium text-gray-600 mb-1">
-												<Package className="inline w-3 h-3 mr-1" />
-												Stock *
-											</label>
-											<input
-												type="number"
-												value={variant.stock || 0}
-												onChange={(e) => handleVariantChange(index, "stock", parseInt(e.target.value))}
-												required
-												className="w-full px-2 py-1 text-sm border rounded focus:ring-1 focus:ring-blue-500"
-												placeholder="0"
-												min="0"
-											/>
-										</div>
-
-										<div>
-											<label className="block text-xs font-medium text-gray-600 mb-1">
-												<DollarSign className="inline w-3 h-3 mr-1" />
-												Price *
-											</label>
-											<input
-												type="number"
-												step="0.01"
-												value={variant.price || 0}
-												onChange={(e) => handleVariantChange(index, "price", parseFloat(e.target.value))}
-												required
-												className="w-full px-2 py-1 text-sm border rounded focus:ring-1 focus:ring-blue-500"
-												placeholder="0.00"
-												min="0"
-											/>
-										</div>
-									</div>
-								)}
-							</div>
-						))}
-
-						{form.variants.length === 0 && (
-							<div className="text-center py-8 text-gray-500 border-2 border-dashed border-gray-300 rounded-lg">
-								<Package className="mx-auto w-8 h-8 mb-2 opacity-50" />
-								<p>No variants added yet.</p>
-								<p className="text-sm">Click "Add Variant" to start adding product variants.</p>
-							</div>
-						)}
-					</div>
-				</div>
-
-				{/* Form Actions */}
-				<div className="flex justify-end gap-3 pt-6 border-t">
-					<button
-						type="button"
-						onClick={onCancel}
-						className="px-6 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50"
-					>
-						Cancel
-					</button>
-					<button
-						type="submit"
-						disabled={saving}
-						className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-					>
-						{saving && <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>}
-						{saving ? "Saving..." : (isEditing ? "Update Product" : "Create Product")}
-					</button>
-				</div>
-			</form>
-		</div>
-	);
+"use client"
+
+import { useState, useEffect } from "react"
+import { Plus, Trash2, X, Package, ImageIcon, AlertCircle } from "lucide-react"
+import { ProductService } from "@/lib/service/productService"
+import { createSupabaseBrowserClient } from '@/lib/supabase/browser-client';
+import React from "react"
+
+const GST_RATE = 0.18 // 18% GST
+
+// Custom Components
+function Button({
+  children,
+  type = "button",
+  variant = "primary",
+  size = "md",
+  disabled = false,
+  className = "",
+  onClick,
+  ...props
+}) {
+  const baseClasses =
+    "inline-flex items-center justify-center font-medium rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2"
+
+  const variants = {
+    primary: "bg-blue-600 text-white hover:bg-blue-700 focus:ring-blue-500 disabled:bg-blue-300",
+    secondary: "bg-gray-600 text-white hover:bg-gray-700 focus:ring-gray-500 disabled:bg-gray-300",
+    outline: "border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 focus:ring-blue-500 disabled:bg-gray-100",
+    destructive: "bg-red-600 text-white hover:bg-red-700 focus:ring-red-500 disabled:bg-red-300",
+    ghost: "text-gray-700 hover:bg-gray-100 focus:ring-gray-500",
+  }
+
+  const sizes = {
+    sm: "px-3 py-1.5 text-sm",
+    md: "px-4 py-2 text-sm",
+    lg: "px-6 py-3 text-base",
+  }
+
+  return (
+    <button
+      type={type}
+      disabled={disabled}
+      onClick={onClick}
+      className={`${baseClasses} ${variants[variant]} ${sizes[size]} ${className}`}
+      {...props}
+    >
+      {children}
+    </button>
+  )
+}
+
+function Input({ type = "text", className = "", error = false, ...props }) {
+  const baseClasses =
+    "w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+  const errorClasses = error ? "border-red-500 focus:ring-red-500" : "border-gray-300"
+
+  return <input type={type} className={`${baseClasses} ${errorClasses} ${className}`} {...props} />
+}
+
+function Textarea({ className = "", error = false, ...props }) {
+  const baseClasses =
+    "w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-vertical"
+  const errorClasses = error ? "border-red-500 focus:ring-red-500" : "border-gray-300"
+
+  return <textarea className={`${baseClasses} ${errorClasses} ${className}`} {...props} />
+}
+
+function Label({ children, htmlFor, className = "" }) {
+  return (
+    <label htmlFor={htmlFor} className={`block text-sm font-medium text-gray-700 mb-1 ${className}`}>
+      {children}
+    </label>
+  )
+}
+
+function Select({ children, value, onValueChange, placeholder, error = false, className = "" }) {
+  const baseClasses =
+    "w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white"
+  const errorClasses = error ? "border-red-500 focus:ring-red-500" : "border-gray-300"
+
+  return (
+    <select
+      value={value}
+      onChange={(e) => onValueChange(e.target.value)}
+      className={`${baseClasses} ${errorClasses} ${className}`}
+    >
+      {placeholder && <option value="">{placeholder}</option>}
+      {children}
+    </select>
+  )
+}
+
+function SelectItem({ children, value }) {
+  return <option value={value}>{children}</option>
+}
+
+function Checkbox({ checked, onCheckedChange, id, className = "" }) {
+  return (
+    <input
+      type="checkbox"
+      id={id}
+      checked={checked}
+      onChange={(e) => onCheckedChange(e.target.checked)}
+      className={`h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded ${className}`}
+    />
+  )
+}
+
+function Card({ children, className = "" }) {
+  return <div className={`bg-white border border-gray-200 rounded-lg shadow-sm ${className}`}>{children}</div>
+}
+
+function CardHeader({ children, className = "" }) {
+  return <div className={`px-6 py-4 border-b border-gray-200 ${className}`}>{children}</div>
+}
+
+function CardTitle({ children, className = "" }) {
+  return <h3 className={`text-lg font-semibold text-gray-900 ${className}`}>{children}</h3>
+}
+
+function CardContent({ children, className = "" }) {
+  return <div className={`px-6 py-4 ${className}`}>{children}</div>
+}
+
+function Badge({ children, variant = "default", className = "" }) {
+  const variants = {
+    default: "bg-gray-100 text-gray-800",
+    secondary: "bg-blue-100 text-blue-800",
+    outline: "border border-gray-300 text-gray-700",
+  }
+
+  return (
+    <span
+      className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${variants[variant]} ${className}`}
+    >
+      {children}
+    </span>
+  )
+}
+
+function Separator({ className = "" }) {
+  return <hr className={`border-gray-200 ${className}`} />
+}
+
+// Helper functions
+function calculateBasePriceExGST(basePrice) {
+  if (!basePrice || isNaN(basePrice)) return 0
+  return Number((Number.parseFloat(basePrice) / (1 + GST_RATE)).toFixed(2))
+}
+
+function generateVariantId() {
+  return `var_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+}
+
+function generateVariantCode(productData, variant) {
+  if (!productData.product_code) return ""
+
+  const parts = [productData.product_code]
+
+  if (productData.product_type === "microfiber") {
+    if (variant.size) parts.push(`S${variant.size}`)
+    if (variant.gsm) parts.push(`G${variant.gsm}`)
+    if (variant.color) parts.push(variant.color.substring(0, 3).toUpperCase())
+  } else {
+    if (variant.quantity) parts.push(`Q${variant.quantity}`)
+    if (variant.unit) parts.push(variant.unit.toUpperCase())
+    if (variant.color) parts.push(variant.color.substring(0, 3).toUpperCase())
+  }
+
+  return parts.join("-")
+}
+
+function MultiInputField({ label, items, setItems, placeholder, newValue, setNewValue }) {
+  return (
+    <div>
+      <Label>{label}</Label>
+      <div className="flex gap-2">
+        <Input value={newValue} onChange={(e) => setNewValue(e.target.value)} placeholder={placeholder} />
+        <Button
+          type="button"
+          onClick={() => {
+            if (newValue.trim()) {
+              setItems([...items, newValue.trim()])
+              setNewValue("")
+            }
+          }}
+          size="sm"
+        >
+          <Plus className="w-4 h-4" />
+        </Button>
+      </div>
+      {items.length > 0 && (
+        <div className="mt-2 flex flex-wrap gap-2">
+          {items.map((item, index) => (
+            <Badge key={index} variant="outline" className="flex items-center gap-1">
+              {item}
+              <button
+                type="button"
+                className="ml-1 hover:text-red-600"
+                onClick={() => setItems(items.filter((_, i) => i !== index))}
+              >
+                <X className="w-3 h-3" />
+              </button>
+            </Badge>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
+export default function ProductForm({ product, onSuccess, onCancel, categories, colors, sizes, gsmValues, quantityMicrodata = [] }) {
+  // Debug log for categories
+  console.log('ProductForm categories prop:', categories);
+
+  // Debug log for Supabase user authentication
+  React.useEffect(() => {
+    async function checkUser() {
+      const supabase = createSupabaseBrowserClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      console.log('Supabase user:', user);
+    }
+    checkUser();
+  }, []);
+
+  // Form state matching exact database schema
+  const [formData, setFormData] = useState({
+    product_code: "",
+    name: "",
+    description: "",
+    product_type: "regular", // 'microfiber' or 'regular'
+    category: "",
+    subcategory: [], // JSONB array
+    hsn_code: "",
+    features: [], // JSONB array
+    usage_instructions: [], // JSONB array
+    warnings: [], // JSONB array
+    main_image_url: "",
+    images: [], // JSONB array
+    taglines: [], // JSONB array
+  })
+
+  const [variants, setVariants] = useState([])
+  const [loading, setLoading] = useState(false)
+  const [submitting, setSubmitting] = useState(false)
+  const [errors, setErrors] = useState({})
+
+  // Add this inside ProductForm component, after useState declarations
+  const supabase = createSupabaseBrowserClient();
+  const [mainImageUploading, setMainImageUploading] = useState(false);
+  const [imagesUploading, setImagesUploading] = useState(false);
+
+  const [newFeature, setNewFeature] = useState("");
+  const [newInstruction, setNewInstruction] = useState("");
+  const [newWarning, setNewWarning] = useState("");
+  const [newTagline, setNewTagline] = useState("");
+  const [newImage, setNewImage] = useState("");
+
+  // Load microdata and initialize form
+  useEffect(() => {
+    if (product) {
+      initializeFormWithProduct(product)
+    } else {
+      addInitialVariant()
+    }
+  }, [product])
+
+  const initializeFormWithProduct = (productData) => {
+    setFormData({
+      product_code: productData.product_code || "",
+      name: productData.name || "",
+      description: productData.description || "",
+      product_type: productData.product_type || "regular",
+      category: productData.category || "",
+      subcategory: Array.isArray(productData.subcategory) ? productData.subcategory : [],
+      hsn_code: productData.hsn_code || "",
+      features: Array.isArray(productData.features) ? productData.features : [],
+      usage_instructions: Array.isArray(productData.usage_instructions) ? productData.usage_instructions : [],
+      warnings: Array.isArray(productData.warnings) ? productData.warnings : [],
+      main_image_url: productData.main_image_url || "",
+      images: Array.isArray(productData.images) ? productData.images : [],
+      taglines: Array.isArray(productData.taglines) ? productData.taglines : [],
+    })
+
+    if (productData.variants && Array.isArray(productData.variants)) {
+      setVariants(
+        productData.variants.map((variant) => ({
+          id: variant.id || generateVariantId(),
+          variant_code: variant.variant_code || "",
+          size: variant.size || "",
+          quantity: variant.quantity || 0,
+          unit: variant.unit || "ml",
+          weight_grams: variant.weight_grams || 0,
+          gsm: variant.gsm || 0,
+          dimensions: variant.dimensions || "",
+          color: Array.isArray(variant.color) ? variant.color[0] : variant.color || "",
+          color_hex: Array.isArray(variant.color_hex) ? variant.color_hex[0] : variant.color_hex || "",
+          base_price: variant.base_price || 0,
+          base_price_excluding_gst: variant.base_price_excluding_gst || 0,
+          stock: variant.stock || 0,
+          is_active: variant.is_active !== false,
+        })),
+      )
+    }
+  }
+
+  const addInitialVariant = () => {
+    const initialVariant = createNewVariant()
+    setVariants([initialVariant])
+  }
+
+  const createNewVariant = () => {
+    return {
+      id: generateVariantId(),
+      variant_code: "",
+      size: "",
+      quantity: 0,
+      unit: "ml",
+      weight_grams: 0,
+      gsm: 0,
+      dimensions: "",
+      color: "",
+      color_hex: "",
+      base_price: 0,
+      base_price_excluding_gst: 0,
+      stock: 0,
+      is_active: true,
+    }
+  }
+
+  const handleInputChange = (field, value) => {
+    setFormData((prev) => ({
+      ...prev,
+      [field]: value,
+    }))
+
+    // Clear error when user starts typing
+    if (errors[field]) {
+      setErrors((prev) => ({ ...prev, [field]: "" }))
+    }
+  }
+
+  const handleVariantChange = (variantId, field, value) => {
+    setVariants((prev) =>
+      prev.map((variant) => {
+        if (variant.id === variantId) {
+          const updatedVariant = { ...variant, [field]: value }
+
+          // Auto-calculate GST excluded price when base price changes
+          if (field === "base_price") {
+            updatedVariant.base_price_excluding_gst = calculateBasePriceExGST(Number(value) || 0)
+          }
+
+          return updatedVariant
+        }
+        return variant
+      }),
+    )
+  }
+
+  const addVariant = () => {
+    const newVariant = createNewVariant()
+    setVariants((prev) => [...prev, newVariant])
+  }
+
+  const removeVariant = (variantId) => {
+    if (variants.length > 1) {
+      setVariants((prev) => prev.filter((variant) => variant.id !== variantId))
+    }
+  }
+
+  const handleSubcategoryToggle = (categoryName, checked) => {
+    setFormData((prev) => ({
+      ...prev,
+      subcategory: checked
+        ? [...prev.subcategory, categoryName]
+        : prev.subcategory.filter((sub) => sub !== categoryName),
+    }))
+  }
+
+  const validateForm = () => {
+    const newErrors = {}
+
+    // Required fields validation
+    if (!formData.product_code.trim()) newErrors.product_code = "Product code is required"
+    if (!formData.name.trim()) newErrors.name = "Product name is required"
+    if (!formData.product_type) newErrors.product_type = "Product type is required"
+
+    // Variants validation
+    if (variants.length === 0) {
+      newErrors.variants = "At least one variant is required"
+    } else {
+      variants.forEach((variant, index) => {
+        if (!variant.color.trim()) {
+          newErrors[`variant_${index}_color`] = "Color is required"
+        }
+        if (variant.base_price <= 0) {
+          newErrors[`variant_${index}_price`] = "Price must be greater than 0"
+        }
+        if (formData.product_type === "microfiber") {
+          if (!variant.size) newErrors[`variant_${index}_size`] = "Size is required for microfiber"
+          if (!variant.gsm) newErrors[`variant_${index}_gsm`] = "GSM is required for microfiber"
+        } else {
+          if (!variant.quantity) newErrors[`variant_${index}_quantity`] = "Quantity is required for regular products"
+          if (!variant.unit) newErrors[`variant_${index}_unit`] = "Unit is required for regular products"
+        }
+      })
+    }
+
+    setErrors(newErrors)
+    return Object.keys(newErrors).length === 0
+  }
+
+  const transformDataForSubmission = () => {
+    // Transform data to match database schema
+    return {
+      ...formData,
+      variants: variants.map((variant) => ({
+        ...variant,
+        variant_code: variant.variant_code || generateVariantCode(formData, variant),
+        // Ensure proper data types
+        base_price: Number(variant.base_price),
+        base_price_excluding_gst: Number(variant.base_price_excluding_gst),
+        stock: Number(variant.stock),
+        weight_grams: variant.weight_grams ? Number(variant.weight_grams) : null,
+        gsm: variant.gsm ? Number(variant.gsm) : null,
+        quantity: variant.quantity ? Number(variant.quantity) : null,
+        // Handle JSONB fields for color - convert to array format for database
+        color: variant.color ? [variant.color] : null,
+        color_hex: variant.color_hex ? [variant.color_hex] : null,
+      })),
+    }
+  }
+
+  const handleSubmit = async (e) => {
+    e.preventDefault()
+
+    if (!validateForm()) {
+      return
+    }
+
+    setSubmitting(true)
+
+    try {
+      const productData = transformDataForSubmission()
+
+      if (product?.id) {
+        await ProductService.updateProduct(product.id, productData)
+      } else {
+        await ProductService.createProduct(productData)
+      }
+
+      onSuccess()
+    } catch (error) {
+      console.error("Error submitting form:", error)
+      setErrors({ submit: error.message || "Failed to save product" })
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  const isMicrofiber = formData.product_type === "microfiber"
+
+  async function handleMainImageUpload(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+    setMainImageUploading(true);
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('type', 'main');
+    try {
+      const res = await fetch('/api/upload', {
+        method: 'POST',
+        body: formData,
+      });
+      const data = await res.json();
+      if (res.ok && data.url) {
+        handleInputChange('main_image_url', data.url);
+      } else {
+        alert('Failed to upload image: ' + (data.error || 'Unknown error') + ` (file: ${file.name})`);
+      }
+    } catch (err) {
+      alert('Failed to upload image: ' + err.message + ` (file: ${file.name})`);
+    }
+    setMainImageUploading(false);
+  }
+
+  async function handleDroppedImages(files) {
+    if (!files.length) return;
+    setImagesUploading(true);
+    const uploadedUrls = [];
+    let anyError = false;
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i];
+      const formData = new FormData();
+      formData.append('file', file);
+      // Optionally, you can add a type field if you want to organize folders
+      formData.append('type', 'products');
+      try {
+        const res = await fetch('/api/upload', {
+          method: 'POST',
+          body: formData,
+        });
+        const data = await res.json();
+        if (res.ok && data.url) {
+          uploadedUrls.push(data.url);
+        } else {
+          anyError = true;
+          alert('Failed to upload image: ' + (data.error || 'Unknown error') + ` (file: ${file.name})`);
+        }
+      } catch (err) {
+        anyError = true;
+        alert('Failed to upload image: ' + err.message + ` (file: ${file.name})`);
+      }
+    }
+    handleInputChange('images', [...formData.images, ...uploadedUrls]);
+    setImagesUploading(false);
+    // If main_image_url is not set, set it to the first image
+    if (!formData.main_image_url && uploadedUrls.length > 0) {
+      handleInputChange('main_image_url', uploadedUrls[0]);
+    }
+    // Clear the file input value so the same files can be selected again
+    const input = document.getElementById('additional_images_upload_input');
+    if (input) input.value = '';
+    if (anyError) {
+      alert('Some images failed to upload. Please check your connection or try again.');
+    }
+  }
+
+  function removeAdditionalImage(idx) {
+    handleInputChange('images', formData.images.filter((_, i) => i !== idx));
+  }
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center p-8">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+        <span className="ml-2">Loading form data...</span>
+      </div>
+    )
+  }
+
+  return (
+    <div className="max-w-6xl mx-auto p-6 space-y-6">
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-2xl font-bold text-gray-900">{product ? "Edit Product" : "Create New Product"}</h2>
+          <p className="text-gray-600 mt-1">
+            {product ? "Update product information and variants" : "Add a new product with variants"}
+          </p>
+        </div>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={onCancel}>
+            Cancel
+          </Button>
+          <Button type="submit" form="product-form" disabled={submitting} className="min-w-[120px]">
+            {submitting ? "Saving..." : product ? "Update Product" : "Create Product"}
+          </Button>
+        </div>
+      </div>
+
+      {errors.submit && (
+        <div className="bg-red-50 border border-red-200 rounded-lg p-4 flex items-center gap-2">
+          <AlertCircle className="w-5 h-5 text-red-600" />
+          <span className="text-red-700">{errors.submit}</span>
+        </div>
+      )}
+
+      <form id="product-form" onSubmit={handleSubmit} className="space-y-6">
+        {/* Basic Information */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Package className="w-5 h-5" />
+              Basic Information
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="product_code">Product Code *</Label>
+                <Input
+                  id="product_code"
+                  value={formData.product_code}
+                  onChange={(e) => handleInputChange("product_code", e.target.value)}
+                  placeholder="Enter unique product code"
+                  error={!!errors.product_code}
+                />
+                {errors.product_code && <p className="text-sm text-red-600 mt-1">{errors.product_code}</p>}
+              </div>
+
+              <div>
+                <Label htmlFor="product_type">Product Type *</Label>
+                <Select
+                  value={formData.product_type}
+                  onValueChange={(value) => handleInputChange("product_type", value)}
+                  placeholder="Select product type"
+                  error={!!errors.product_type}
+                >
+                  <SelectItem value="regular">Regular</SelectItem>
+                  <SelectItem value="microfiber">Microfiber</SelectItem>
+                </Select>
+                {errors.product_type && <p className="text-sm text-red-600 mt-1">{errors.product_type}</p>}
+              </div>
+            </div>
+
+            <div>
+              <Label htmlFor="name">Product Name *</Label>
+              <Input
+                id="name"
+                value={formData.name}
+                onChange={(e) => handleInputChange("name", e.target.value)}
+                placeholder="Enter product name"
+                error={!!errors.name}
+              />
+              {errors.name && <p className="text-sm text-red-600 mt-1">{errors.name}</p>}
+            </div>
+
+            <div>
+              <Label htmlFor="description">Description</Label>
+              <Textarea
+                id="description"
+                value={formData.description}
+                onChange={(e) => handleInputChange("description", e.target.value)}
+                placeholder="Enter product description"
+                rows={3}
+              />
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="category">Category</Label>
+                <Select
+                  value={formData.category}
+                  onValueChange={(value) => handleInputChange("category", value)}
+                  placeholder="Select category"
+                >
+                  {categories.map((category) => (
+                    <SelectItem key={category.id} value={category.name || category.category_name}>
+                      {category.name || category.category_name}
+                    </SelectItem>
+                  ))}
+                </Select>
+              </div>
+
+              <div>
+                <Label htmlFor="hsn_code">HSN Code</Label>
+                <Input
+                  id="hsn_code"
+                  value={formData.hsn_code}
+                  onChange={(e) => handleInputChange("hsn_code", e.target.value)}
+                  placeholder="Enter HSN code"
+                />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Subcategories */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Subcategories</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+              {categories.map((category) => (
+                <div key={category.id} className="flex items-center space-x-2">
+                  <Checkbox
+                    id={`sub_${category.id}`}
+                    checked={formData.subcategory.includes(category.name || category.category_name)}
+                    onCheckedChange={(checked) => handleSubcategoryToggle(category.name || category.category_name, checked)}
+                  />
+                  <Label htmlFor={`sub_${category.id}`} className="text-sm">
+                    {category.name || category.category_name}
+                  </Label>
+                </div>
+              ))}
+            </div>
+            {formData.subcategory.length > 0 && (
+              <div className="mt-3 flex flex-wrap gap-2">
+                {formData.subcategory.map((sub, index) => (
+                  <Badge key={index} variant="secondary">
+                    {sub}
+                  </Badge>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Images */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <ImageIcon className="w-5 h-5" />
+              Images
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div>
+              <Label htmlFor="main_image_upload">Main Image</Label>
+              <input
+                id="main_image_upload"
+                type="file"
+                accept="image/*"
+                onChange={handleMainImageUpload}
+                disabled={mainImageUploading}
+                className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+              />
+              {mainImageUploading && <p className="text-xs text-blue-600 mt-1">Uploading...</p>}
+              {formData.main_image_url && (
+                <div className="mt-2">
+                  <img src={formData.main_image_url} alt="Main" className="h-24 rounded border" />
+                </div>
+              )}
+            </div>
+            <div>
+              <Label htmlFor="additional_images_upload">Additional Images</Label>
+              <div
+                className={`mt-2 border-2 border-dashed rounded-lg p-4 flex flex-col items-center justify-center cursor-pointer transition hover:border-blue-400 bg-gray-50 relative ${imagesUploading ? 'opacity-60 pointer-events-none' : ''}`}
+                onDragOver={e => { e.preventDefault(); e.stopPropagation(); }}
+                onDrop={async e => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  if (imagesUploading) return;
+                  const files = Array.from(e.dataTransfer.files).filter(f => f.type.startsWith('image/'));
+                  if (files.length) await handleDroppedImages(files);
+                }}
+                onClick={() => {
+                  if (!imagesUploading) document.getElementById('additional_images_upload_input').click();
+                }}
+              >
+                <input
+                  id="additional_images_upload_input"
+                  type="file"
+                  accept="image/*"
+                  multiple
+                  className="hidden"
+                  disabled={imagesUploading}
+                  onChange={async e => {
+                    if (imagesUploading) return;
+                    const files = Array.from(e.target.files).filter(f => f.type.startsWith('image/'));
+                    if (files.length) await handleDroppedImages(files);
+                    e.target.value = '';
+                  }}
+                />
+                <span className="text-gray-500 text-sm mb-2">Drag & drop images here, or click to select</span>
+                {imagesUploading && <span className="text-xs text-blue-600 mt-1">Uploading...</span>}
+              </div>
+              {formData.images && formData.images.length > 0 && (
+                <div className="mt-4 flex flex-wrap gap-2">
+                  {formData.images.map((img, idx) => (
+                    <div key={idx} className="relative group">
+                      <img src={img} alt={`Additional ${idx + 1}`} className="h-20 w-20 object-cover rounded border" />
+                      <button
+                        type="button"
+                        onClick={e => { e.stopPropagation(); removeAdditionalImage(idx); }}
+                        className="absolute top-0 right-0 bg-white bg-opacity-80 rounded-bl px-1 py-0.5 text-xs text-red-600 opacity-0 group-hover:opacity-100 transition"
+                        title="Remove image"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                      {idx === 0 && (
+                        <span className="absolute bottom-0 left-0 bg-blue-600 text-white text-xs px-2 py-0.5 rounded-tr rounded-bl">Main</span>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Product Details */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Product Details</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            <MultiInputField
+              label="Features"
+              items={formData.features}
+              setItems={(items) => handleInputChange("features", items)}
+              placeholder="Enter feature"
+              newValue={newFeature}
+              setNewValue={setNewFeature}
+            />
+
+            <MultiInputField
+              label="Usage Instructions"
+              items={formData.usage_instructions}
+              setItems={(items) => handleInputChange("usage_instructions", items)}
+              placeholder="Enter usage instruction"
+              newValue={newInstruction}
+              setNewValue={setNewInstruction}
+            />
+
+            <MultiInputField
+              label="Warnings"
+              items={formData.warnings}
+              setItems={(items) => handleInputChange("warnings", items)}
+              placeholder="Enter warning"
+              newValue={newWarning}
+              setNewValue={setNewWarning}
+            />
+
+            <MultiInputField
+              label="Taglines"
+              items={formData.taglines}
+              setItems={(items) => handleInputChange("taglines", items)}
+              placeholder="Enter tagline"
+              newValue={newTagline}
+              setNewValue={setNewTagline}
+            />
+          </CardContent>
+        </Card>
+
+        {/* Product Variants */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center justify-between">
+              Product Variants
+              <Button onClick={addVariant} size="sm">
+                <Plus className="w-4 h-4 mr-2" />
+                Add Variant
+              </Button>
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {errors.variants && (
+              <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg">
+                <p className="text-sm text-red-600">{errors.variants}</p>
+              </div>
+            )}
+
+            <div className="space-y-4">
+              {variants.map((variant, index) => (
+                <Card key={variant.id} className="border-l-4 border-l-blue-500">
+                  <CardHeader className="pb-3">
+                    <div className="flex items-center justify-between">
+                      <CardTitle className="text-lg">
+                        Variant {index + 1}
+                        {variant.variant_code && (
+                          <span className="text-sm font-normal text-gray-500 ml-2">({variant.variant_code})</span>
+                        )}
+                      </CardTitle>
+                      {variants.length > 1 && (
+                        <Button variant="destructive" size="sm" onClick={() => removeVariant(variant.id)}>
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      )}
+                    </div>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    {/* Manual Variant Code Input */}
+                    <div>
+                      <Label>Variant Code *</Label>
+                      <Input
+                        value={variant.variant_code || ""}
+                        onChange={e => handleVariantChange(variant.id, "variant_code", e.target.value)}
+                        placeholder="Enter unique variant code"
+                      />
+                    </div>
+                    {/* Common fields */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <Label>Color *</Label>
+                        <Select
+                          value={variant.color}
+                          onValueChange={(value) => handleVariantChange(variant.id, "color", value)}
+                          placeholder="Select color"
+                          error={!!errors[`variant_${index}_color`]}
+                        >
+                          {colors.map((color) => (
+                            <SelectItem key={color.id} value={color.color}>
+                              <div className="flex items-center gap-2">
+                                {color.hex_code && (
+                                  <span
+                                    className="inline-block w-4 h-4 rounded border border-gray-300"
+                                    style={{ backgroundColor: color.hex_code }}
+                                  />
+                                )}
+                                <span>{color.color}</span>
+                                {color.hex_code && (
+                                  <span className="text-xs text-gray-400 ml-1">{color.hex_code}</span>
+                                )}
+                              </div>
+                            </SelectItem>
+                          ))}
+                        </Select>
+                        {errors[`variant_${index}_color`] && (
+                          <p className="text-sm text-red-600 mt-1">{errors[`variant_${index}_color`]}</p>
+                        )}
+                      </div>
+                      <div>
+                        <Label>Color Hex Code</Label>
+                        <Input
+                          value={variant.color_hex || ""}
+                          onChange={(e) => handleVariantChange(variant.id, "color_hex", e.target.value)}
+                          placeholder="#000000"
+                        />
+                      </div>
+                    </div>
+
+                    {/* Type-specific fields */}
+                    {isMicrofiber ? (
+                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                        <div>
+                          <Label>Size *</Label>
+                          <Select
+                            value={variant.size || ""}
+                            onValueChange={(value) => handleVariantChange(variant.id, "size", value)}
+                            placeholder="Select size"
+                            error={!!errors[`variant_${index}_size`]}
+                          >
+                            {sizes.map((size) => (
+                              <SelectItem key={size.id} value={size.size_cm.toString()}>
+                                {size.size_cm} cm
+                              </SelectItem>
+                            ))}
+                          </Select>
+                          {errors[`variant_${index}_size`] && (
+                            <p className="text-sm text-red-600 mt-1">{errors[`variant_${index}_size`]}</p>
+                          )}
+                        </div>
+
+                        <div>
+                          <Label>GSM *</Label>
+                          <Select
+                            value={variant.gsm?.toString() || ""}
+                            onValueChange={(value) => handleVariantChange(variant.id, "gsm", Number.parseInt(value))}
+                            placeholder="Select GSM"
+                            error={!!errors[`variant_${index}_gsm`]}
+                          >
+                            {gsmValues.map((gsm) => (
+                              <SelectItem key={gsm.id} value={gsm.gsm.toString()}>
+                                {gsm.gsm} GSM
+                              </SelectItem>
+                            ))}
+                          </Select>
+                          {errors[`variant_${index}_gsm`] && (
+                            <p className="text-sm text-red-600 mt-1">{errors[`variant_${index}_gsm`]}</p>
+                          )}
+                        </div>
+
+                        <div>
+                          <Label>Weight (grams)</Label>
+                          <Input
+                            type="number"
+                            value={variant.weight_grams || ""}
+                            onChange={(e) =>
+                              handleVariantChange(variant.id, "weight_grams", Number.parseInt(e.target.value) || 0)
+                            }
+                            placeholder="Enter weight"
+                          />
+                        </div>
+
+                        <div>
+                          <Label>Dimensions</Label>
+                          <Input
+                            value={variant.dimensions || ""}
+                            onChange={(e) => handleVariantChange(variant.id, "dimensions", e.target.value)}
+                            placeholder="e.g., 30x40 cm"
+                          />
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                          <Label>Quantity *</Label>
+                          <select
+                            value={variant.quantity || ''}
+                            onChange={e => handleVariantChange(variant.id, 'quantity', e.target.value)}
+                            className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                          >
+                            <option value="">Select quantity</option>
+                            {[...new Set(quantityMicrodata.map(q => q.quantity))].map(qty => (
+                              <option key={qty} value={qty}>{qty}</option>
+                            ))}
+                          </select>
+                        </div>
+                        <div>
+                          <Label>Unit *</Label>
+                          <select
+                            value={variant.unit || ''}
+                            onChange={e => handleVariantChange(variant.id, 'unit', e.target.value)}
+                            className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                          >
+                            <option value="">Select unit</option>
+                            {[...new Set(quantityMicrodata.map(q => q.unit))].map(unit => (
+                              <option key={unit} value={unit}>{unit}</option>
+                            ))}
+                          </select>
+                        </div>
+                      </div>
+                    )}
+
+                    <Separator />
+
+                    {/* Pricing and Stock */}
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      <div>
+                        <Label>Base Price (Inc. GST) *</Label>
+                        <Input
+                          type="number"
+                          step="0.01"
+                          value={variant.base_price || ""}
+                          onChange={(e) =>
+                            handleVariantChange(variant.id, "base_price", Number.parseFloat(e.target.value) || 0)
+                          }
+                          placeholder="Enter base price"
+                          error={!!errors[`variant_${index}_price`]}
+                        />
+                        {errors[`variant_${index}_price`] && (
+                          <p className="text-sm text-red-600 mt-1">{errors[`variant_${index}_price`]}</p>
+                        )}
+                      </div>
+
+                      <div>
+                        <Label>Price (Exc. GST)</Label>
+                        <Input
+                          type="number"
+                          step="0.01"
+                          value={variant.base_price_excluding_gst?.toFixed(2) || ""}
+                          readOnly
+                          className="bg-gray-50"
+                          placeholder="Auto-calculated"
+                        />
+                        <p className="text-xs text-gray-500 mt-1">Auto-calculated at {GST_RATE * 100}% GST</p>
+                      </div>
+
+                      <div>
+                        <Label>Stock Quantity</Label>
+                        <Input
+                          type="number"
+                          value={variant.stock || ""}
+                          onChange={(e) =>
+                            handleVariantChange(variant.id, "stock", Number.parseInt(e.target.value) || 0)
+                          }
+                          placeholder="Enter stock quantity"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="flex items-center space-x-2">
+                      <Checkbox
+                        id={`active_${variant.id}`}
+                        checked={variant.is_active}
+                        onCheckedChange={(checked) => handleVariantChange(variant.id, "is_active", checked)}
+                      />
+                      <Label htmlFor={`active_${variant.id}`}>Active variant</Label>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      </form>
+    </div>
+  )
 }

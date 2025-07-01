@@ -140,15 +140,16 @@ export class ProductService {
               id:
                 variant.id ||
                 `var_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+              variant_code: variant.variant_code || '',
               gsm: variant.gsm || '',
               size: variant.size || '',
               color: variant.color || '',
               color_hex: variant.color_hex || null,
               quantity: variant.quantity || '',
               unit: variant.unit || 'ml',
-              price: Number.parseFloat(variant.price) || 0,
+              base_price: Number.parseFloat(variant.base_price) || 0,
+              base_price_excluding_gst: Number.parseFloat(variant.base_price_excluding_gst) || 0,
               stock: Number.parseInt(variant.stock) || 0,
-              compare_at_price: variant.compareAtPrice || null,
             }))
           : [],
         subcategory_names: Array.isArray(data.subcategory_names)
@@ -211,15 +212,16 @@ export class ProductService {
               id:
                 variant.id ||
                 `var_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+              variant_code: variant.variant_code || '',
               gsm: variant.gsm || '',
               size: variant.size || '',
               color: variant.color || '',
               color_hex: variant.color_hex || null,
               quantity: variant.quantity || '',
               unit: variant.unit || 'ml',
-              price: Number.parseFloat(variant.price) || 0,
+              base_price: Number.parseFloat(variant.base_price) || 0,
+              base_price_excluding_gst: Number.parseFloat(variant.base_price_excluding_gst) || 0,
               stock: Number.parseInt(variant.stock) || 0,
-              compare_at_price: variant.compareAtPrice || null,
             }))
           : [],
         subcategory_names: Array.isArray(updateData.subcategory_names)
@@ -358,32 +360,18 @@ export class ProductService {
 
     const transformedData = {
       ...product,
-      category: product.category_name,
-      subcategory: product.subcategory_name,
+      category: product.category,
+      subcategory: product.subcategory,
       variants: variants.map((variant) => {
-        if (product.is_microfiber) {
-          return {
-            id: variant.id,
-            gsm: variant.gsm,
-            size: variant.size,
-            color: variant.color,
-            color_hex: variant.color_hex || null,
-            stock: variant.stock || 0,
-            price: variant.price || 0,
-            compareAtPrice: variant.compare_at_price || null,
-          };
-        } else {
-          return {
-            id: variant.id,
-            quantity: variant.quantity,
-            unit: variant.unit || 'ml',
-            color: variant.color,
-            color_hex: variant.color_hex || null,
-            stock: variant.stock || 0,
-            price: variant.price || 0,
-            compareAtPrice: variant.compare_at_price || null,
-          };
-        }
+        return {
+          id: variant.id,
+          quantity: variant.quantity,
+          unit: variant.unit || 'ml',
+          color: variant.color,
+          color_hex: variant.color_hex || null,
+          stock: variant.stock || 0,
+          base_price: variant.base_price || 0,
+        };
       }),
     };
 
@@ -409,9 +397,9 @@ export class ProductService {
     );
     const availableVariants = variants.filter((v) => (v.stock || 0) > 0).length;
     const minPrice =
-      variants.length > 0 ? Math.min(...variants.map((v) => v.price || 0)) : 0;
+      variants.length > 0 ? Math.min(...variants.map((v) => v.base_price || 0)) : 0;
     const maxPrice =
-      variants.length > 0 ? Math.max(...variants.map((v) => v.price || 0)) : 0;
+      variants.length > 0 ? Math.max(...variants.map((v) => v.base_price || 0)) : 0;
 
     // Ensure we have valid price data
     if (minPrice === 0 && maxPrice === 0) {
@@ -452,19 +440,19 @@ export class ProductService {
   static hasCategoryData(product) {
     return (
       product &&
-      product.category_name !== undefined &&
-      product.category_name !== null &&
-      product.category_name !== ''
+      product.category !== undefined &&
+      product.category !== null &&
+      product.category !== ''
     );
   }
 
   static getLowestPrice(variants) {
     if (!Array.isArray(variants) || variants.length === 0) return 0;
-    return Math.min(...variants.map((v) => Number.parseFloat(v.price) || 0));
+    return Math.min(...variants.map((v) => Number.parseFloat(v.base_price) || 0));
   }
 
   static getHighestPrice(variants) {
     if (!Array.isArray(variants) || variants.length === 0) return 0;
-    return Math.max(...variants.map((v) => Number.parseFloat(v.price) || 0));
+    return Math.max(...variants.map((v) => Number.parseFloat(v.base_price) || 0));
   }
 }

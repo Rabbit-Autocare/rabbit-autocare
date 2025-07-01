@@ -36,7 +36,8 @@ export async function GET(request) {
 					color_hex,
 					quantity,
 					unit,
-					price,
+					base_price,
+					base_price_excluding_gst,
 					stock,
 					compare_at_price
 				)
@@ -46,7 +47,7 @@ export async function GET(request) {
 
     // Apply filters
     if (category) {
-      query = query.eq('category_name', category);
+      query = query.eq('category', category);
     }
 
     if (search) {
@@ -66,11 +67,11 @@ export async function GET(request) {
     }
 
     if (minPrice) {
-      query = query.gte('product_variants.price', parseFloat(minPrice));
+      query = query.gte('product_variants.base_price', parseFloat(minPrice));
     }
 
     if (maxPrice) {
-      query = query.lte('product_variants.price', parseFloat(maxPrice));
+      query = query.lte('product_variants.base_price', parseFloat(maxPrice));
     }
 
     // Apply pagination
@@ -133,20 +134,20 @@ export async function POST(request) {
     // Validate variant data
     for (const variant of data.variants) {
       if (data.is_microfiber) {
-        if (!variant.gsm || !variant.size || !variant.color || !variant.price) {
+        if (!variant.gsm || !variant.size || !variant.color || !variant.base_price) {
           return NextResponse.json(
             {
               error:
-                'GSM, size, color, and price are required for microfiber variants',
+                'GSM, size, color, and base price are required for microfiber variants',
             },
             { status: 400 }
           );
         }
       } else {
         // Optional fields for liquid variants
-        if (!variant.price) {
+        if (!variant.base_price) {
           return NextResponse.json(
-            { error: 'Price is required for liquid variants' },
+            { error: 'Base price is required for regular (liquid) variants' },
             { status: 400 }
           );
         }
@@ -158,13 +159,13 @@ export async function POST(request) {
       name: data.name,
       product_code: data.product_code,
       description: data.description,
-      category_name: data.category_name,
+      category: data.category,
       is_microfiber: data.is_microfiber,
       main_image_url: data.main_image_url,
       images: data.images,
       key_features: data.key_features,
       taglines: data.taglines,
-      subcategory_names: data.subcategory_names,
+      subcategory: data.subcategory,
       meta_title: data.meta_title,
       meta_description: data.meta_description,
       meta_keywords: data.meta_keywords,
@@ -237,7 +238,8 @@ export async function POST(request) {
 					color_hex,
 					quantity,
 					unit,
-					price,
+					base_price,
+					base_price_excluding_gst,
 					stock,
 					compare_at_price
 				)

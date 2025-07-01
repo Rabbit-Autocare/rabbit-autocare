@@ -13,7 +13,8 @@ import {
   YAxis,
   CartesianGrid,
 } from 'recharts';
-import { supabase } from '../../lib/supabaseClient';
+import { createSupabaseBrowserClient } from '@/lib/supabase/browser-client';
+const supabase = createSupabaseBrowserClient();
 import AdminLayout from '@/components/layouts/AdminLayout';
 import AnalyticsTabs from './analytics/AnalyticsTabs';
 

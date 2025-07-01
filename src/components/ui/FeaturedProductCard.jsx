@@ -1,5 +1,5 @@
 "use client"
-import { supabase } from "@/lib/supabaseClient.js"
+import { supabase } from "@/lib/supabase/browser-client"
 import { useState, useEffect, useMemo } from "react"
 import { ChevronLeft, ChevronRight, X ,ShoppingCart} from "lucide-react"
 import { useCart } from "@/contexts/CartContext.jsx"

@@ -1,4 +1,5 @@
-import { supabase } from '@/lib/supabaseClient';
+import { createSupabaseBrowserClient } from '@/lib/supabase/browser-client';
+const supabase = createSupabaseBrowserClient(); // Adjust the import based on your setup
 import { StockService } from './stockService';
 import { fetchWithRetry } from '@/lib/utils/fetchWithRetry';
  

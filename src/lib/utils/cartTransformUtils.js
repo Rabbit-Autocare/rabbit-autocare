@@ -1,4 +1,5 @@
-import { supabase } from '@/lib/supabaseClient';
+import { createSupabaseBrowserClient } from '@/lib/supabase/browser-client';
+const supabase = createSupabaseBrowserClient();
 
 /**
  * Transform cart items into a comprehensive format for checkout

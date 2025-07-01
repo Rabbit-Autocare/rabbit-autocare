@@ -2,7 +2,8 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { supabase } from '@/lib/supabaseClient';
+import { createSupabaseBrowserClient } from '@/lib/supabase/browser-client';
+const supabase = createSupabaseBrowserClient();
 
 // Custom Card Component
 const CustomCard = ({ children, className }) => (

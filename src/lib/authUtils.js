@@ -1,5 +1,6 @@
 // lib/authUtils.js
-import { supabase } from '@/lib/supabaseClient';
+import { createSupabaseBrowserClient } from '@/lib/supabase/browser-client';
+const supabase = createSupabaseBrowserClient();
 
 // Simple function to get current user and their data
 export async function getCurrentUser() {

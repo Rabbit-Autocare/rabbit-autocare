@@ -1,4 +1,5 @@
-import { supabase } from '../supabaseClient';
+import { createSupabaseBrowserClient } from '@/lib/supabase/browser-client';
+const supabase = createSupabaseBrowserClient();
 
 export class WishlistService {
   static async addToWishlist({ product_id, variant, combo_id, kit_id }) {

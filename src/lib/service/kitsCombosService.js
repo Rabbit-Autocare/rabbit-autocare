@@ -1,6 +1,7 @@
 // kitsCombosService.js - Handles API operations for Kits & Combos
 
-import { supabase } from '@/lib/supabaseClient';
+import { createSupabaseBrowserClient } from '@/lib/supabase/browser-client';
+const supabase = createSupabaseBrowserClient();
 import { KitService } from './kitService';
 import { ComboService } from './comboService';
  

@@ -1,5 +1,6 @@
 // services/cartService.js
-import { supabase } from '@/lib/supabaseClient';
+import { createSupabaseBrowserClient } from '@/lib/supabase/browser-client';
+const supabase = createSupabaseBrowserClient(); // Adjust the import based on your setup
 
 class CartService {
   // Get current user's cart items

@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import CouponService from '@/lib/service/couponService';
-import { supabase } from '@/lib/supabaseClient';
+import { createSupabaseBrowserClient } from '@/lib/supabase/browser-client';
+const supabase = createSupabaseBrowserClient();
 
 // GET - Get all coupons (admin only)
 export async function GET(request) {

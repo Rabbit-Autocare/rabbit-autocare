@@ -2,7 +2,8 @@
 
 import { useEffect, useState } from "react"
 import { usePathname, useRouter } from "next/navigation"
-import { supabase } from "@/lib/supabaseClient"
+import { createSupabaseBrowserClient } from '@/lib/supabase/browser-client';
+const supabase = createSupabaseBrowserClient();
 import Footer from "@/components/navigation/Footer"
 import MainNavbar from "@/components/navigation/MainNavbar"
 import { CartProvider } from "@/contexts/CartContext"

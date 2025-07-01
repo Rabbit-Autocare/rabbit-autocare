@@ -1,5 +1,6 @@
 import crypto from 'crypto';
-import { supabase } from '@/lib/supabaseClient';
+import { createSupabaseBrowserClient } from '@/lib/supabase/browser-client';
+const supabase = createSupabaseBrowserClient();
 
 export async function POST(req) {
   try {

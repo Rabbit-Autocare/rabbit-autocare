@@ -1,6 +1,7 @@
 'use client';
 import { useEffect, useState } from 'react';
-import { supabase } from '@/lib/supabaseClient';
+import { createSupabaseBrowserClient } from '@/lib/supabase/browser-client';
+const supabase = createSupabaseBrowserClient();
 import Image from 'next/image';
 import { ShoppingCart, Trash2, Star, Package, Box, Gift } from 'lucide-react';
 import { WishlistService } from '@/lib/service/wishlistService'; // Add this import

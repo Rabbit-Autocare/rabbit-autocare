@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useState, useCallback } from 'react';
-import { supabase } from '@/lib/supabaseClient';
+import { createSupabaseBrowserClient } from '@/lib/supabase/browser-client';
+const supabase = createSupabaseBrowserClient();
 // ... other imports ...
 
 export default function OrderDetailsPage({ params }) {

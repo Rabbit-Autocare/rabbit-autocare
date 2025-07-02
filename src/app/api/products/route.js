@@ -38,8 +38,7 @@ export async function GET(request) {
 					unit,
 					base_price,
 					base_price_excluding_gst,
-					stock,
-					compare_at_price
+					stock
 				)
 			`,
       { count: 'exact' }
@@ -159,23 +158,16 @@ export async function POST(request) {
       name: data.name,
       product_code: data.product_code,
       description: data.description,
+      product_type: data.product_type,
       category: data.category,
-      is_microfiber: data.is_microfiber,
+      subcategory: data.subcategory,
+      hsn_code: data.hsn_code,
+      features: data.features,
+      usage_instructions: data.usage_instructions,
+      warnings: data.warnings,
       main_image_url: data.main_image_url,
       images: data.images,
-      key_features: data.key_features,
       taglines: data.taglines,
-      subcategory: data.subcategory,
-      meta_title: data.meta_title,
-      meta_description: data.meta_description,
-      meta_keywords: data.meta_keywords,
-      og_title: data.og_title,
-      og_description: data.og_description,
-      og_image: data.og_image,
-      twitter_title: data.twitter_title,
-      twitter_description: data.twitter_description,
-      twitter_image: data.twitter_image,
-      schema_markup: data.schema_markup,
     };
 
     // Log the prepared product data
@@ -224,42 +216,41 @@ export async function POST(request) {
       );
     }
 
-    // Fetch the complete product with variants
-    const { data: completeProduct, error: fetchError } = await supabase
+    // Fetch and return the complete product (with variants) after creation
+    // Remove 'compare_at_price' from the select
+    const { data: fullProduct, error: fetchError } = await supabase
       .from('products')
-      .select(
-        `
-				*,
-				product_variants (
-					id,
-					gsm,
-					size,
-					color,
-					color_hex,
-					quantity,
-					unit,
-					base_price,
-					base_price_excluding_gst,
-					stock,
-					compare_at_price
-				)
-			`
-      )
+      .select(`
+        *,
+        product_variants (
+          id,
+          product_id,
+          variant_code,
+          size,
+          quantity,
+          unit,
+          weight_grams,
+          gsm,
+          dimensions,
+          color,
+          color_hex,
+          base_price,
+          base_price_excluding_gst,
+          stock,
+          is_active,
+          created_at,
+          updated_at
+        )
+      `)
       .eq('id', product.id)
       .single();
 
     if (fetchError) {
       console.error('Error fetching complete product:', fetchError);
-      return NextResponse.json(
-        { error: 'Failed to fetch complete product' },
-        { status: 500 }
-      );
+      return NextResponse.json({ error: 'Failed to fetch complete product' }, { status: 500 });
     }
 
-    return NextResponse.json({
-      success: true,
-      product: completeProduct,
-    });
+    return NextResponse.json({ success: true, product: fullProduct });
   } catch (error) {
     console.error('Error in POST /api/products:', error);
     return NextResponse.json(

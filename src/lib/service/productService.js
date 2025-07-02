@@ -133,38 +133,53 @@ export class ProductService {
 
   static async createProduct(data) {
     try {
-      const transformedData = {
-        ...data,
-        variants: Array.isArray(data.variants)
-          ? data.variants.map((variant) => ({
-              id:
-                variant.id ||
-                `var_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-              variant_code: variant.variant_code || '',
-              gsm: variant.gsm || '',
-              size: variant.size || '',
-              color: variant.color || '',
-              color_hex: variant.color_hex || null,
-              quantity: variant.quantity || '',
-              unit: variant.unit || 'ml',
-              base_price: Number.parseFloat(variant.base_price) || 0,
-              base_price_excluding_gst: Number.parseFloat(variant.base_price_excluding_gst) || 0,
-              stock: Number.parseInt(variant.stock) || 0,
-            }))
-          : [],
-        subcategory_names: Array.isArray(data.subcategory_names)
-          ? data.subcategory_names
-          : data.subcategory_names
-          ? [data.subcategory_names]
-          : [],
-        key_features: Array.isArray(data.key_features) ? data.key_features : [],
-        taglines: Array.isArray(data.taglines) ? data.taglines : [],
+      // Only include fields that exist in the products table
+      const productPayload = {
+        product_code: data.product_code,
+        name: data.name,
+        description: data.description,
+        product_type: data.product_type,
+        category: data.category,
+        subcategory: data.subcategory,
+        hsn_code: data.hsn_code,
+        features: data.features,
+        usage_instructions: data.usage_instructions,
+        warnings: data.warnings,
+        main_image_url: data.main_image_url,
+        images: data.images,
+        taglines: data.taglines,
+        // created_at and updated_at are handled by DB
+      };
+
+      // Only include fields that exist in the product_variants table
+      const variants = Array.isArray(data.variants)
+        ? data.variants.map((variant) => ({
+            id: variant.id || `var_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+            variant_code: variant.variant_code || '',
+            size: variant.size || '',
+            quantity: variant.quantity !== undefined ? variant.quantity : null,
+            unit: variant.unit || 'ml',
+            weight_grams: variant.weight_grams !== undefined ? variant.weight_grams : null,
+            gsm: variant.gsm !== undefined ? variant.gsm : null,
+            dimensions: variant.dimensions || '',
+            color: variant.color ? (Array.isArray(variant.color) ? variant.color : [variant.color]) : null,
+            color_hex: variant.color_hex ? (Array.isArray(variant.color_hex) ? variant.color_hex : [variant.color_hex]) : null,
+            base_price: Number.parseFloat(variant.base_price) || 0,
+            base_price_excluding_gst: variant.base_price_excluding_gst !== undefined ? Number.parseFloat(variant.base_price_excluding_gst) : null,
+            stock: variant.stock !== undefined ? Number.parseInt(variant.stock) : 0,
+            is_active: variant.is_active !== undefined ? variant.is_active : true,
+          }))
+        : [];
+
+      const payload = {
+        ...productPayload,
+        variants,
       };
 
       const res = await fetch(API_BASE_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(transformedData),
+        body: JSON.stringify(payload),
       });
 
       if (!res.ok) {

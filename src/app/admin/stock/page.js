@@ -1,6 +1,6 @@
 import { createSupabaseServerClient } from '@/lib/supabase';
 import AdminLayout from '@/components/layouts/AdminLayout';
-import StockTable from './StockTable';
+import StockTable from '../../../components/admin/StockTable';
 
 export default async function StockManagementPage() {
   const supabase = await createSupabaseServerClient(); // <-- await here!
@@ -11,15 +11,19 @@ export default async function StockManagementPage() {
       name,
       product_code,
       main_image_url,
+      product_type,
+      category,
       product_variants (
         id,
+        variant_code,
         color,
         size,
         gsm,
         quantity,
         unit,
-        price,
-        stock
+        base_price,
+        stock,
+        is_active
       )
     `)
     .order('name', { ascending: true });

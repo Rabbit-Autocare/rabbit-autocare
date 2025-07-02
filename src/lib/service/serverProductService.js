@@ -390,4 +390,20 @@ export class ServerProductService {
       throw error;
     }
   }
+
+  // Get quantities with server-side Supabase client
+  static async getQuantities() {
+    try {
+      const supabase = await this.getServerSupabaseClient();
+      const { data, error } = await supabase
+        .from('quantity')
+        .select('*')
+        .order('quantity', { ascending: true });
+      if (error) throw error;
+      return data || [];
+    } catch (error) {
+      console.error('Error in ServerProductService.getQuantities:', error);
+      throw error;
+    }
+  }
 }

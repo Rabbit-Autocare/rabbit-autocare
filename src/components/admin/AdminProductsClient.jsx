@@ -81,7 +81,79 @@ function formatRupee(amount) {
   return `₹${Number(amount).toFixed(2)}`
 }
 
-export default function AdminProductsClient({ initialProducts, initialCategories, initialColors, initialSizes, initialGsmValues, initialError }) {
+// Helper to get visible product columns
+function getVisibleProductColumns(products) {
+  const columns = [
+    { key: 'main_image_url', label: 'Image' },
+    { key: 'name', label: 'Product' },
+    { key: 'product_code', label: 'Code' },
+    { key: 'product_type', label: 'Type' },
+    { key: 'category', label: 'Category' },
+    { key: 'variants', label: 'Variants' },
+    { key: 'total_stock', label: 'Total Stock' },
+    { key: 'price_range', label: 'Price Range' },
+    { key: 'status', label: 'Status' },
+    { key: 'actions', label: 'Actions' },
+  ];
+  return columns.filter(col => {
+    if (col.key === 'variants' || col.key === 'total_stock' || col.key === 'price_range' || col.key === 'status' || col.key === 'actions') return true;
+    if (col.key === 'main_image_url') return products.some(p => p.main_image_url || (Array.isArray(p.images) && p.images.length > 0));
+    return products.some(p => p[col.key] !== undefined && p[col.key] !== null && p[col.key] !== '');
+  });
+}
+
+// Helper to get visible variant columns
+function getVisibleVariantColumns(variants, productType) {
+  const columns = [
+    { key: 'variant_code', label: 'Variant Code' },
+    { key: 'size', label: 'Size' },
+    { key: 'quantity', label: 'Quantity' },
+    { key: 'unit', label: 'Unit' },
+    { key: 'weight_grams', label: 'Weight (g)' },
+    { key: 'gsm', label: 'GSM' },
+    { key: 'dimensions', label: 'Dimensions' },
+    { key: 'color', label: 'Color' },
+    { key: 'base_price', label: 'Base Price (Inc. GST)' },
+    { key: 'base_price_excluding_gst', label: 'Price (Exc. GST)' },
+    { key: 'stock', label: 'Stock' },
+    { key: 'is_active', label: 'Active' },
+  ];
+  return columns.filter(col => {
+    if (col.key === 'variant_code' || col.key === 'base_price_excluding_gst') {
+      // Always show if any variant has a value
+      return variants.some(v => v[col.key] !== undefined && v[col.key] !== null && v[col.key] !== '');
+    }
+    if (col.key === 'unit' && productType === 'microfiber') return false;
+    if (col.key === 'color') {
+      return variants.some(v => {
+        const val = v[col.key];
+        return Array.isArray(val) ? val.length > 0 : val !== undefined && val !== null && val !== '';
+      });
+    }
+    return variants.some(v => v[col.key] !== undefined && v[col.key] !== null && v[col.key] !== '');
+  });
+}
+
+// Add a helper for stock badge color
+function getStockBadge(stock) {
+  if (stock === undefined || stock === null) return <span className="text-gray-400">—</span>;
+  if (stock === 0) return <span className="inline-block px-2 py-0.5 rounded-full text-xs font-semibold bg-red-100 text-red-700">0</span>;
+  if (stock < 10) return <span className="inline-block px-2 py-0.5 rounded-full text-xs font-semibold bg-yellow-100 text-yellow-800">{stock}</span>;
+  return <span className="inline-block px-2 py-0.5 rounded-full text-xs font-semibold bg-green-100 text-green-800">{stock}</span>;
+}
+
+// Add a helper for active status dot
+function ActiveDot({ active }) {
+  if (active === undefined || active === null) return <span className="text-gray-400">—</span>;
+  return (
+    <span className="inline-flex items-center gap-1">
+      <span className={`w-2 h-2 rounded-full ${active ? 'bg-green-500' : 'bg-gray-400'}`}></span>
+      <span className="text-xs">{active ? 'Yes' : 'No'}</span>
+    </span>
+  );
+}
+
+export default function AdminProductsClient({ initialProducts, initialCategories, initialColors, initialSizes, initialGsmValues, initialQuantities, initialError }) {
   const [products, setProducts] = useState(initialProducts || [])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(initialError)
@@ -190,6 +262,8 @@ export default function AdminProductsClient({ initialProducts, initialCategories
     return matchesSearch && matchesCategory
   })
 
+  const visibleProductColumns = getVisibleProductColumns(filteredProducts);
+
   // Show error state if initial data fetch failed
   if (initialError && products.length === 0) {
     return (
@@ -210,7 +284,7 @@ export default function AdminProductsClient({ initialProducts, initialCategories
   }
 
   if (showForm) {
-    return <ProductForm product={editingProduct} categories={categories} colors={initialColors} sizes={initialSizes} gsmValues={initialGsmValues} onSuccess={handleSuccess} onCancel={handleBack} />
+    return <ProductForm product={editingProduct} categories={categories} colors={initialColors} sizes={initialSizes} gsmValues={initialGsmValues} quantities={initialQuantities} onSuccess={handleSuccess} onCancel={handleBack} />
   }
 
   if (loading) {
@@ -271,27 +345,11 @@ export default function AdminProductsClient({ initialProducts, initialCategories
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
               <tr>
-                <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider w-80">
-                  Product
-                </th>
-                <th className="px-4 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                  Category
-                </th>
-                <th className="px-4 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                  Variants
-                </th>
-                <th className="px-4 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                  Total Stock
-                </th>
-                <th className="px-4 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                  Price Range
-                </th>
-                <th className="px-4 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                  Status
-                </th>
-                <th className="px-4 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                  Actions
-                </th>
+                {visibleProductColumns.map(col => (
+                  <th key={col.key} className="px-4 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                    {col.label}
+                  </th>
+                ))}
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
@@ -304,269 +362,187 @@ export default function AdminProductsClient({ initialProducts, initialCategories
                   </td>
                 </tr>
               ) : (
-                filteredProducts.map((product) => (
-                  <React.Fragment key={product.id}>
-                    <tr className="hover:bg-gray-50 transition-colors">
-                      <td className="px-6 py-4">
-                        <div className="flex items-center gap-4">
-                          <button
-                            onClick={() => toggleRow(product.id)}
-                            className="p-1 hover:bg-gray-200 rounded transition-colors flex-shrink-0"
-                          >
-                            {expandedRows[product.id] ? (
-                              <ChevronDown className="w-4 h-4 text-gray-600" />
-                            ) : (
-                              <ChevronRight className="w-4 h-4 text-gray-600" />
-                            )}
-                          </button>
-
-                          {/* Product Image */}
-                          <div className="relative flex-shrink-0">
-                            <div className="w-16 h-16 rounded-lg overflow-hidden border border-gray-200">
-                              {product.images && product.images.length > 0 ? (
-                                <>
-                                  <img
-                                    src={product.images[imageIndexes[product.id] || 0]}
-                                    alt={product.name}
-                                    className="w-full h-full object-cover"
-                                  />
-                                  {product.images.length > 1 && (
-                                    <div className="absolute top-0 left-0 bg-black bg-opacity-50 text-white text-xs px-1 rounded-br">
-                                      {(imageIndexes[product.id] || 0) + 1}/{product.images.length}
-                                    </div>
-                                  )}
-                                </>
-                              ) : product.main_image_url ? (
-                                <img
-                                  src={product.main_image_url || "/placeholder.svg"}
-                                  alt={product.name}
-                                  className="w-full h-full object-cover"
-                                />
-                              ) : (
-                                <div className="w-full h-full bg-gray-100 flex items-center justify-center">
-                                  <Package className="w-6 h-6 text-gray-400" />
+                filteredProducts.map((product) => {
+                  const totalStock = product.variants?.reduce((sum, v) => sum + (v.stock || 0), 0) || 0;
+                  const minPrice = product.variants?.length > 0 ? Math.min(...product.variants.map((v) => v.base_price || Infinity)) : null;
+                  const maxPrice = product.variants?.length > 0 ? Math.max(...product.variants.map((v) => v.base_price || -Infinity)) : null;
+                  return (
+                    <React.Fragment key={product.id}>
+                      <tr className="hover:bg-gray-50 transition-colors">
+                        {visibleProductColumns.map(col => {
+                          if (col.key === 'main_image_url') {
+                            return (
+                              <td key={col.key} className="px-4 py-4 text-sm text-gray-900">
+                                {Array.isArray(product.images) && product.images.length > 0 ? (
+                                  <div className="relative w-14 h-14 flex items-center justify-center">
+                                    <img
+                                      src={product.images[imageIndexes[product.id] || 0]}
+                                      alt={product.name}
+                                      className="w-12 h-12 object-cover rounded border"
+                                    />
+                                    {product.images.length > 1 && (
+                                      <>
+                                        <button
+                                          onClick={e => { e.stopPropagation(); handlePrevImage(product); }}
+                                          className="absolute left-0 top-1/2 -translate-y-1/2 bg-white bg-opacity-80 rounded-full p-0.5 text-xs text-gray-700 hover:bg-blue-100"
+                                          style={{ zIndex: 2 }}
+                                          disabled={(imageIndexes[product.id] || 0) === 0}
+                                          tabIndex={-1}
+                                          title="Previous image"
+                                        >
+                                          &#8592;
+                                        </button>
+                                        <button
+                                          onClick={e => { e.stopPropagation(); handleNextImage(product); }}
+                                          className="absolute right-0 top-1/2 -translate-y-1/2 bg-white bg-opacity-80 rounded-full p-0.5 text-xs text-gray-700 hover:bg-blue-100"
+                                          style={{ zIndex: 2 }}
+                                          disabled={(imageIndexes[product.id] || 0) === product.images.length - 1}
+                                          tabIndex={-1}
+                                          title="Next image"
+                                        >
+                                          &#8594;
+                                        </button>
+                                        <span className="absolute bottom-0 left-1/2 -translate-x-1/2 bg-black bg-opacity-60 text-white text-xs px-1 rounded-t mt-1">{(imageIndexes[product.id] || 0) + 1}/{product.images.length}</span>
+                                      </>
+                                    )}
+                                  </div>
+                                ) : product.main_image_url ? (
+                                  <img src={product.main_image_url} alt={product.name} className="w-12 h-12 object-cover rounded border" />
+                                ) : (
+                                  <span className="text-gray-400">—</span>
+                                )}
+                              </td>
+                            );
+                          }
+                          if (col.key === 'name') {
+                            return (
+                              <td key={col.key} className="px-6 py-4">
+                                <div className="flex items-center gap-4">
+                                  <button
+                                    onClick={() => toggleRow(product.id)}
+                                    className="p-1 hover:bg-gray-200 rounded transition-colors flex-shrink-0"
+                                  >
+                                    {expandedRows[product.id] ? (
+                                      <ChevronDown className="w-4 h-4 text-gray-600" />
+                                    ) : (
+                                      <ChevronRight className="w-4 h-4 text-gray-600" />
+                                    )}
+                                  </button>
+                                  <div className="min-w-0 flex-1">
+                                    <div className="font-medium text-gray-900 truncate">{product.name}</div>
+                                  </div>
                                 </div>
-                              )}
-                            </div>
-                            {product.images && product.images.length > 1 && (
-                              <div className="absolute -bottom-1 left-1/2 transform -translate-x-1/2 flex gap-0.5">
-                                <button
-                                  onClick={() => handlePrevImage(product)}
-                                  className="bg-white shadow-sm border rounded p-0.5 hover:bg-gray-50 text-xs"
-                                  disabled={(imageIndexes[product.id] || 0) === 0}
-                                >
-                                  ←
+                              </td>
+                            );
+                          }
+                          if (col.key === 'variants') {
+                            return (
+                              <td key={col.key} className="px-4 py-4 text-sm text-gray-900">
+                                <span className="font-medium">{product.variants?.length || 0}</span>
+                                <span className="text-gray-500 ml-1">variants</span>
+                              </td>
+                            );
+                          }
+                          if (col.key === 'total_stock') {
+                            return (
+                              <td key={col.key} className="px-4 py-4 text-sm text-gray-900">
+                                <span className="font-medium">{totalStock}</span>
+                              </td>
+                            );
+                          }
+                          if (col.key === 'price_range') {
+                            return (
+                              <td key={col.key} className="px-4 py-4 text-sm text-gray-900">
+                                {minPrice !== null && minPrice !== Infinity ? (
+                                  <div>
+                                    <div className="font-medium">{formatRupee(minPrice)}</div>
+                                    {minPrice !== maxPrice && maxPrice !== -Infinity && (
+                                      <div className="text-xs text-gray-500">to {formatRupee(maxPrice)}</div>
+                                    )}
+                                  </div>
+                                ) : (
+                                  <span className="text-gray-400">—</span>
+                                )}
+                              </td>
+                            );
+                          }
+                          if (col.key === 'status') {
+                            return (
+                              <td key={col.key} className="px-4 py-4 text-sm">
+                                <Badge variant={product.variants?.some((v) => v.stock > 0) ? "success" : "danger"}>
+                                  {product.variants?.some((v) => v.stock > 0) ? "In Stock" : "Out of Stock"}
+                                </Badge>
+                              </td>
+                            );
+                          }
+                          if (col.key === 'actions') {
+                            return (
+                              <td key={col.key} className="px-4 py-4 text-sm flex gap-2 items-center justify-center">
+                                <button onClick={() => handleEdit(product)} className="p-1 rounded hover:bg-blue-100 text-blue-600" title="Edit">
+                                  <Pencil className="w-4 h-4" />
                                 </button>
-                                <button
-                                  onClick={() => handleNextImage(product)}
-                                  className="bg-white shadow-sm border rounded p-0.5 hover:bg-gray-50 text-xs"
-                                  disabled={(imageIndexes[product.id] || 0) === product.images.length - 1}
-                                >
-                                  →
+                                <button onClick={() => handleDelete(product.id)} className="p-1 rounded hover:bg-red-100 text-red-600" title="Delete">
+                                  <Trash2 className="w-4 h-4" />
                                 </button>
-                              </div>
-                            )}
-                          </div>
-
-                          {/* Product Info */}
-                          <div className="min-w-0 flex-1">
-                            <div className="font-medium text-gray-900 truncate">{product.name}</div>
-                            <div className="text-sm text-gray-500">{product.product_code}</div>
-                          </div>
-                        </div>
-                      </td>
-                      <td className="px-4 py-4 text-sm text-gray-900">
-                        <Badge variant="secondary">{product.category_name}</Badge>
-                      </td>
-                      <td className="px-4 py-4 text-sm text-gray-900">
-                        <span className="font-medium">{product.variants?.length || 0}</span>
-                        <span className="text-gray-500 ml-1">variants</span>
-                      </td>
-                      <td className="px-4 py-4 text-sm text-gray-900">
-                        <span className="font-medium">
-                          {product.variants?.reduce((sum, v) => sum + (v.stock || 0), 0) || 0}
-                        </span>
-                      </td>
-                      <td className="px-4 py-4 text-sm text-gray-900">
-                        {product.variants?.length > 0 ? (
-                          <div>
-                            <div className="font-medium">
-                              {formatRupee(Math.min(...product.variants.map((v) => v.price || 0)))}
-                            </div>
-                            {Math.min(...product.variants.map((v) => v.price || 0)) !==
-                              Math.max(...product.variants.map((v) => v.price || 0)) && (
-                              <div className="text-xs text-gray-500">
-                                to {formatRupee(Math.max(...product.variants.map((v) => v.price || 0)))}
-                              </div>
-                            )}
-                          </div>
-                        ) : (
-                          <span className="text-gray-400">—</span>
-                        )}
-                      </td>
-                      <td className="px-4 py-4 text-sm">
-                        <Badge variant={product.variants?.some((v) => v.stock > 0) ? "success" : "danger"}>
-                          {product.variants?.some((v) => v.stock > 0) ? "In Stock" : "Out of Stock"}
-                        </Badge>
-                      </td>
-                      <td className="px-4 py-4 text-sm text-gray-900">
-                        <div className="flex items-center gap-1">
-                          <Button onClick={() => handleEdit(product)} variant="ghost" size="sm">
-                            <Pencil className="w-4 h-4" />
-                          </Button>
-                          <Button
-                            onClick={() => handleDelete(product.id)}
-                            variant="ghost"
-                            size="sm"
-                            className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </Button>
-                        </div>
-                      </td>
-                    </tr>
-
-                    {/* Expanded Row for Variants */}
-                    {expandedRows[product.id] && (
-                      <tr>
-                        <td colSpan={7} className="px-0 py-0 bg-gray-50">
-                          <div className="px-6 py-4">
-                            <h4 className="text-sm font-semibold text-gray-700 mb-3">Product Variants</h4>
+                              </td>
+                            );
+                          }
+                          // Default: just show the value or dash
+                          return (
+                            <td key={col.key} className="px-4 py-4 text-sm text-gray-900">{product[col.key] || "—"}</td>
+                          );
+                        })}
+                      </tr>
+                      {/* Expandable row for variant details */}
+                      {expandedRows[product.id] && (
+                        <tr>
+                          <td colSpan={visibleProductColumns.length} className="bg-gray-50 px-6 py-4">
                             <div className="overflow-x-auto">
+                              {/* Compute visible variant columns for this product */}
                               {(() => {
-                                const fields = getVariantFields(product.variants || [])
-                                if (fields.length === 0) {
-                                  return (
-                                    <div className="text-center py-8 text-gray-500">
-                                      <Package className="mx-auto h-8 w-8 text-gray-300 mb-2" />
-                                      <p>No variants found</p>
-                                    </div>
-                                  )
-                                }
+                                const visibleVariantColumns = getVisibleVariantColumns(product.variants || [], product.product_type);
                                 return (
-                                  <table className="min-w-full text-sm border border-gray-200 rounded-lg overflow-hidden">
+                                  <table className="min-w-full text-xs border border-gray-200 rounded-lg overflow-hidden">
                                     <thead className="bg-white">
                                       <tr>
-                                        {fields.includes("gsm") && (
-                                          <th className="px-4 py-3 text-left font-medium text-gray-700 border-b">
-                                            GSM
-                                          </th>
-                                        )}
-                                        {fields.includes("size") && (
-                                          <th className="px-4 py-3 text-left font-medium text-gray-700 border-b">
-                                            Size
-                                          </th>
-                                        )}
-                                        {fields.includes("color") && (
-                                          <th className="px-4 py-3 text-left font-medium text-gray-700 border-b">
-                                            Color
-                                          </th>
-                                        )}
-                                        {fields.includes("quantity") && (
-                                          <th className="px-4 py-3 text-left font-medium text-gray-700 border-b">
-                                            Quantity
-                                          </th>
-                                        )}
-                                        {fields.includes("unit") && (
-                                          <th className="px-4 py-3 text-left font-medium text-gray-700 border-b">
-                                            Unit
-                                          </th>
-                                        )}
-                                        {fields.includes("price") && (
-                                          <th className="px-4 py-3 text-left font-medium text-gray-700 border-b">
-                                            Price
-                                          </th>
-                                        )}
-                                        {fields.includes("stock") && (
-                                          <th className="px-4 py-3 text-left font-medium text-gray-700 border-b">
-                                            Stock
-                                          </th>
-                                        )}
+                                        {visibleVariantColumns.map(col => (
+                                          <th key={col.key} className="px-2 py-2">{col.label}</th>
+                                        ))}
                                       </tr>
                                     </thead>
-                                    <tbody className="bg-white">
-                                      {product.variants.map((variant, index) => (
-                                        <tr key={variant.id} className={index % 2 === 0 ? "bg-white" : "bg-gray-50"}>
-                                          {fields.includes("gsm") && (
-                                            <td className="px-4 py-3 border-b border-gray-100">{variant.gsm || "—"}</td>
-                                          )}
-                                          {fields.includes("size") && (
-                                            <td className="px-4 py-3 border-b border-gray-100">
-                                              {variant.size || "—"}
-                                            </td>
-                                          )}
-                                          {fields.includes("color") && (
-                                            <td className="px-4 py-3 border-b border-gray-100">
-                                              {variant.color || variant.color_hex ? (
-                                                <div className="flex items-center gap-2">
-                                                  {variant.color_hex && (
-                                                    <div
-                                                      className="w-4 h-4 rounded-full border border-gray-300 shadow-sm flex-shrink-0"
-                                                      style={{
-                                                        backgroundColor: variant.color_hex,
-                                                      }}
-                                                      title={`Hex: ${variant.color_hex}`}
-                                                    />
-                                                  )}
-                                                  <div className="flex flex-col">
-                                                    {variant.color && (
-                                                      <span className="font-medium text-gray-900 text-sm">
-                                                        {variant.color}
-                                                      </span>
-                                                    )}
-                                                    {variant.color_hex && (
-                                                      <span className="text-xs text-gray-500 font-mono">
-                                                        {variant.color_hex}
-                                                      </span>
-                                                    )}
-                                                  </div>
-                                                </div>
-                                              ) : (
-                                                "—"
-                                              )}
-                                            </td>
-                                          )}
-                                          {fields.includes("quantity") && (
-                                            <td className="px-4 py-3 border-b border-gray-100">
-                                              {variant.quantity || "—"}
-                                            </td>
-                                          )}
-                                          {fields.includes("unit") && (
-                                            <td className="px-4 py-3 border-b border-gray-100">
-                                              {variant.unit || "—"}
-                                            </td>
-                                          )}
-                                          {fields.includes("price") && (
-                                            <td className="px-4 py-3 border-b border-gray-100">
-                                              <span className="font-semibold text-green-600">
-                                                {formatRupee(variant.price)}
-                                              </span>
-                                            </td>
-                                          )}
-                                          {fields.includes("stock") && (
-                                            <td className="px-4 py-3 border-b border-gray-100">
-                                              <span
-                                                className={`font-medium ${
-                                                  variant.stock > 0 ? "text-green-600" : "text-red-600"
-                                                }`}
-                                              >
-                                                {variant.stock || 0}
-                                              </span>
-                                            </td>
-                                          )}
+                                    <tbody>
+                                      {product.variants?.map((variant) => (
+                                        <tr key={variant.id}>
+                                          {visibleVariantColumns.map(col => {
+                                            let value = variant[col.key];
+                                            if (col.key === 'color') {
+                                              value = Array.isArray(value) ? (value.length ? value.join(", ") : "—") : (value || "—");
+                                            }
+                                            if (col.key === 'base_price' || col.key === 'base_price_excluding_gst') {
+                                              value = value !== undefined && value !== null ? formatRupee(value) : "—";
+                                            }
+                                            if (col.key === 'is_active') {
+                                              return <td key={col.key} className="px-2 py-2 text-center align-middle"><ActiveDot active={variant.is_active} /></td>;
+                                            }
+                                            if (col.key === 'stock') {
+                                              return <td key={col.key} className="px-2 py-2 text-center align-middle">{getStockBadge(variant.stock)}</td>;
+                                            }
+                                            if (value === undefined || value === null || value === "") value = "—";
+                                            return <td key={col.key} className="px-2 py-2 text-center align-middle">{value}</td>;
+                                          })}
                                         </tr>
                                       ))}
                                     </tbody>
                                   </table>
-                                )
+                                );
                               })()}
                             </div>
-                          </div>
-                        </td>
-                      </tr>
-                    )}
-                  </React.Fragment>
-                ))
+                          </td>
+                        </tr>
+                      )}
+                    </React.Fragment>
+                  );
+                })
               )}
             </tbody>
           </table>

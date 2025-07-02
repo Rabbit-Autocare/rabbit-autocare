@@ -209,9 +209,10 @@ function MultiInputField({ label, items, setItems, placeholder, newValue, setNew
   )
 }
 
-export default function ProductForm({ product, onSuccess, onCancel, categories, colors, sizes, gsmValues, quantityMicrodata = [] }) {
+export default function ProductForm({ product, onSuccess, onCancel, categories, colors, sizes, gsmValues, quantities = [] }) {
   // Debug log for categories
   console.log('ProductForm categories prop:', categories);
+  console.log('ProductForm quantities prop:', quantities);
 
   // Debug log for Supabase user authentication
   React.useEffect(() => {
@@ -288,7 +289,7 @@ export default function ProductForm({ product, onSuccess, onCancel, categories, 
           id: variant.id || generateVariantId(),
           variant_code: variant.variant_code || "",
           size: variant.size || "",
-          quantity: variant.quantity || 0,
+          quantity: variant.quantity || "",
           unit: variant.unit || "ml",
           weight_grams: variant.weight_grams || 0,
           gsm: variant.gsm || 0,
@@ -314,7 +315,7 @@ export default function ProductForm({ product, onSuccess, onCancel, categories, 
       id: generateVariantId(),
       variant_code: "",
       size: "",
-      quantity: 0,
+      quantity: "",
       unit: "ml",
       weight_grams: 0,
       gsm: 0,
@@ -384,15 +385,16 @@ export default function ProductForm({ product, onSuccess, onCancel, categories, 
     // Required fields validation
     if (!formData.product_code.trim()) newErrors.product_code = "Product code is required"
     if (!formData.name.trim()) newErrors.name = "Product name is required"
-    if (!formData.product_type) newErrors.product_type = "Product type is required"
+    if (!formData.product_type || !['microfiber', 'regular'].includes(formData.product_type)) newErrors.product_type = "Product type is required and must be 'microfiber' or 'regular'"
 
     // Variants validation
     if (variants.length === 0) {
       newErrors.variants = "At least one variant is required"
     } else {
       variants.forEach((variant, index) => {
-        if (!variant.color.trim()) {
-          newErrors[`variant_${index}_color`] = "Color is required"
+        // Color is only required for microfiber products
+        if (formData.product_type === "microfiber" && !variant.color.trim()) {
+          newErrors[`variant_${index}_color`] = "Color is required for microfiber products"
         }
         if (variant.base_price <= 0) {
           newErrors[`variant_${index}_price`] = "Price must be greater than 0"
@@ -424,7 +426,7 @@ export default function ProductForm({ product, onSuccess, onCancel, categories, 
         stock: Number(variant.stock),
         weight_grams: variant.weight_grams ? Number(variant.weight_grams) : null,
         gsm: variant.gsm ? Number(variant.gsm) : null,
-        quantity: variant.quantity ? Number(variant.quantity) : null,
+        quantity: variant.quantity ? (isNaN(variant.quantity) ? variant.quantity : Number(variant.quantity)) : null,
         // Handle JSONB fields for color - convert to array format for database
         color: variant.color ? [variant.color] : null,
         color_hex: variant.color_hex ? [variant.color_hex] : null,
@@ -443,6 +445,8 @@ export default function ProductForm({ product, onSuccess, onCancel, categories, 
 
     try {
       const productData = transformDataForSubmission()
+      // Debug log for payload
+      console.log('Submitting product payload:', productData)
 
       if (product?.id) {
         await ProductService.updateProduct(product.id, productData)
@@ -863,48 +867,28 @@ export default function ProductForm({ product, onSuccess, onCancel, categories, 
                     </div>
                     {/* Common fields */}
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div>
-                        <Label>Color *</Label>
-                        <Select
-                          value={variant.color}
-                          onValueChange={(value) => handleVariantChange(variant.id, "color", value)}
-                          placeholder="Select color"
-                          error={!!errors[`variant_${index}_color`]}
-                        >
-                          {colors.map((color) => (
-                            <SelectItem key={color.id} value={color.color}>
-                              <div className="flex items-center gap-2">
-                                {color.hex_code && (
-                                  <span
-                                    className="inline-block w-4 h-4 rounded border border-gray-300"
-                                    style={{ backgroundColor: color.hex_code }}
-                                  />
-                                )}
-                                <span>{color.color}</span>
-                                {color.hex_code && (
-                                  <span className="text-xs text-gray-400 ml-1">{color.hex_code}</span>
-                                )}
-                              </div>
-                            </SelectItem>
-                          ))}
-                        </Select>
-                        {errors[`variant_${index}_color`] && (
-                          <p className="text-sm text-red-600 mt-1">{errors[`variant_${index}_color`]}</p>
-                        )}
-                      </div>
-                      <div>
-                        <Label>Color Hex Code</Label>
-                        <Input
-                          value={variant.color_hex || ""}
-                          onChange={(e) => handleVariantChange(variant.id, "color_hex", e.target.value)}
-                          placeholder="#000000"
-                        />
-                      </div>
+                      {/* Color and Hex fields: Only for microfiber */}
+                      {isMicrofiber && (
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div>
+                            <Label>Color *</Label>
+                            <Input
+                              value={variant.color || ""}
+                              onChange={e => handleVariantChange(variant.id, "color", e.target.value)}
+                              placeholder="Enter color name"
+                              error={!!errors[`variant_${index}_color`]}
+                            />
+                            {errors[`variant_${index}_color`] && (
+                              <p className="text-sm text-red-600 mt-1">{errors[`variant_${index}_color`]}</p>
+                            )}
+                          </div>
+                        </div>
+                      )}
                     </div>
 
                     {/* Type-specific fields */}
                     {isMicrofiber ? (
-                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
                           <Label>Size *</Label>
                           <Select
@@ -942,58 +926,66 @@ export default function ProductForm({ product, onSuccess, onCancel, categories, 
                             <p className="text-sm text-red-600 mt-1">{errors[`variant_${index}_gsm`]}</p>
                           )}
                         </div>
-
-                        <div>
-                          <Label>Weight (grams)</Label>
-                          <Input
-                            type="number"
-                            value={variant.weight_grams || ""}
-                            onChange={(e) =>
-                              handleVariantChange(variant.id, "weight_grams", Number.parseInt(e.target.value) || 0)
-                            }
-                            placeholder="Enter weight"
-                          />
-                        </div>
-
-                        <div>
-                          <Label>Dimensions</Label>
-                          <Input
-                            value={variant.dimensions || ""}
-                            onChange={(e) => handleVariantChange(variant.id, "dimensions", e.target.value)}
-                            placeholder="e.g., 30x40 cm"
-                          />
-                        </div>
                       </div>
                     ) : (
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
                           <Label>Quantity *</Label>
-                          <select
-                            value={variant.quantity || ''}
-                            onChange={e => handleVariantChange(variant.id, 'quantity', e.target.value)}
-                            className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                          <Select
+                            value={variant.quantity || ""}
+                            onValueChange={(value) => handleVariantChange(variant.id, "quantity", value)}
+                            placeholder="Select quantity"
+                            error={!!errors[`variant_${index}_quantity`]}
                           >
-                            <option value="">Select quantity</option>
-                            {[...new Set(quantityMicrodata.map(q => q.quantity))].map(qty => (
-                              <option key={qty} value={qty}>{qty}</option>
+                            {[...new Set(quantities.map(q => q.quantity))].map(qty => (
+                              <SelectItem key={qty} value={qty}>{qty}</SelectItem>
                             ))}
-                          </select>
+                          </Select>
+                          {errors[`variant_${index}_quantity`] && (
+                            <p className="text-sm text-red-600 mt-1">{errors[`variant_${index}_quantity`]}</p>
+                          )}
                         </div>
                         <div>
                           <Label>Unit *</Label>
-                          <select
-                            value={variant.unit || ''}
-                            onChange={e => handleVariantChange(variant.id, 'unit', e.target.value)}
-                            className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                          <Select
+                            value={variant.unit || ""}
+                            onValueChange={(value) => handleVariantChange(variant.id, "unit", value)}
+                            placeholder="Select unit"
+                            error={!!errors[`variant_${index}_unit`]}
                           >
-                            <option value="">Select unit</option>
-                            {[...new Set(quantityMicrodata.map(q => q.unit))].map(unit => (
-                              <option key={unit} value={unit}>{unit}</option>
+                            {[...new Set(quantities.map(q => q.unit))].map(unit => (
+                              <SelectItem key={unit} value={unit}>{unit}</SelectItem>
                             ))}
-                          </select>
+                          </Select>
+                          {errors[`variant_${index}_unit`] && (
+                            <p className="text-sm text-red-600 mt-1">{errors[`variant_${index}_unit`]}</p>
+                          )}
                         </div>
                       </div>
                     )}
+
+                    {/* General fields for all product types */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <Label>Weight (grams)</Label>
+                        <Input
+                          type="number"
+                          value={variant.weight_grams || ""}
+                          onChange={(e) =>
+                            handleVariantChange(variant.id, "weight_grams", Number.parseInt(e.target.value) || 0)
+                          }
+                          placeholder="Enter weight"
+                        />
+                      </div>
+                      <div>
+                        <Label>Dimensions</Label>
+                        <Input
+                          value={variant.dimensions || ""}
+                          onChange={(e) => handleVariantChange(variant.id, "dimensions", e.target.value)}
+                          placeholder="e.g., 30x40 cm"
+                        />
+                      </div>
+                    </div>
 
                     <Separator />
 

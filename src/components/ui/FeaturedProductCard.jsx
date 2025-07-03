@@ -51,7 +51,10 @@ export default function FeaturedProductCard({ product, className = "", isLastCar
 
           if (isMicrofiber && selectedColor && selectedSize) {
             // For microfiber, check color and size combination
-            return item.variant?.color === selectedColor && item.variant?.size === selectedSize;
+            const hasColor = Array.isArray(item.variant?.color)
+              ? item.variant.color.includes(selectedColor)
+              : item.variant?.color === selectedColor;
+            return hasColor && item.variant?.size === selectedSize;
           } else if (currentVariant) {
             // For non-microfiber, check variant match
             return item.variant?.id === currentVariant.id;
@@ -83,9 +86,19 @@ export default function FeaturedProductCard({ product, className = "", isLastCar
     }
 
     // Find the variant with this color to get its hex code
-    const variant = product.variants?.find((v) => v.color === color)
+    const variant = product.variants?.find((v) => {
+      if (Array.isArray(v.color)) {
+        return v.color.includes(color)
+      }
+      return v.color === color
+    })
+
     if (variant?.color_hex) {
-      return { backgroundColor: variant.color_hex }
+      let hexCode = variant.color_hex
+      if (Array.isArray(hexCode)) {
+        hexCode = hexCode[0] // Use first hex code
+      }
+      return { backgroundColor: hexCode }
     }
 
     // Color mapping for common color names to hex codes
@@ -135,9 +148,26 @@ export default function FeaturedProductCard({ product, className = "", isLastCar
     // Get unique colors with their hex codes
     const colorMap = new Map()
     product.variants.forEach((variant) => {
-      if (variant.color && !colorMap.has(variant.color)) {
-        colorMap.set(variant.color, variant.color_hex)
+      // Handle both string and array color formats
+      let colors = []
+      if (Array.isArray(variant.color)) {
+        colors = variant.color
+      } else if (variant.color) {
+        colors = [variant.color]
       }
+
+      colors.forEach(color => {
+        if (color && !colorMap.has(color)) {
+          // Handle both string and array color_hex formats
+          let colorHex = null
+          if (Array.isArray(variant.color_hex)) {
+            colorHex = variant.color_hex[0] // Use first hex code
+          } else if (variant.color_hex) {
+            colorHex = variant.color_hex
+          }
+          colorMap.set(color, colorHex)
+        }
+      })
     })
     const colors = Array.from(colorMap.keys())
 
@@ -159,8 +189,8 @@ export default function FeaturedProductCard({ product, className = "", isLastCar
     if (product.variants && product.variants.length > 0) {
       // Find the highest-priced variant
       const highestPricedVariant = product.variants.reduce((highest, current) => {
-        const currentPrice = current.price || current.mrp || 0
-        const highestPrice = highest.price || highest.mrp || 0
+        const currentPrice = current.base_price || current.price || current.mrp || 0
+        const highestPrice = highest.base_price || highest.price || highest.mrp || 0
         return currentPrice > highestPrice ? current : highest
       })
 
@@ -203,15 +233,18 @@ export default function FeaturedProductCard({ product, className = "", isLastCar
   // Get current price based on selected variant
   const getCurrentPrice = () => {
     if (selectedVariant) {
-      return selectedVariant.price || selectedVariant.mrp || 0
+      return selectedVariant.base_price || selectedVariant.price || selectedVariant.mrp || 0
     }
-    return product.mrp || product.price || 0
+    return product.base_price || product.price || product.mrp || 0
   }
 
   // Check if a specific color-size combination exists and is in stock
   const getVariantForCombination = (color, size) => {
     if (!isMicrofiber) return null
-    return product.variants?.find((v) => v.color === color && v.size === size) || null
+    return product.variants?.find((v) => {
+      const hasColor = Array.isArray(v.color) ? v.color.includes(color) : v.color === color
+      return hasColor && v.size === size
+    }) || null
   }
 
   // Check if current selection is available
@@ -229,8 +262,10 @@ export default function FeaturedProductCard({ product, className = "", isLastCar
   // Get variant display text (size only for microfiber, quantity for others)
   const getVariantDisplayText = (variant) => {
     if (isMicrofiber) {
-      // For microfiber: display size only (color is handled separately)
-      return variant.size || variant.name || "Size"
+      // For microfiber: display size only, remove any unit (ml, ltr, gm, etc.)
+      let size = variant.size || variant.name || "Size";
+      // Remove common units (ml, ltr, gm, g, kg, pcs, piece, pieces, etc.)
+      return size.replace(/\b(ml|ltr|l|gm|g|kg|pcs?|pieces?)\b/gi, '').replace(/\s+/g, ' ').trim();
     } else {
       // For non-microfiber: display quantity with unit
       const quantity = variant.quantity || variant.size || ""
@@ -241,7 +276,10 @@ export default function FeaturedProductCard({ product, className = "", isLastCar
 
   // Check if a color has any variants in stock
   const isColorAvailable = (color) => {
-    return product.variants?.some((v) => v.color === color && v.stock > 0) || false
+    return product.variants?.some((v) => {
+      const hasColor = Array.isArray(v.color) ? v.color.includes(color) : v.color === color
+      return hasColor && v.stock > 0
+    }) || false
   }
 
   // Check if a size has any variants in stock
@@ -292,11 +330,16 @@ export default function FeaturedProductCard({ product, className = "", isLastCar
       setSelectedVariant(variant)
     } else {
       // If no size selected, find the highest-priced variant for this color
-      const colorVariants = product.variants?.filter((v) => v.color === color) || []
+      const colorVariants = product.variants?.filter((v) => {
+        if (Array.isArray(v.color)) {
+          return v.color.includes(color)
+        }
+        return v.color === color
+      }) || []
       if (colorVariants.length > 0) {
         const highestPricedVariant = colorVariants.reduce((highest, current) => {
-          const currentPrice = current.price || current.mrp || 0
-          const highestPrice = highest.price || highest.mrp || 0
+          const currentPrice = current.base_price || current.price || current.mrp || 0
+          const highestPrice = highest.base_price || highest.price || highest.mrp || 0
           return currentPrice > highestPrice ? current : highest
         })
         setSelectedVariant(highestPricedVariant)
@@ -317,8 +360,8 @@ export default function FeaturedProductCard({ product, className = "", isLastCar
       const sizeVariants = product.variants?.filter((v) => v.size === size) || []
       if (sizeVariants.length > 0) {
         const highestPricedVariant = sizeVariants.reduce((highest, current) => {
-          const currentPrice = current.price || current.mrp || 0
-          const highestPrice = highest.price || highest.mrp || 0
+          const currentPrice = current.base_price || current.price || current.mrp || 0
+          const highestPrice = highest.base_price || highest.price || highest.mrp || 0
           return currentPrice > highestPrice ? current : highest
         })
         setSelectedVariant(highestPricedVariant)
@@ -359,7 +402,7 @@ export default function FeaturedProductCard({ product, className = "", isLastCar
           ...variant,
           color: selectedColor,
           size: selectedSize,
-          displayText: `${selectedColor} / ${selectedSize}`
+          displayText: selectedSize // Only show size for microfiber
         }
       } else if (selectedVariant) {
         itemToAdd.variant = {
@@ -369,7 +412,7 @@ export default function FeaturedProductCard({ product, className = "", isLastCar
       } else {
         itemToAdd.variant = {
           id: 'default',
-          price: product.price || product.mrp,
+          price: product.base_price || product.price || product.mrp,
           displayText: 'Default'
         }
       }
@@ -417,7 +460,7 @@ export default function FeaturedProductCard({ product, className = "", isLastCar
           ...variant,
           color: selectedColor,
           size: selectedSize,
-          displayText: `${selectedColor} / ${selectedSize}`
+          displayText: selectedSize // Only show size for microfiber
         }
       } else if (selectedVariant) {
         itemToAdd.variant = {
@@ -427,7 +470,7 @@ export default function FeaturedProductCard({ product, className = "", isLastCar
       } else {
         itemToAdd.variant = {
           id: 'default',
-          price: product.price || product.mrp,
+          price: product.base_price || product.price || product.mrp,
           displayText: 'Default'
         }
       }
@@ -468,7 +511,7 @@ export default function FeaturedProductCard({ product, className = "", isLastCar
           ...variant,
           color: selectedColor,
           size: selectedSize,
-          displayText: `${selectedColor} / ${selectedSize}`
+          displayText: selectedSize // Only show size for microfiber
         };
       } else if (selectedVariant) {
         variantToSave = {
@@ -479,7 +522,7 @@ export default function FeaturedProductCard({ product, className = "", isLastCar
         // Default variant for products without variants
         variantToSave = {
           id: 'default',
-          price: product.price || product.mrp,
+          price: product.base_price || product.price || product.mrp,
           displayText: 'Default'
         };
       }

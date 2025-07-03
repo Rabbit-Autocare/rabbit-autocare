@@ -168,16 +168,16 @@ export async function fetchStockOverview() {
  */
 export async function fetchAdminDashboardData(startDate, endDate) {
   try {
-    const [salesStats, topProducts, stockOverview] = await Promise.all([
+    const [salesStats, topProducts] = await Promise.all([
       fetchSalesStats(startDate, endDate),
       fetchTopProducts(startDate, endDate),
-      fetchStockOverview(),
+      // fetchStockOverview(), // Temporarily disabled
     ]);
 
     return {
       salesStats,
       topProducts,
-      stockOverview,
+      // stockOverview, // Temporarily disabled
     };
   } catch (error) {
     console.error('Error fetching admin dashboard data:', error);

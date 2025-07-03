@@ -380,6 +380,7 @@ export class ProductService {
       variants: variants.map((variant) => {
         return {
           id: variant.id,
+          size: variant.size,
           quantity: variant.quantity,
           unit: variant.unit || 'ml',
           color: variant.color,

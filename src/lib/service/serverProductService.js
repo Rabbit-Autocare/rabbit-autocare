@@ -19,22 +19,29 @@ export class ServerProductService {
           *,
           product_variants (
             id,
-            gsm,
+            product_id,
+            variant_code,
             size,
-            color,
-            color_hex,
             quantity,
             unit,
-            price,
+            weight_grams,
+            gsm,
+            dimensions,
+            color,
+            color_hex,
+            base_price,
+            base_price_excluding_gst,
             stock,
-            compare_at_price
+            is_active,
+            created_at,
+            updated_at
           )
         `
       );
 
       // Apply filters
       if (filters.category) {
-        query = query.eq('category_name', filters.category);
+        query = query.eq('category', filters.category);
       }
 
       if (filters.search) {
@@ -44,11 +51,11 @@ export class ServerProductService {
       }
 
       if (filters.price_min) {
-        query = query.gte('price', filters.price_min);
+        query = query.gte('base_price', filters.price_min);
       }
 
       if (filters.price_max) {
-        query = query.lte('price', filters.price_max);
+        query = query.lte('base_price', filters.price_max);
       }
 
       if (filters.in_stock) {
@@ -59,10 +66,10 @@ export class ServerProductService {
       if (sort) {
         switch (sort) {
           case 'price_asc':
-            query = query.order('price', { ascending: true });
+            query = query.order('base_price', { ascending: true });
             break;
           case 'price_desc':
-            query = query.order('price', { ascending: false });
+            query = query.order('base_price', { ascending: false });
             break;
           case 'name_asc':
             query = query.order('name', { ascending: true });
@@ -139,15 +146,22 @@ export class ServerProductService {
           *,
           product_variants (
             id,
-            gsm,
+            product_id,
+            variant_code,
             size,
-            color,
-            color_hex,
             quantity,
             unit,
-            price,
+            weight_grams,
+            gsm,
+            dimensions,
+            color,
+            color_hex,
+            base_price,
+            base_price_excluding_gst,
             stock,
-            compare_at_price
+            is_active,
+            created_at,
+            updated_at
           )
         `
         )
@@ -189,28 +203,35 @@ export class ServerProductService {
           *,
           product_variants (
             id,
-            gsm,
+            product_id,
+            variant_code,
             size,
-            color,
-            color_hex,
             quantity,
             unit,
-            price,
+            weight_grams,
+            gsm,
+            dimensions,
+            color,
+            color_hex,
+            base_price,
+            base_price_excluding_gst,
             stock,
-            compare_at_price
+            is_active,
+            created_at,
+            updated_at
           )
         `
         )
-        .eq('category_name', categoryName);
+        .eq('category', categoryName);
 
       // Apply sorting
       if (sort) {
         switch (sort) {
           case 'price_asc':
-            query = query.order('price', { ascending: true });
+            query = query.order('base_price', { ascending: true });
             break;
           case 'price_desc':
-            query = query.order('price', { ascending: false });
+            query = query.order('base_price', { ascending: false });
             break;
           case 'name_asc':
             query = query.order('name', { ascending: true });
@@ -318,6 +339,70 @@ export class ServerProductService {
       return true;
     } catch (error) {
       console.error('Error in ServerProductService.deleteProduct:', error);
+      throw error;
+    }
+  }
+
+  // Get colors with server-side Supabase client
+  static async getColors() {
+    try {
+      const supabase = await this.getServerSupabaseClient();
+      const { data, error } = await supabase
+        .from('colors')
+        .select('*')
+        .order('color', { ascending: true });
+      if (error) throw error;
+      return data || [];
+    } catch (error) {
+      console.error('Error in ServerProductService.getColors:', error);
+      throw error;
+    }
+  }
+
+  // Get sizes with server-side Supabase client
+  static async getSizes() {
+    try {
+      const supabase = await this.getServerSupabaseClient();
+      const { data, error } = await supabase
+        .from('sizes')
+        .select('*')
+        .order('size_cm', { ascending: true });
+      if (error) throw error;
+      return data || [];
+    } catch (error) {
+      console.error('Error in ServerProductService.getSizes:', error);
+      throw error;
+    }
+  }
+
+  // Get GSM values with server-side Supabase client
+  static async getGSM() {
+    try {
+      const supabase = await this.getServerSupabaseClient();
+      const { data, error } = await supabase
+        .from('gsm')
+        .select('*')
+        .order('gsm', { ascending: true });
+      if (error) throw error;
+      return data || [];
+    } catch (error) {
+      console.error('Error in ServerProductService.getGSM:', error);
+      throw error;
+    }
+  }
+
+  // Get quantities with server-side Supabase client
+  static async getQuantities() {
+    try {
+      const supabase = await this.getServerSupabaseClient();
+      const { data, error } = await supabase
+        .from('quantity')
+        .select('*')
+        .order('quantity', { ascending: true });
+      if (error) throw error;
+      return data || [];
+    } catch (error) {
+      console.error('Error in ServerProductService.getQuantities:', error);
       throw error;
     }
   }

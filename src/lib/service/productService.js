@@ -133,37 +133,53 @@ export class ProductService {
 
   static async createProduct(data) {
     try {
-      const transformedData = {
-        ...data,
-        variants: Array.isArray(data.variants)
-          ? data.variants.map((variant) => ({
-              id:
-                variant.id ||
-                `var_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-              gsm: variant.gsm || '',
-              size: variant.size || '',
-              color: variant.color || '',
-              color_hex: variant.color_hex || null,
-              quantity: variant.quantity || '',
-              unit: variant.unit || 'ml',
-              price: Number.parseFloat(variant.price) || 0,
-              stock: Number.parseInt(variant.stock) || 0,
-              compare_at_price: variant.compareAtPrice || null,
-            }))
-          : [],
-        subcategory_names: Array.isArray(data.subcategory_names)
-          ? data.subcategory_names
-          : data.subcategory_names
-          ? [data.subcategory_names]
-          : [],
-        key_features: Array.isArray(data.key_features) ? data.key_features : [],
-        taglines: Array.isArray(data.taglines) ? data.taglines : [],
+      // Only include fields that exist in the products table
+      const productPayload = {
+        product_code: data.product_code,
+        name: data.name,
+        description: data.description,
+        product_type: data.product_type,
+        category: data.category,
+        subcategory: data.subcategory,
+        hsn_code: data.hsn_code,
+        features: data.features,
+        usage_instructions: data.usage_instructions,
+        warnings: data.warnings,
+        main_image_url: data.main_image_url,
+        images: data.images,
+        taglines: data.taglines,
+        // created_at and updated_at are handled by DB
+      };
+
+      // Only include fields that exist in the product_variants table
+      const variants = Array.isArray(data.variants)
+        ? data.variants.map((variant) => ({
+            id: variant.id || `var_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+            variant_code: variant.variant_code || '',
+            size: variant.size || '',
+            quantity: variant.quantity !== undefined ? variant.quantity : null,
+            unit: variant.unit || 'ml',
+            weight_grams: variant.weight_grams !== undefined ? variant.weight_grams : null,
+            gsm: variant.gsm !== undefined ? variant.gsm : null,
+            dimensions: variant.dimensions || '',
+            color: variant.color ? (Array.isArray(variant.color) ? variant.color : [variant.color]) : null,
+            color_hex: variant.color_hex ? (Array.isArray(variant.color_hex) ? variant.color_hex : [variant.color_hex]) : null,
+            base_price: Number.parseFloat(variant.base_price) || 0,
+            base_price_excluding_gst: variant.base_price_excluding_gst !== undefined ? Number.parseFloat(variant.base_price_excluding_gst) : null,
+            stock: variant.stock !== undefined ? Number.parseInt(variant.stock) : 0,
+            is_active: variant.is_active !== undefined ? variant.is_active : true,
+          }))
+        : [];
+
+      const payload = {
+        ...productPayload,
+        variants,
       };
 
       const res = await fetch(API_BASE_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(transformedData),
+        body: JSON.stringify(payload),
       });
 
       if (!res.ok) {
@@ -211,15 +227,16 @@ export class ProductService {
               id:
                 variant.id ||
                 `var_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+              variant_code: variant.variant_code || '',
               gsm: variant.gsm || '',
               size: variant.size || '',
               color: variant.color || '',
               color_hex: variant.color_hex || null,
               quantity: variant.quantity || '',
               unit: variant.unit || 'ml',
-              price: Number.parseFloat(variant.price) || 0,
+              base_price: Number.parseFloat(variant.base_price) || 0,
+              base_price_excluding_gst: Number.parseFloat(variant.base_price_excluding_gst) || 0,
               stock: Number.parseInt(variant.stock) || 0,
-              compare_at_price: variant.compareAtPrice || null,
             }))
           : [],
         subcategory_names: Array.isArray(updateData.subcategory_names)
@@ -358,32 +375,18 @@ export class ProductService {
 
     const transformedData = {
       ...product,
-      category: product.category_name,
-      subcategory: product.subcategory_name,
+      category: product.category,
+      subcategory: product.subcategory,
       variants: variants.map((variant) => {
-        if (product.is_microfiber) {
-          return {
-            id: variant.id,
-            gsm: variant.gsm,
-            size: variant.size,
-            color: variant.color,
-            color_hex: variant.color_hex || null,
-            stock: variant.stock || 0,
-            price: variant.price || 0,
-            compareAtPrice: variant.compare_at_price || null,
-          };
-        } else {
-          return {
-            id: variant.id,
-            quantity: variant.quantity,
-            unit: variant.unit || 'ml',
-            color: variant.color,
-            color_hex: variant.color_hex || null,
-            stock: variant.stock || 0,
-            price: variant.price || 0,
-            compareAtPrice: variant.compare_at_price || null,
-          };
-        }
+        return {
+          id: variant.id,
+          quantity: variant.quantity,
+          unit: variant.unit || 'ml',
+          color: variant.color,
+          color_hex: variant.color_hex || null,
+          stock: variant.stock || 0,
+          base_price: variant.base_price || 0,
+        };
       }),
     };
 
@@ -409,9 +412,9 @@ export class ProductService {
     );
     const availableVariants = variants.filter((v) => (v.stock || 0) > 0).length;
     const minPrice =
-      variants.length > 0 ? Math.min(...variants.map((v) => v.price || 0)) : 0;
+      variants.length > 0 ? Math.min(...variants.map((v) => v.base_price || 0)) : 0;
     const maxPrice =
-      variants.length > 0 ? Math.max(...variants.map((v) => v.price || 0)) : 0;
+      variants.length > 0 ? Math.max(...variants.map((v) => v.base_price || 0)) : 0;
 
     // Ensure we have valid price data
     if (minPrice === 0 && maxPrice === 0) {
@@ -452,19 +455,19 @@ export class ProductService {
   static hasCategoryData(product) {
     return (
       product &&
-      product.category_name !== undefined &&
-      product.category_name !== null &&
-      product.category_name !== ''
+      product.category !== undefined &&
+      product.category !== null &&
+      product.category !== ''
     );
   }
 
   static getLowestPrice(variants) {
     if (!Array.isArray(variants) || variants.length === 0) return 0;
-    return Math.min(...variants.map((v) => Number.parseFloat(v.price) || 0));
+    return Math.min(...variants.map((v) => Number.parseFloat(v.base_price) || 0));
   }
 
   static getHighestPrice(variants) {
     if (!Array.isArray(variants) || variants.length === 0) return 0;
-    return Math.max(...variants.map((v) => Number.parseFloat(v.price) || 0));
+    return Math.max(...variants.map((v) => Number.parseFloat(v.base_price) || 0));
   }
 }

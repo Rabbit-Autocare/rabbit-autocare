@@ -1,6 +1,5 @@
 "use client"
 import { useEffect, useState } from "react"
-import { ProductService } from "@/lib/service/productService"
 import { X, AlertTriangle } from "lucide-react"
 import { SizeService } from "@/lib/service/microdataService"
 import { ColorService } from "@/lib/service/microdataService"
@@ -14,6 +13,22 @@ import SizesManagement from "../admin/datatabs/SizeTab"
 import ColorsManagement from "../admin/datatabs/ColorsTab"
 import GSMManagement from "../admin/datatabs/GsmTab"
 import QuantityManagement from "../admin/datatabs/QuantityTab"
+
+// Custom Button component
+function Button({ children, onClick, className = "", variant = "primary" }) {
+  const baseClasses =
+    "px-4 py-2 rounded-lg font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2"
+  const variants = {
+    primary: "bg-blue-600 text-white hover:bg-blue-700 focus:ring-blue-500",
+    secondary: "bg-gray-600 text-white hover:bg-gray-700 focus:ring-gray-500",
+  }
+
+  return (
+    <button onClick={onClick} className={`${baseClasses} ${variants[variant]} ${className}`}>
+      {children}
+    </button>
+  )
+}
 
 export default function MicrodataManagementForm({ onBack }) {
   const [activeTab, setActiveTab] = useState("categories")
@@ -39,26 +54,36 @@ export default function MicrodataManagementForm({ onBack }) {
     try {
       // Fetch each data type separately to isolate errors
       const fetchPromises = [
-        CategoryService.getCategories().then(res => setCategories(res.data || [])).catch(err => {
-          console.error("Error fetching categories:", err)
-          setError((prev) => prev || "Failed to load categories")
-        }),
-        SizeService.getSizes().then(res => setSizes(res.data || [])).catch(err => {
-          console.error("Error fetching sizes:", err)
-          setError((prev) => prev || "Failed to load sizes")
-        }),
-        ColorService.getColors().then(res => setColors(res.data || [])).catch(err => {
-          console.error("Error fetching colors:", err)
-          setError((prev) => prev || "Failed to load colors")
-        }),
-        GsmService.getGSM().then(res => setGsm(res.data || [])).catch(err => {
-          console.error("Error fetching GSM:", err)
-          setError((prev) => prev || "Failed to load GSM")
-        }),
-        QuantityService.getQuantities().then(res => setQuantities(res.data || [])).catch(err => {
-          console.error("Error fetching quantities:", err)
-          setError((prev) => prev || "Failed to load quantities")
-        })
+        CategoryService.getCategories()
+          .then((res) => setCategories(res.data || []))
+          .catch((err) => {
+            console.error("Error fetching categories:", err)
+            setError((prev) => prev || "Failed to load categories")
+          }),
+        SizeService.getSizes()
+          .then((res) => setSizes(res.data || []))
+          .catch((err) => {
+            console.error("Error fetching sizes:", err)
+            setError((prev) => prev || "Failed to load sizes")
+          }),
+        ColorService.getColors()
+          .then((res) => setColors(res.data || []))
+          .catch((err) => {
+            console.error("Error fetching colors:", err)
+            setError((prev) => prev || "Failed to load colors")
+          }),
+        GsmService.getGSM()
+          .then((res) => setGsm(res.data || []))
+          .catch((err) => {
+            console.error("Error fetching GSM:", err)
+            setError((prev) => prev || "Failed to load GSM")
+          }),
+        QuantityService.getQuantities()
+          .then((res) => setQuantities(res.data || []))
+          .catch((err) => {
+            console.error("Error fetching quantities:", err)
+            setError((prev) => prev || "Failed to load quantities")
+          }),
       ]
 
       await Promise.allSettled(fetchPromises)
@@ -84,7 +109,7 @@ export default function MicrodataManagementForm({ onBack }) {
       saving,
       setSaving,
       setError,
-      onDataChange: fetchAllData
+      onDataChange: fetchAllData,
     }
 
     switch (activeTab) {
@@ -134,9 +159,9 @@ export default function MicrodataManagementForm({ onBack }) {
             <AlertTriangle className="h-5 w-5 mr-2" />
             <p>{error}</p>
           </div>
-          <button onClick={fetchAllData} className="mt-2 text-sm font-medium text-red-700 hover:text-red-900 underline">
+          <Button onClick={fetchAllData} className="mt-2 text-sm font-medium text-red-700 hover:text-red-900 underline">
             Try again
-          </button>
+          </Button>
         </div>
       )}
 
@@ -149,14 +174,14 @@ export default function MicrodataManagementForm({ onBack }) {
               onClick={() => setActiveTab(tab.id)}
               className={`py-4 px-1 border-b-2 font-medium text-sm transition-colors whitespace-nowrap ${
                 activeTab === tab.id
-                  ? `border-${tab.color}-500 text-${tab.color}-600`
+                  ? "border-blue-500 text-blue-600"
                   : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
               }`}
             >
               {tab.label}
               <span
                 className={`ml-2 py-0.5 px-2 rounded-full text-xs ${
-                  activeTab === tab.id ? `bg-${tab.color}-100 text-${tab.color}-600` : "bg-gray-100 text-gray-600"
+                  activeTab === tab.id ? "bg-blue-100 text-blue-600" : "bg-gray-100 text-gray-600"
                 }`}
               >
                 {tab.count}
@@ -167,9 +192,7 @@ export default function MicrodataManagementForm({ onBack }) {
       </div>
 
       {/* Tab Content */}
-      <div className="p-6">
-        {renderTabContent()}
-      </div>
+      <div className="p-6">{renderTabContent()}</div>
 
       {/* Info Panel */}
       <div className="bg-gray-50 border-t border-gray-200 p-6">

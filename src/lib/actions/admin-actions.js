@@ -158,8 +158,8 @@ export async function fetchStockOverview() {
     if (error) throw error;
     return data || [];
   } catch (error) {
-    console.error('Error fetching stock overview:', error);
-    throw new Error('Failed to fetch stock overview');
+    console.error('Error fetching stock overview:', error, error?.message, error?.stack);
+    throw new Error('Failed to fetch stock overview' + (error?.message ? ': ' + error.message : ''));
   }
 }
 

@@ -1,7 +1,7 @@
 import { createSupabaseBrowserClient } from '@/lib/supabase/browser-client';
 const supabase = createSupabaseBrowserClient();
 import { fetchWithRetry } from '@/lib/utils/fetchWithRetry';
- 
+
 // API endpoints
 const SIZES_API = "/api/products/size";
 const COLORS_API = "/api/products/colors";

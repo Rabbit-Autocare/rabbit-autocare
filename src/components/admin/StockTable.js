@@ -39,11 +39,13 @@ export default function StockTable({ initialProducts }) {
     }
     setUpdatingStock(true);
     try {
-      const { error } = await supabase.rpc('adjust_variant_stock', {
-        variant_id_input: variantId,
-        quantity_input: newStock,
-        operation: 'set',
+      console.log('[Stock] Calling update_variant_stock', { variantId, newStock });
+      const { error, data } = await supabase.rpc('update_variant_stock', {
+        p_variant_id: variantId,
+        p_quantity: newStock,
+        p_operation: 'set',
       });
+      console.log('[Stock] update_variant_stock result', { error, data });
       if (error) throw error;
       setProducts(prevProducts =>
         prevProducts.map(product => ({
@@ -58,7 +60,8 @@ export default function StockTable({ initialProducts }) {
       setEditingVariantId(null);
       setStockUpdateValue('');
     } catch (error) {
-      alert('Failed to update stock: ' + error.message);
+      console.error('[Stock] Failed to update stock', error);
+      alert('Failed to update stock: ' + (error.message || JSON.stringify(error)));
     } finally {
       setUpdatingStock(false);
     }
@@ -68,11 +71,22 @@ export default function StockTable({ initialProducts }) {
     e.stopPropagation();
     setUpdatingStock(true);
     try {
-      const { error } = await supabase.rpc('adjust_variant_stock', {
-        variant_id_input: variantId,
-        quantity_input: Math.abs(amount),
-        operation: amount > 0 ? 'add' : 'subtract',
-      });
+      let error, data;
+      if (amount > 0) {
+        console.log('[Stock] Calling increment_stock', { variantId, amount });
+        ({ error, data } = await supabase.rpc('increment_stock', {
+          variant_id: variantId,
+          stock_delta: amount
+        }));
+        console.log('[Stock] increment_stock result', { error, data });
+      } else {
+        console.log('[Stock] Calling decrement_stock', { variantId, amount });
+        ({ error, data } = await supabase.rpc('decrement_stock', {
+          variant_id: variantId,
+          stock_delta: Math.abs(amount)
+        }));
+        console.log('[Stock] decrement_stock result', { error, data });
+      }
       if (error) throw error;
       setProducts(prevProducts =>
         prevProducts.map(product => ({
@@ -85,7 +99,8 @@ export default function StockTable({ initialProducts }) {
         }))
       );
     } catch (error) {
-      alert('Failed to adjust stock: ' + error.message);
+      console.error('[Stock] Failed to adjust stock', error);
+      alert('Failed to adjust stock: ' + (error.message || JSON.stringify(error)));
     } finally {
       setUpdatingStock(false);
     }
@@ -171,28 +186,72 @@ export default function StockTable({ initialProducts }) {
                       </tr>
                     </thead>
                     <tbody className="bg-white divide-y divide-gray-200">
-                      {product.product_variants.map(variant => (
+                      {product.product_variants.map((variant, i) => (
                         <tr key={variant.id} className="hover:bg-gray-50">
                           <td className="px-6 py-4 whitespace-nowrap">
                             <div className="flex flex-wrap gap-2">
-                              {variant.color && (
-                                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
-                                  {variant.color}
+                              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-200 text-gray-800 border border-gray-300">
+                                Code: {variant.variant_code || '-'}
+                              </span>
+                              {i === 0 && product.category && (
+                                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-indigo-100 text-indigo-800 border border-indigo-200">
+                                  Category: {product.category}
                                 </span>
                               )}
-                              {variant.size && (
-                                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                                  {variant.size}
-                                </span>
-                              )}
-                              {variant.gsm && (
-                                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                                  {variant.gsm} GSM
-                                </span>
-                              )}
-                              {variant.quantity && (
-                                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
-                                  {variant.quantity}{variant.unit}
+                              {Object.entries(variant).map(([key, value]) => {
+                                if (
+                                  value == null ||
+                                  value === '' ||
+                                  key === 'id' ||
+                                  key === 'variant_code' ||
+                                  key === 'stock' ||
+                                  key === 'product_id' ||
+                                  key === 'unit' ||
+                                  key === 'base_price_excluding_gst'
+                                ) return null;
+                                let label = key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+                                if (key === 'color') label = 'Color';
+                                if (key === 'size') label = 'Size';
+                                if (key === 'gsm') label = 'GSM';
+                                if (key === 'quantity') label = 'Quantity';
+                                if (key === 'base_price') label = 'Price';
+                                if (key === 'is_active') label = 'Active';
+                                let displayValue = value;
+                                if (key === 'base_price') displayValue = `₹${value}`;
+                                if (key === 'is_active') displayValue = value ? 'Yes' : 'No';
+                                if (key === 'quantity' && product.product_type !== 'microfiber' && variant.unit) {
+                                  return [
+                                    <span key={key} className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800 border border-purple-200">
+                                      Quantity: {value}
+                                    </span>,
+                                    <span key="unit" className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-pink-100 text-pink-800 border border-pink-200">
+                                      Unit: {variant.unit}
+                                    </span>
+                                  ];
+                                }
+                                if (key === 'quantity' && product.product_type === 'microfiber') {
+                                  return (
+                                    <span key={key} className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800 border border-purple-200">
+                                      Quantity: {value}
+                                    </span>
+                                  );
+                                }
+                                if (key === 'base_price_excluding_gst') {
+                                  return (
+                                    <span key={key} className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-50 text-yellow-800 border border-yellow-200">
+                                      Price (excl. GST): ₹{value}
+                                    </span>
+                                  );
+                                }
+                                return (
+                                  <span key={key} className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800 border border-gray-200">
+                                    {label}: {displayValue}
+                                  </span>
+                                );
+                              })}
+                              {variant.base_price_excluding_gst && (
+                                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-50 text-yellow-800 border border-yellow-200">
+                                  Price (excl. GST): ₹{variant.base_price_excluding_gst}
                                 </span>
                               )}
                             </div>
@@ -212,7 +271,7 @@ export default function StockTable({ initialProducts }) {
                                 variant.stock > 10 ? 'bg-green-100 text-green-800' :
                                 variant.stock > 0 ? 'bg-yellow-100 text-yellow-800' : 'bg-red-100 text-red-800'
                               }`}>
-                                {variant.stock}
+                                {variant.stock != null ? variant.stock : '-'}
                               </span>
                             )}
                           </td>

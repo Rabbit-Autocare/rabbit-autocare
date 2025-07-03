@@ -22,17 +22,13 @@ import { verifyAdminAuth, fetchAdminDashboardData } from '@/lib/actions/admin-ac
  * Uses SSR for faster loading and authentication verification
  */
 export default async function AdminPage({ searchParams }) {
-  // Verify admin authentication on server side
-  const authData = await verifyAdminAuth();
-
-  // Get date range from search params or use defaults
   const startDate =
     searchParams?.startDate ||
     new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
   const endDate =
     searchParams?.endDate || new Date().toISOString().split('T')[0];
 
-  // Fetch initial dashboard data on server side
+  const authData = await verifyAdminAuth();
   const dashboardData = await fetchAdminDashboardData(startDate, endDate);
 
   return (

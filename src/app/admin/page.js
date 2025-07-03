@@ -1,4 +1,4 @@
-import '../../app/globals.css';
+import '@/app/globals.css';
 import React from 'react';
 import {
   PieChart,
@@ -12,10 +12,9 @@ import {
   YAxis,
   CartesianGrid,
 } from 'recharts';
-import { createSupabaseBrowserClient } from '@/lib/supabase/browser-client';
-const supabase = createSupabaseBrowserClient();
 import AdminLayout from '@/components/layouts/AdminLayout';
 import AnalyticsTabs from './analytics/AnalyticsTabs';
+import { verifyAdminAuth, fetchAdminDashboardData } from '@/lib/actions/admin-actions';
 
 /**
  * Admin Dashboard Server Component
@@ -46,10 +45,3 @@ export default async function AdminPage({ searchParams }) {
     </AdminLayout>
   );
 }
-
-// 'use client'
-// import AnalyticsTabs from './analytics/AnalyticsTabs';
-// import "../../app/globals.css"
-// export default function AdminAnalyticsPage() {
-//   return <AnalyticsTabs />;
-// }

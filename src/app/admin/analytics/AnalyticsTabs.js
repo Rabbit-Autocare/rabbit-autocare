@@ -5,7 +5,7 @@ import OverviewDashboard from './OverviewDashboard';
 import SalesDashboard from './SalesDashboard';
 import StockDashboard from './StockDashboard';
 import ReportsDashboard from './ReportsDashboard';
-
+ 
 const tabs = [
   { name: 'Overview', component: OverviewDashboard },
   { name: 'Sales', component: SalesDashboard },

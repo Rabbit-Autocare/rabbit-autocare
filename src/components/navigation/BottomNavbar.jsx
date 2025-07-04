@@ -438,7 +438,7 @@ export default function BottomNavbar() {
         className={`absolute right-2 md:right-6 top-full bg-white shadow-lg z-30 border border-gray-200 rounded-lg overflow-hidden transition-all duration-300 ease-in-out w-72 md:w-80 ${
           isCouponsOpen ? "max-h-96 opacity-100" : "max-h-0 opacity-0"
         }`}
-        onMouseEnter={() => setIsCouponsOpen(true)}
+        onMouseEnter={() => setIsCouponsOpen(true)} 
         onMouseLeave={() => setIsCouponsOpen(false)}
       >
         <div className="p-2">

@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import dynamic from 'next/dynamic';
-import '../../../app/globals.css';
+import '@/app/globals.css';
 import AdminLayout from '@/components/layouts/AdminLayout';
 import {
   Search,

@@ -8,7 +8,7 @@ export class ClientUserService {
       console.log('ClientUserService - No userId provided');
       return { success: false, data: { userCoupons: [], availableCoupons: [] } };
     }
-
+ 
     try {
       const supabase = createSupabaseBrowserClient();
       console.log('ClientUserService - Supabase client created');

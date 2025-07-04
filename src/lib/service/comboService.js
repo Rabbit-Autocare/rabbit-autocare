@@ -14,7 +14,7 @@ export class ComboService {
         .from('product-images')
         .upload(filePath, imageFile, {
           cacheControl: '3600',
-          upsert: true
+          upsert: true 
         });
 
       if (uploadError) throw uploadError;

@@ -17,19 +17,27 @@ export default function UserProfileClient({ initialData }) {
   const updateProfile = async () => {
     try {
       if (!initialData.id) return;
-
+      if (JSON.stringify(profileData) === JSON.stringify(originalData)) {
+        setIsEditing(false);
+        return;
+      }
       setUpdating(true);
       const supabase = createSupabaseBrowserClient();
 
-      // Update profile in auth_users table
-      const { error } = await supabase
+      console.log('Updating profile for id:', initialData.id, profileData);
+
+      const { data, error } = await supabase
         .from('auth_users')
         .update({
           name: profileData.name,
           phone_number: profileData.phone_number,
           updated_at: new Date().toISOString(),
         })
-        .eq('id', initialData.id);
+        .eq('id', initialData.id)
+        .select()
+        .single();
+
+      console.log('Supabase update response:', { data, error });
 
       if (error) throw error;
 
@@ -49,7 +57,7 @@ export default function UserProfileClient({ initialData }) {
       }, 3000);
 
     } catch (error) {
-      console.error('Error updating profile:', error);
+      console.error('Error updating profile:', error?.message || error);
 
       // Show error message
       const errorMsg = document.createElement('div');

@@ -4,7 +4,6 @@ import { useState, useEffect, useRef } from "react"
 import { Search, User } from "lucide-react"
 import Link from "next/link"
 import Image from "next/image"
-import { CategoryService } from "@/lib/service/microdataService"
 import { useCart } from "@/hooks/useCart"
 import { useAuth } from "@/hooks/useAuth"
 import CouponCard from "@/components/ui/CouponCard"
@@ -18,12 +17,17 @@ const categoryImageMap = {
   "microfiber-cloth": "/assets/images/mission.png",
 }
 
+const STATIC_CATEGORIES = [
+  { name: "Car Interior", href: "/shop/car-interior", image: "/assets/images/carinterior.png" },
+  { name: "Car Exterior", href: "/shop/car-exterior", image: "/assets/images/banner2.png" },
+  { name: "Microfiber Cloth", href: "/shop/microfiber-cloth", image: "/assets/images/mission.png" },
+  { name: "Kits & Combos", href: "/shop/kits-combos", image: "/assets/images/banner.png" },
+];
+
 export default function ExtraNavbar() {
   const [isLoggedIn, setIsLoggedIn] = useState(false)
   const [isShopOpen, setIsShopOpen] = useState(false)
   const [isCouponsOpen, setIsCouponsOpen] = useState(false)
-  const [categories, setCategories] = useState([])
-  const [loading, setLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState("")
   const [userCoupons, setUserCoupons] = useState([])
   const [availableCoupons, setAvailableCoupons] = useState([])
@@ -110,54 +114,6 @@ export default function ExtraNavbar() {
       setIsShopOpen(isHovering)
     }
   }
-
-  // Fetch categories using CategoryService
-  useEffect(() => {
-    const fetchCategories = async () => {
-      setLoading(true)
-      try {
-        // console.log("Fetching categories from CategoryService...")
-        const result = await CategoryService.getCategories()
-        // console.log("CategoryService result:", result)
-
-        if (result.success && Array.isArray(result.data)) {
-          const transformedCategories = result.data.map((cat) => {
-            const slug = cat.name.toLowerCase().replace(/\s+/g, "-")
-            const imageFromMap = categoryImageMap[slug]
-
-            // Special handling for Kits & Combos
-            if (cat.name.toLowerCase().includes("kits") && cat.name.toLowerCase().includes("combos")) {
-              return {
-                name: cat.name,
-                href: "/shop/kits-combos",
-                image: imageFromMap || cat.image || `/images/categories/${cat.id}.jpg`,
-                is_microfiber: cat.is_microfiber || false,
-              }
-            }
-            // For other categories
-            return {
-              name: cat.name,
-              href: `/shop/${cat.name.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`,
-              image: imageFromMap || cat.image || `/images/categories/${cat.id}.jpg`,
-              is_microfiber: cat.is_microfiber || false,
-            }
-          })
-          // console.log("Setting categories:", transformedCategories)
-          setCategories(transformedCategories)
-        } else {
-          console.error("Failed to fetch categories:", result.error || "No data")
-          setCategories([])
-        }
-      } catch (error) {
-        console.error("Error in fetchCategories:", error)
-        setCategories([])
-      } finally {
-        setLoading(false)
-      }
-    }
-
-    fetchCategories()
-  }, [])
 
   // Fetch user's coupons
   useEffect(() => {
@@ -330,7 +286,7 @@ export default function ExtraNavbar() {
                   <User className="w-[20px] h-[20px] md:w-5 md:h-5" />
                   <span className="sr-only">User Profile</span>
                 </button>
-              </Link> 
+              </Link>
             ) : (
               <Link href="/login">
                 <button className="h-auto w-auto p-0 hover:bg-transparent bg-transparent border-none cursor-pointer transition-colors">
@@ -383,39 +339,24 @@ export default function ExtraNavbar() {
         onMouseLeave={() => handleShopHover(false)}
       >
         <div className="container mx-auto py-4 md:py-8 px-4 md:px-6">
-          {loading ? (
-            <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-3 md:gap-6">
-              {[...Array(4)].map((_, index) => (
-                <div key={index} className="animate-pulse">
-                  <div className="bg-gray-200 aspect-[3/2] rounded-lg"></div>
-                  <div className="h-6 md:h-8 bg-gray-200 mt-2 rounded"></div>
-                </div>
-              ))}
-            </div>
-          ) : categories.length > 0 ? (
-            <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-3 md:gap-6">
-              {categories.map((category, index) => (
-                <Link key={index} href={category.href} className="block group" onClick={() => setIsShopOpen(false)}>
-                  <div className="overflow-hidden rounded-lg shadow-sm hover:shadow-md transition-shadow duration-200">
-                    <div className="relative aspect-[3/2] bg-gray-100">
-                      <img
-                        src={category.image || "/placeholder.svg"}
-                        alt={category.name}
-                        className="object-cover w-full h-full group-hover:scale-105 transition-transform duration-200"
-                      />
-                    </div>
-                    <div className="bg-black text-white py-2 md:py-3 px-2 md:px-4 text-center">
-                      <span className="font-medium text-xs md:text-sm">{category.name}</span>
-                    </div>
+          <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-3 md:gap-6">
+            {STATIC_CATEGORIES.map((category, index) => (
+              <Link key={index} href={category.href} className="block group" onClick={() => setIsShopOpen(false)}>
+                <div className="overflow-hidden rounded-lg shadow-sm hover:shadow-md transition-shadow duration-200">
+                  <div className="relative aspect-[3/2] bg-gray-100">
+                    <img
+                      src={category.image || "/placeholder.svg"}
+                      alt={category.name}
+                      className="object-cover w-full h-full group-hover:scale-105 transition-transform duration-200"
+                    />
                   </div>
-                </Link>
-              ))}
-            </div>
-          ) : (
-            <div className="text-center py-6 md:py-8">
-              <p className="text-gray-500 text-sm md:text-base">No categories available</p>
-            </div>
-          )}
+                  <div className="bg-black text-white py-2 md:py-3 px-2 md:px-4 text-center">
+                    <span className="font-medium text-xs md:text-sm">{category.name}</span>
+                  </div>
+                </div>
+              </Link>
+            ))}
+          </div>
         </div>
       </div>
 

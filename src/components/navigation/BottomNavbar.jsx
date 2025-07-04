@@ -4,7 +4,6 @@ import { useState, useEffect, useRef } from "react"
 import Link from "next/link"
 import Image from "next/image"
 import { useCart } from "@/hooks/useCart"
-import { CategoryService } from "@/lib/service/microdataService"
 import { useAuth } from "@/hooks/useAuth"
 import CouponCard from "@/components/ui/CouponCard"
 import { createSupabaseBrowserClient } from '@/lib/supabase/browser-client'
@@ -18,12 +17,18 @@ const categoryImageMap = {
   "microfiber-cloth": "/assets/images/mission.png",
 }
 
+// Use static categories for shop dropdown
+const STATIC_CATEGORIES = [
+  { name: "Car Interior", href: "/shop/car-interior", image: "/assets/images/carinterior.png" },
+  { name: "Car Exterior", href: "/shop/car-exterior", image: "/assets/images/banner2.png" },
+  { name: "Microfiber Cloth", href: "/shop/microfiber-cloth", image: "/assets/images/mission.png" },
+  { name: "Kits & Combos", href: "/shop/kits-combos", image: "/assets/images/banner.png" },
+];
+
 export default function BottomNavbar() {
   const [isLoggedIn, setIsLoggedIn] = useState(false)
   const [isShopOpen, setIsShopOpen] = useState(false)
   const [isCouponsOpen, setIsCouponsOpen] = useState(false)
-  const [categories, setCategories] = useState([])
-  const [loading, setLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState("")
   const [userCoupons, setUserCoupons] = useState([])
   const [availableCoupons, setAvailableCoupons] = useState([])
@@ -145,54 +150,6 @@ export default function BottomNavbar() {
       user: !!user
     });
   }, [userCoupons, availableCoupons, isCouponsOpen, authLoading, user]);
-
-  // Fetch categories using CategoryService - Exact same logic as ExtraNavbar
-  useEffect(() => {
-    const fetchCategories = async () => {
-      setLoading(true)
-      try {
-        // console.log("Fetching categories from CategoryService...")
-        const result = await CategoryService.getCategories()
-        // console.log("CategoryService result:", result)
-
-        if (result.success && Array.isArray(result.data)) {
-          const transformedCategories = result.data.map((cat) => {
-            const slug = cat.name.toLowerCase().replace(/\s+/g, "-")
-            const imageFromMap = categoryImageMap[slug]
-
-            // Special handling for Kits & Combos
-            if (cat.name.toLowerCase().includes("kits") && cat.name.toLowerCase().includes("combos")) {
-              return {
-                name: cat.name,
-                href: "/shop/kits-combos",
-                image: imageFromMap || cat.image || `/images/categories/${cat.id}.jpg`,
-                is_microfiber: cat.is_microfiber || false,
-              }
-            }
-            // For other categories
-            return {
-              name: cat.name,
-              href: `/shop/${cat.name.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`,
-              image: imageFromMap || cat.image || `/images/categories/${cat.id}.jpg`,
-              is_microfiber: cat.is_microfiber || false,
-            }
-          })
-          // console.log("Setting categories:", transformedCategories)
-          setCategories(transformedCategories)
-        } else {
-          console.error("Failed to fetch categories:", result.error || "No data")
-          setCategories([])
-        }
-      } catch (error) {
-        console.error("Error in fetchCategories:", error)
-        setCategories([])
-      } finally {
-        setLoading(false)
-      }
-    }
-
-    fetchCategories()
-  }, [])
 
   const handleSearch = (e) => {
     e.preventDefault()
@@ -391,44 +348,29 @@ export default function BottomNavbar() {
         className={`absolute left-0 right-0 bg-white shadow-lg border-b border-gray-200 overflow-hidden transition-all duration-300 ease-in-out ${
           isShopOpen ? "max-h-96 opacity-100" : "max-h-0 opacity-0"
         }`}
-        style={{ zIndex: 50 }} // Much lower than cart
+        style={{ zIndex: 50 }}
         onMouseEnter={() => handleShopHover(true)}
         onMouseLeave={() => handleShopHover(false)}
       >
         <div className="container mx-auto py-4 md:py-8 px-4 md:px-6">
-          {loading ? (
-            <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-3 md:gap-6">
-              {[...Array(4)].map((_, index) => (
-                <div key={index} className="animate-pulse">
-                  <div className="bg-gray-200 aspect-[3/2] rounded-lg"></div>
-                  <div className="h-6 md:h-8 bg-gray-200 mt-2 rounded"></div>
-                </div>
-              ))}
-            </div>
-          ) : categories.length > 0 ? (
-            <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-3 md:gap-6">
-              {categories.map((category, index) => (
-                <Link key={index} href={category.href} className="block group" onClick={() => setIsShopOpen(false)}>
-                  <div className="overflow-hidden rounded-lg shadow-sm hover:shadow-md transition-shadow duration-200">
-                    <div className="relative aspect-[3/2] bg-gray-100">
-                      <img
-                        src={category.image || "/placeholder.svg"}
-                        alt={category.name}
-                        className="object-cover w-full h-full group-hover:scale-105 transition-transform duration-200"
-                      />
-                    </div>
-                    <div className="bg-black text-white py-2 md:py-3 px-2 md:px-4 text-center">
-                      <span className="font-medium text-xs md:text-sm">{category.name}</span>
-                    </div>
+          <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-3 md:gap-6">
+            {STATIC_CATEGORIES.map((category, index) => (
+              <Link key={index} href={category.href} className="block group" onClick={() => setIsShopOpen(false)}>
+                <div className="overflow-hidden rounded-lg shadow-sm hover:shadow-md transition-shadow duration-200">
+                  <div className="relative aspect-[3/2] bg-gray-100">
+                    <img
+                      src={category.image || "/placeholder.svg"}
+                      alt={category.name}
+                      className="object-cover w-full h-full group-hover:scale-105 transition-transform duration-200"
+                    />
                   </div>
-                </Link>
-              ))}
-            </div>
-          ) : (
-            <div className="text-center py-6 md:py-8">
-              <p className="text-gray-500 text-sm md:text-base">No categories available</p>
-            </div>
-          )}
+                  <div className="bg-black text-white py-2 md:py-3 px-2 md:px-4 text-center">
+                    <span className="font-medium text-xs md:text-sm">{category.name}</span>
+                  </div>
+                </div>
+              </Link>
+            ))}
+          </div>
         </div>
       </div>
 
@@ -438,7 +380,7 @@ export default function BottomNavbar() {
         className={`absolute right-2 md:right-6 top-full bg-white shadow-lg z-30 border border-gray-200 rounded-lg overflow-hidden transition-all duration-300 ease-in-out w-72 md:w-80 ${
           isCouponsOpen ? "max-h-96 opacity-100" : "max-h-0 opacity-0"
         }`}
-        onMouseEnter={() => setIsCouponsOpen(true)} 
+        onMouseEnter={() => setIsCouponsOpen(true)}
         onMouseLeave={() => setIsCouponsOpen(false)}
       >
         <div className="p-2">

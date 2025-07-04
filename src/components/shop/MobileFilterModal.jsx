@@ -30,84 +30,27 @@ const MobileFilterModal = ({
   onCategoryChange,
   products = [],
 }) => {
-  // Define filter options based on actual product data
-  const CATEGORIES = [
+  // Replace dynamic extraction with static values
+  const STATIC_CATEGORIES = [
     { value: "all", label: "All Products" },
-    { value: "microfiber-cloth", label: "Microfibers" },
     { value: "car-interior", label: "Car Interior" },
     { value: "car-exterior", label: "Car Exterior" },
+    { value: "microfiber-cloth", label: "Microfiber Cloth" },
     { value: "kits-combos", label: "Kits & Combos" },
-  ]
-
-  // Extract unique filter options from ALL products (static)
-  const extractFilterOptions = () => {
-    const sizes = new Set()
-    const colors = new Set()
-    const gsmValues = new Set()
-    const quantities = new Set()
-    let minProductPrice = Number.POSITIVE_INFINITY
-    let maxProductPrice = 0
-
-    // Always use all products to maintain static filter options
-    products.forEach((product) => {
-      // Extract filter options from variants
-      if (product.variants && Array.isArray(product.variants)) {
-        product.variants.forEach((variant) => {
-          // Handle size (could be size or size_cm)
-          if (variant.size) sizes.add(variant.size)
-          if (variant.size_cm) sizes.add(variant.size_cm)
-
-          // Handle color
-          if (variant.color) colors.add(variant.color)
-
-          // Handle GSM for microfiber products
-          if (variant.gsm) gsmValues.add(variant.gsm)
-
-          // Handle quantity for non-microfiber products
-          if (variant.quantity) quantities.add(variant.quantity)
-
-          // Track price range
-          if (variant.price) {
-            minProductPrice = Math.min(minProductPrice, Number.parseFloat(variant.price))
-            maxProductPrice = Math.max(maxProductPrice, Number.parseFloat(variant.price))
-          }
-        })
-      }
-
-      // Also check product-level properties
-      if (product.size) sizes.add(product.size)
-      if (product.color) colors.add(product.color)
-      if (product.gsm) gsmValues.add(product.gsm)
-      if (product.quantity) quantities.add(product.quantity)
-      if (product.price) {
-        minProductPrice = Math.min(minProductPrice, Number.parseFloat(product.price))
-        maxProductPrice = Math.max(maxProductPrice, Number.parseFloat(product.price))
-      }
-    })
-
-    return {
-      sizes: Array.from(sizes).sort(),
-      colors: Array.from(colors).sort(),
-      gsmValues: Array.from(gsmValues).sort((a, b) => Number(a) - Number(b)),
-      quantities: Array.from(quantities).sort((a, b) => {
-        // Extract numeric part for sorting
-        const numA = Number.parseInt(a.match(/\d+/)?.[0] || "0")
-        const numB = Number.parseInt(b.match(/\d+/)?.[0] || "0")
-        return numA - numB
-      }),
-      minPrice: minProductPrice === Number.POSITIVE_INFINITY ? 0 : minProductPrice,
-      maxPrice: maxProductPrice || 1000,
-    }
-  }
-
-  const filterOptions = extractFilterOptions()
+  ];
+  const STATIC_SIZES = ["40x40", "40x60"];
+  const STATIC_GSM = [
+    "200", "280", "350", "380", "420", "500", "600", "750", "800", "1000", "1200", "Rabbit fur 1X", "Rabbit fur 2X"
+  ];
+  const STATIC_QUANTITIES = ["100ml", "250ml", "500ml", "1L", "5L"];
+  const STATIC_PRICE_RANGE = [0, 1000];
 
   // Handle price range change - only allow max price to change
   const handlePriceRangeChange = (e) => {
     const value = Number.parseInt(e.target.value)
-    const newRange = [filterOptions.minPrice, value]
+    const newRange = [minPrice, value]
     setPriceRange(newRange)
-    setMinPrice(filterOptions.minPrice.toString())
+    setMinPrice(minPrice.toString())
     setMaxPrice(value.toString())
   }
 
@@ -183,7 +126,7 @@ const MobileFilterModal = ({
           <div>
             <h3 className="text-sm font-medium text-gray-900 mb-3 uppercase">CATEGORY</h3>
             <div className="space-y-2">
-              {CATEGORIES.map((cat) => (
+              {STATIC_CATEGORIES.map((cat) => (
                 <label key={cat.value} className="flex items-center">
                   <input
                     type="radio"
@@ -245,23 +188,23 @@ const MobileFilterModal = ({
             <div className="space-y-3">
               {/* Price display above slider */}
               <div className="text-sm text-gray-600">
-                ₹{filterOptions.minPrice} to ₹{priceRange[1]}
+                ₹{minPrice} to ₹{priceRange[1]}
               </div>
               {/* Custom slider that only moves from max side */}
               <div className="relative">
                 <input
                   type="range"
-                  min={filterOptions.minPrice}
-                  max={filterOptions.maxPrice}
+                  min={minPrice}
+                  max={maxPrice}
                   value={priceRange[1]}
                   onChange={handlePriceRangeChange}
                   className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer slider-blue"
                   style={{
                     background: `linear-gradient(to right, #3b82f6 0%, #3b82f6 ${
-                      ((priceRange[1] - filterOptions.minPrice) / (filterOptions.maxPrice - filterOptions.minPrice)) *
+                      ((priceRange[1] - minPrice) / (maxPrice - minPrice)) *
                       100
                     }%, #e5e7eb ${
-                      ((priceRange[1] - filterOptions.minPrice) / (filterOptions.maxPrice - filterOptions.minPrice)) *
+                      ((priceRange[1] - minPrice) / (maxPrice - minPrice)) *
                       100
                     }%, #e5e7eb 100%)`,
                   }}
@@ -271,11 +214,11 @@ const MobileFilterModal = ({
           </div>
 
           {/* Size (for microfiber products) */}
-          {showMicrofiberFilters && filterOptions.sizes.length > 0 && (
+          {showMicrofiberFilters && STATIC_SIZES.length > 0 && (
             <div>
               <h3 className="text-sm font-medium text-gray-900 mb-3 uppercase">SIZE</h3>
               <div className="space-y-2">
-                {filterOptions.sizes.map((size) => (
+                {STATIC_SIZES.map((size) => (
                   <label key={size} className="flex items-center">
                     <input
                       type="checkbox"
@@ -296,69 +239,12 @@ const MobileFilterModal = ({
             </div>
           )}
 
-          {/* Color */}
-          {filterOptions.colors.length > 0 && (
-            <div>
-              <h3 className="text-sm font-medium text-gray-900 mb-3 uppercase">COLOR</h3>
-              <div className="space-y-2">
-                {filterOptions.colors.map((color) => (
-                  <label key={color} className="flex items-center cursor-pointer">
-                    <div className="flex items-center">
-                      <input
-                        type="checkbox"
-                        checked={selectedColor.includes(color)}
-                        onChange={(e) => {
-                          if (e.target.checked) {
-                            setSelectedColor([...selectedColor, color])
-                          } else {
-                            setSelectedColor(selectedColor.filter((c) => c !== color))
-                          }
-                        }}
-                        className="sr-only"
-                      />
-                      <div
-                        className={`w-4 h-4 rounded-full border mr-2 ${
-                          selectedColor.includes(color) ? "border-gray-800 border-2" : "border-gray-300"
-                        }`}
-                        style={{
-                          backgroundColor:
-                            color.toLowerCase() === "white"
-                              ? "#ffffff"
-                              : color.toLowerCase() === "black"
-                                ? "#000000"
-                                : color.toLowerCase() === "blue"
-                                  ? "#3b82f6"
-                                  : color.toLowerCase() === "purple"
-                                    ? "#8b5cf6"
-                                    : color.toLowerCase() === "green"
-                                      ? "#10b981"
-                                      : color.toLowerCase() === "red"
-                                        ? "#ef4444"
-                                        : color.toLowerCase() === "yellow"
-                                          ? "#f59e0b"
-                                          : color.toLowerCase() === "orange"
-                                            ? "#f97316"
-                                            : color.toLowerCase() === "pink"
-                                              ? "#ec4899"
-                                              : color.toLowerCase() === "gray" || color.toLowerCase() === "grey"
-                                                ? "#6b7280"
-                                                : "#9ca3af",
-                        }}
-                      />
-                      <span className="text-sm text-gray-700 capitalize">{color}</span>
-                    </div>
-                  </label>
-                ))}
-              </div>
-            </div>
-          )}
-
           {/* Quantity (for non-microfiber products) */}
-          {showCarCareFilters && filterOptions.quantities.length > 0 && (
+          {showCarCareFilters && STATIC_QUANTITIES.length > 0 && (
             <div>
               <h3 className="text-sm font-medium text-gray-900 mb-3 uppercase">QUANTITY</h3>
               <div className="space-y-2">
-                {filterOptions.quantities.map((quantity) => (
+                {STATIC_QUANTITIES.map((quantity) => (
                   <label key={quantity} className="flex items-center">
                     <input
                       type="checkbox"
@@ -380,11 +266,11 @@ const MobileFilterModal = ({
           )}
 
           {/* GSM (for microfiber products) */}
-          {showMicrofiberFilters && filterOptions.gsmValues.length > 0 && (
+          {showMicrofiberFilters && STATIC_GSM.length > 0 && (
             <div>
               <h3 className="text-sm font-medium text-gray-900 mb-3 uppercase">GSM</h3>
               <div className="space-y-2">
-                {filterOptions.gsmValues.map((gsm) => (
+                {STATIC_GSM.map((gsm) => (
                   <label key={gsm} className="flex items-center">
                     <input
                       type="checkbox"

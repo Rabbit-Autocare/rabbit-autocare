@@ -2,8 +2,7 @@
 
 import { useEffect, useState } from "react"
 import { usePathname, useRouter } from "next/navigation"
-import { createSupabaseBrowserClient } from '@/lib/supabase/browser-client';
-const supabase = createSupabaseBrowserClient();
+import { createSupabaseBrowserClient } from "@/lib/supabase/browser-client"
 import Footer from "@/components/navigation/Footer"
 import MainNavbar from "@/components/navigation/MainNavbar"
 import { CartProvider } from "@/contexts/CartContext"
@@ -11,6 +10,8 @@ import { ThemeProvider } from "@/contexts/ThemeContext"
 import ExtraNavbar from "@/components/navigation/extranavbar"
 import { createPortal } from "react-dom"
 import MobileNavbar from "@/components/navigation/MobileNavbar"
+
+const supabase = createSupabaseBrowserClient();
 
 export default function ClientLayout({ children }) {
   const router = useRouter()
@@ -316,14 +317,23 @@ export default function ClientLayout({ children }) {
     }
   }, [showMobileNavbar, mobilePortalContainer])
 
-  // Only wrap with CartProvider if not in admin area
-  const isAdminRoute = pathname.startsWith('/admin')
-
-  let content = (
+  return (
     <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
-      <div style={{ position: "relative" }}>
-        {/* ExtraNavbar */}
-        {!isAdminRoute && (
+      <CartProvider>
+        {/* MobileNavbar Portal - Mobile only */}
+        {mobilePortalContainer &&
+          createPortal(
+            <div className="md:hidden">
+              <MobileNavbar
+                isMobileMenuOpen={isMobileMenuOpen}
+                setIsMobileMenuOpen={handleMobileMenuToggle}
+              />
+            </div>,
+            mobilePortalContainer,
+          )}
+
+        <div style={{ position: "relative" }}>
+          {/* ExtraNavbar */}
           <div
             className={`transition-all duration-300 ease-in-out ${
               showExtraNavbar ? "opacity-100 translate-y-0" : "opacity-0 -translate-y-full pointer-events-none"
@@ -332,25 +342,22 @@ export default function ClientLayout({ children }) {
           >
             <ExtraNavbar />
           </div>
-        )}
-        {/* Content */}
-        <div>{children}</div>
-        <Footer />
-      </div>
-      {/* MainNavbar Portal - Desktop only */}
-      {portalContainer && !isAdminRoute &&
-        createPortal(
-          <div className="hidden md:block">
-            <MainNavbar />
-          </div>,
-          portalContainer,
-        )}
+
+          {/* Content */}
+          <div>{children}</div>
+
+          <Footer />
+        </div>
+
+        {/* MainNavbar Portal - Desktop only */}
+        {portalContainer &&
+          createPortal(
+            <div className="hidden md:block">
+              <MainNavbar />
+            </div>,
+            portalContainer,
+          )}
+      </CartProvider>
     </ThemeProvider>
   )
-
-  if (!isAdminRoute) {
-    content = <CartProvider>{content}</CartProvider>
-  }
-
-  return content
 }

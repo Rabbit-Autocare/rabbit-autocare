@@ -22,39 +22,25 @@ export default function ProductCard({ product, index }) {
     setHasImageError(true);
   };
 
-  // Calculate max price from variants with better error handling
-  const calculateMaxPrice = () => {
+  // Replace calculateMaxPrice with logic to get the highest base_price among variants
+  const calculateMaxBasePrice = () => {
     try {
-      // Check if variants exist and is an array
-      if (
-        product.variants &&
-        Array.isArray(product.variants) &&
-        product.variants.length > 0
-      ) {
-        const prices = product.variants
-          .map((variant) => variant?.price)
-          .filter(
-            (price) => price !== null && price !== undefined && !isNaN(price)
-          );
-
-        if (prices.length > 0) {
-          return Math.max(...prices);
+      if (product.variants && Array.isArray(product.variants) && product.variants.length > 0) {
+        const basePrices = product.variants
+          .map((variant) => Number(variant?.base_price) || 0)
+          .filter((price) => !isNaN(price));
+        if (basePrices.length > 0) {
+          return Math.max(...basePrices);
         }
       }
-
-      // Fallback to product.price or other price fields
-      return product.price || product.maxPrice || product.basePrice || 0;
+      // Fallback to product.base_price, product.price, or 0
+      return Number(product.base_price) || Number(product.price) || 0;
     } catch (error) {
-      console.error(
-        'Error calculating max price for product:',
-        product.name,
-        error
-      );
+      console.error('Error calculating max base price for product:', product.name, error);
       return 0;
     }
   };
-
-  const maxPrice = calculateMaxPrice();
+  const maxPrice = calculateMaxBasePrice();
 
   // Get the main image with improved error handling
   const getImageUrl = (url) => {

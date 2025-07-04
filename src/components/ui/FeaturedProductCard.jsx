@@ -272,21 +272,18 @@ export default function FeaturedProductCard({ product, className = "", isLastCar
       // For microfiber: display size in cm only, remove any other units
       let size = variant.size || variant.name || "Size";
       // Remove any trailing unit (ml, ltr, gm, etc.), even if attached (e.g., '40x40ml')
-      size = size.replace(/(ml|ltr|l|gm|g|kg|pcs?|pieces?)$/i, '').replace(/\b(ml|ltr|l|gm|g|kg|pcs?|pieces?)\b/gi, '').replace(/\s+/g, ' ').trim();
-      if (/cm$/i.test(size)) {
-        size = size.replace(/\s*cm$/i, '') + ' cm';
-      } else {
+      size = size.replace(/(ml|ltr|l|gm|g|kg|pcs?|pieces?)$/gi, '').replace(/\b(ml|ltr|l|gm|g|kg|pcs?|pieces?)\b/gi, '').replace(/\s+/g, ' ').trim();
+      // Ensure it ends with 'cm'
+      if (!/cm$/i.test(size)) {
         size = size + ' cm';
+      } else {
+        size = size.replace(/\s*cm$/i, '') + ' cm';
       }
-      // Extract pack size from variant_code, code, or id
-      const packSize = extractPackSize(variant.variant_code || variant.code || variant.id);
-      // Debug log
-      console.log('Microfiber variant display:', { variant, size, packSize });
-      return packSize > 1 ? `${size} (Pack of ${packSize})` : size;
+      return size;
     } else {
-      const quantity = variant.quantity || variant.size || ""
-      const unit = variant.unit || ""
-      return `${quantity}${unit}` || variant.name || "Variant"
+      const quantity = variant.quantity || variant.size || "";
+      const unit = variant.unit || "";
+      return `${quantity}${unit}` || variant.name || "Variant";
     }
   }
 
@@ -726,13 +723,8 @@ export default function FeaturedProductCard({ product, className = "", isLastCar
                   {product.variants.filter(v => v.size).map((variant, index) => {
                     const isSelected = selectedSize === variant.size;
                     const isOutOfStock = variant.stock === 0;
-                    let size = variant.size || variant.name || "Size";
-                    size = size.replace(/(ml|ltr|l|gm|g|kg|pcs?|pieces?)$/i, '').replace(/\b(ml|ltr|l|gm|g|kg|pcs?|pieces?)\b/gi, '').replace(/\s+/g, ' ').trim();
-                    if (/cm$/i.test(size)) {
-                      size = size.replace(/\s*cm$/i, '') + ' cm';
-                    } else {
-                      size = size + ' cm';
-                    }
+                    // Use getVariantDisplayText for consistent size display
+                    const size = getVariantDisplayText(variant);
                     const packSize = extractPackSize(variant.variant_code || variant.code || variant.id);
                     return (
                       <div key={variant.id || index} className="relative group">
@@ -742,16 +734,14 @@ export default function FeaturedProductCard({ product, className = "", isLastCar
                             setSelectedVariant(variant);
                           }}
                           disabled={isOutOfStock}
-                          className={`
-                            px-2 py-1 xs:px-3 xs:py-2 sm:px-4 sm:py-2 text-xs xs:text-sm font-medium transition-all duration-200 rounded-full
-                            ${
-                              isSelected
-                                ? "bg-white text-black border-2 border-black"
-                                : isOutOfStock
-                                  ? "bg-gray-100 text-gray-400 cursor-not-allowed border border-gray-200"
-                                  : "bg-gray-100 text-gray-600 hover:bg-gray-200 border border-transparent"
-                            }
-                          `}
+                          className={
+                            `px-2 py-1 xs:px-3 xs:py-2 sm:px-4 sm:py-2 text-xs xs:text-sm font-medium transition-all duration-200 rounded-full ` +
+                            (isSelected
+                              ? "bg-white text-black border-2 border-black"
+                              : isOutOfStock
+                                ? "bg-gray-100 text-gray-400 cursor-not-allowed border border-gray-200"
+                                : "bg-gray-100 text-gray-600 hover:bg-gray-200 border border-transparent")
+                          }
                         >
                           <div className="flex flex-col items-center leading-tight">
                             <span className="font-semibold">{size}</span>
@@ -777,13 +767,7 @@ export default function FeaturedProductCard({ product, className = "", isLastCar
                   // Use selectedVariant or first available variant
                   const variant = selectedVariant || product.variants.find(v => v.size);
                   if (!variant) return null;
-                  let size = variant.size || variant.name || "Size";
-                  size = size.replace(/(ml|ltr|l|gm|g|kg|pcs?|pieces?)$/i, '').replace(/\b(ml|ltr|l|gm|g|kg|pcs?|pieces?)\b/gi, '').replace(/\s+/g, ' ').trim();
-                  if (/cm$/i.test(size)) {
-                    size = size.replace(/\s*cm$/i, '') + ' cm';
-                  } else {
-                    size = size + ' cm';
-                  }
+                  const size = getVariantDisplayText(variant);
                   const packSize = extractPackSize(variant.variant_code || variant.code || variant.id);
                   return (
                     <div className="mt-2 flex flex-col items-start text-xs text-blue-700">

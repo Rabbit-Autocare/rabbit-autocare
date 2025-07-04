@@ -6,7 +6,6 @@ import Image from "next/image"
 import { useTheme } from "@/contexts/ThemeContext"
 import { useCart } from "@/hooks/useCart"
 import { Menu, X } from "lucide-react"
-import { CategoryService } from "@/lib/service/microdataService"
 import { useAuth } from "@/hooks/useAuth"
 import { createSupabaseBrowserClient } from '@/lib/supabase/browser-client'
 import CouponCard from "@/components/ui/CouponCard"
@@ -31,14 +30,19 @@ const coupons = [
   { code: "FIRST10", description: "10% off for first-time buyers", discount: "10% OFF" },
 ]
 
+const STATIC_CATEGORIES = [
+  { name: "Car Interior", href: "/shop/car-interior", image: "/assets/images/carinterior.png" },
+  { name: "Car Exterior", href: "/shop/car-exterior", image: "/assets/images/banner2.png" },
+  { name: "Microfiber Cloth", href: "/shop/microfiber-cloth", image: "/assets/images/mission.png" },
+  { name: "Kits & Combos", href: "/shop/kits-combos", image: "/assets/images/banner.png" },
+];
+
 export default function MobileNavbar({ isMobileMenuOpen, setIsMobileMenuOpen }) {
   const [showCoupons, setShowCoupons] = useState(false)
   const [searchQuery, setSearchQuery] = useState("")
   const [isLoggedIn, setIsLoggedIn] = useState(false)
   const { theme, toggleTheme } = useTheme()
   const { openCart, cartCount } = useCart()
-  const [categories, setCategories] = useState([])
-  const [loading, setLoading] = useState(false)
   const [userCoupons, setUserCoupons] = useState([])
   const { user, loading: authLoading } = useAuth()
   const [isReady, setIsReady] = useState(false)
@@ -99,33 +103,6 @@ export default function MobileNavbar({ isMobileMenuOpen, setIsMobileMenuOpen }) 
     checkLoginStatus()
     window.addEventListener("storage", checkLoginStatus)
     return () => window.removeEventListener("storage", checkLoginStatus)
-  }, [])
-
-  useEffect(() => {
-    const fetchCategories = async () => {
-      setLoading(true)
-      try {
-        const result = await CategoryService.getCategories()
-        if (result.success && Array.isArray(result.data)) {
-          const transformedCategories = result.data.map((cat) => ({
-            name: cat.name,
-            href: `/shop/${cat.name.toLowerCase().replace(/\s+/g, "-")}`,
-            image: cat.image || `/images/categories/${cat.id}.jpg`,
-            is_microfiber: cat.is_microfiber || false,
-          }))
-          setCategories(transformedCategories)
-        } else {
-          setCategories([])
-        }
-      } catch (error) {
-        console.error("Error in fetchCategories:", error)
-        setCategories([])
-      } finally {
-        setLoading(false)
-      }
-    }
-
-    fetchCategories()
   }, [])
 
   // Fetch user's coupons
@@ -408,37 +385,27 @@ export default function MobileNavbar({ isMobileMenuOpen, setIsMobileMenuOpen }) 
                 {/* Categories Section */}
                 <div className="mb-6">
                   <h3 className="font-semibold text-lg mb-4 text-gray-800">Categories</h3>
-                  {loading ? (
-                    <div className="flex justify-center items-center py-8">
-                      <div className="text-gray-500">Loading categories...</div>
-                    </div>
-                  ) : (
-                    <div className="grid grid-cols-2 gap-4">
-                      {categories.map((category, index) => (
-                        <Link key={index} href={category.href} className="block group" onClick={closeMobileMenu}>
-                          <div className="overflow-hidden rounded-lg shadow-sm hover:shadow-md transition-shadow duration-200 border border-gray-200 bg-white">
-                            <div className="relative aspect-[3/2] bg-gray-100">
-                              <img
-                                src={
-                                  categoryImageMap[category.name.toLowerCase().replace(/\s+/g, "-")] ||
-                                  "/placeholder.svg?height=200&width=300" ||
-                                  "/placeholder.svg"
-                                }
-                                alt={category.name}
-                                className="object-cover w-full h-full group-hover:scale-105 transition-transform duration-200"
-                                onError={(e) => {
-                                  e.target.src = "/placeholder.svg?height=200&width=300"
-                                }}
-                              />
-                            </div>
-                            <div className="bg-black text-white py-2 px-3 text-center">
-                              <span className="font-medium text-xs">{category.name}</span>
-                            </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    {STATIC_CATEGORIES.map((category, index) => (
+                      <Link key={index} href={category.href} className="block group" onClick={closeMobileMenu}>
+                        <div className="overflow-hidden rounded-lg shadow-sm hover:shadow-md transition-shadow duration-200 border border-gray-200 bg-white">
+                          <div className="relative aspect-[3/2] bg-gray-100">
+                            <img
+                              src={category.image}
+                              alt={category.name}
+                              className="object-cover w-full h-full group-hover:scale-105 transition-transform duration-200"
+                              onError={(e) => {
+                                e.target.src = "/placeholder.svg?height=200&width=300"
+                              }}
+                            />
                           </div>
-                        </Link>
-                      ))}
-                    </div>
-                  )}
+                          <div className="bg-black text-white py-2 px-3 text-center">
+                            <span className="font-medium text-xs">{category.name}</span>
+                          </div>
+                        </div>
+                      </Link>
+                    ))}
+                  </div>
                 </div>
 
                 {/* Navigation Links */}

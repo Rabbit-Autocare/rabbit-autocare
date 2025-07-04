@@ -11,6 +11,41 @@ import {
   QuantityService
 } from "@/lib/service/microdataService"
 
+const STATIC_CATEGORIES = [
+  { value: "all", label: "All Products" },
+  { value: "car-interior", label: "Car Interior" },
+  { value: "car-exterior", label: "Car Exterior" },
+  { value: "microfiber-cloth", label: "Microfiber Cloth" },
+  { value: "kits-combos", label: "Kits & Combos" },
+];
+const STATIC_SIZES = [
+  { id: "40x40", name: "40x40" },
+  { id: "40x60", name: "40x60" },
+];
+const STATIC_GSM = [
+  { id: "200", value: "200" },
+  { id: "280", value: "280" },
+  { id: "350", value: "350" },
+  { id: "380", value: "380" },
+  { id: "420", value: "420" },
+  { id: "500", value: "500" },
+  { id: "600", value: "600" },
+  { id: "750", value: "750" },
+  { id: "800", value: "800" },
+  { id: "1000", value: "1000" },
+  { id: "1200", value: "1200" },
+  { id: "rabbit-fur-1x", value: "Rabbit fur 1X" },
+  { id: "rabbit-fur-2x", value: "Rabbit fur 2X" },
+];
+const STATIC_QUANTITIES = [
+  { id: "100ml", value: "100ml" },
+  { id: "250ml", value: "250ml" },
+  { id: "500ml", value: "500ml" },
+  { id: "1l", value: "1L" },
+  { id: "5l", value: "5L" },
+];
+const STATIC_PRICE_RANGE = [0, 1000];
+
 const FilterSidebar = ({
   initialCategories = [],
   initialError = null,
@@ -39,121 +74,12 @@ const FilterSidebar = ({
 }) => {
   // State for all filter options
   const [filterOptions, setFilterOptions] = useState({
-    categories: initialCategories.length
-      ? [
-          { value: "all", label: "All Products" },
-          ...initialCategories.map(cat => ({
-            value: cat.name.toLowerCase().replace(/\s+/g, '-'),
-            label: cat.name,
-            is_microfiber: cat.is_microfiber || false
-          }))
-        ]
-      : [],
-    sizes: [],
-    colors: [],
-    gsmValues: [],
-    quantities: [],
-    priceRange: [0, 1000],
+    categories: STATIC_CATEGORIES,
+    sizes: STATIC_SIZES,
+    gsmValues: STATIC_GSM,
+    quantities: STATIC_QUANTITIES,
+    priceRange: STATIC_PRICE_RANGE,
   })
-  const [loading, setLoading] = useState(!initialCategories.length)
-
-  // Fetch all filter data on component mount
-  useEffect(() => {
-    const fetchFilterData = async () => {
-      console.log('[DEBUG] Fetching all filter data...');
-      try {
-        setLoading(true)
-
-        // Fetch all data in parallel
-        const [categoriesRes, sizesRes, colorsRes, gsmRes, quantitiesRes] = await Promise.all([
-          CategoryService.getCategories(),
-          SizeService.getSizes(),
-          ColorService.getColors(),
-          GsmService.getGSM(),
-          QuantityService.getQuantities(),
-        ])
-
-        // Determine price range from products
-        const productsRes = await ProductService.getProducts({ limit: 1000 })
-        const products = productsRes.products || []
-        let minProductPrice = Infinity
-        let maxProductPrice = 0
-
-        products.forEach(product => {
-          const variants = product.variants || []
-          variants.forEach(variant => {
-            const price = parseFloat(variant.price) || 0
-            minProductPrice = Math.min(minProductPrice, price)
-            maxProductPrice = Math.max(maxProductPrice, price)
-          })
-        })
-
-        // Set all filter options
-        setFilterOptions(prevOptions => ({
-          ...prevOptions,
-          categories: [
-            { value: "all", label: "All Products" },
-            ...(categoriesRes.data || []).map(cat => ({
-              value: cat.name.toLowerCase().replace(/\s+/g, '-'),
-              label: cat.name,
-              is_microfiber: cat.is_microfiber || false
-            }))
-          ],
-          sizes: (sizesRes.data || []).map(size => ({
-            id: size.id,
-            name: size.size_cm
-          })),
-          colors: (colorsRes.data || []).map(color => ({
-            id: color.id,
-            name: color.color,
-            hex: color.hex_code
-          })),
-          gsmValues: (gsmRes.data || []).map(gsm => ({
-            id: gsm.id,
-            value: gsm.gsm
-          })),
-          quantities: (quantitiesRes.data || []).map(qty => ({
-            id: qty.id,
-            value: qty.quantity,
-            unit: qty.unit
-          })),
-          priceRange: [
-            minProductPrice === Infinity ? 0 : minProductPrice,
-            maxProductPrice === 0 ? 1000 : maxProductPrice
-          ]
-        }))
-
-        // Initialize price range state
-        if (priceRange[1] === 1000) {
-          setPriceRange([
-            minProductPrice === Infinity ? 0 : minProductPrice,
-            maxProductPrice === 0 ? 1000 : maxProductPrice
-          ])
-          setMinPrice((minProductPrice === Infinity ? 0 : minProductPrice).toString())
-          setMaxPrice((maxProductPrice === 0 ? 1000 : maxProductPrice).toString())
-        }
-
-        console.log('[DEBUG] Filter data fetched:', {
-          categories: categoriesRes,
-          sizes: sizesRes,
-          colors: colorsRes,
-          gsm: gsmRes,
-          quantities: quantitiesRes,
-          products: productsRes
-        });
-      } catch (error) {
-        console.error("Error fetching filter data:", error)
-      } finally {
-        setLoading(false)
-      }
-    }
-
-    if (!initialCategories.length) {
-      fetchFilterData()
-    } else {
-      setLoading(false)
-    }
-  }, [initialCategories])
 
   // Handle price range change
   const handlePriceRangeChange = (e) => {
@@ -181,25 +107,6 @@ const FilterSidebar = ({
   }
 
   const { showMicrofiberFilters, showCarCareFilters } = getFilterVisibility()
-
-  if (loading) {
-    return (
-      <div className="bg-white rounded-lg border border-gray-200 p-4 h-fit">
-        <div className="animate-pulse space-y-4">
-          {[...Array(6)].map((_, i) => (
-            <div key={i}>
-              <div className="h-4 bg-gray-200 rounded w-1/2 mb-2"></div>
-              <div className="space-y-2">
-                {[...Array(3)].map((_, j) => (
-                  <div key={j} className="h-4 bg-gray-100 rounded w-3/4"></div>
-                ))}
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-    )
-  }
 
   return (
     <div className="bg-white rounded-lg border border-gray-200 p-4 h-fit">
@@ -344,50 +251,6 @@ const FilterSidebar = ({
                     style={{ accentColor: '#601e8d' }}
                   />
                   <span className="ml-2 text-lg md:text-xs text-gray-700">{size.name} cm</span>
-                </label>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Color with Hex Codes */}
-        {filterOptions.colors.length > 0 && (
-          <div>
-            <h3 className="text-lg md:text-xs font-medium text-gray-900 mb-2 uppercase">COLOR</h3>
-            <div className="space-y-1">
-              {filterOptions.colors.map((color) => (
-                <label key={color.id} className="flex items-center cursor-pointer">
-                  <div className="ml-2 flex items-center">
-                    <input
-                      type="checkbox"
-                      checked={selectedColor.includes(color.name)}
-                      onChange={(e) => {
-                        if (e.target.checked) {
-                          setSelectedColor([...selectedColor, color.name])
-                        } else {
-                          setSelectedColor(selectedColor.filter((c) => c !== color.name))
-                        }
-                      }}
-                      className="sr-only"
-                    />
-                    <div
-                      className={`w-5 h-5 rounded-full border mr-2 ${
-                        selectedColor.includes(color.name) ? "border-purple-800 border-2" : "border-gray-300"
-                      }`}
-                      style={{
-                        backgroundColor: color.hex,
-                        border: (typeof color.hex === 'string' && (color.hex.toLowerCase() === '#ffffff' || color.hex.toLowerCase() === '#fff'))
-                          ? selectedColor.includes(color.name)
-                            ? '2px solid #601e8d'
-                            : '1px solid #d1d5db'
-                          : selectedColor.includes(color.name)
-                            ? '2px solid #601e8d'
-                            : '1px solid #d1d5db'
-                      }}
-                      title={color.name}
-                    />
-                    <span className="text-lg md:text-xs text-gray-700 capitalize">{color.name}</span>
-                  </div>
                 </label>
               ))}
             </div>

@@ -4,7 +4,6 @@ import { useState, useEffect, useCallback } from "react"
 import { useParams, useRouter, useSearchParams } from "next/navigation"
 import { ProductService } from "@/lib/service/productService"
 import { KitsCombosService } from "@/lib/service/kitsCombosService"
-import { CategoryService } from "@/lib/service/microdataService"
 import FilterSidebar from "@/components/shop/FilterSidebar"
 import ProductGrid from "@/components/shop/ProductGrid"
 import { Filter, ArrowUpDown, X } from "lucide-react"
@@ -17,7 +16,6 @@ export default function ShopPage({ initialCategories, initialError }) {
 
   // State for products and loading
   const [products, setProducts] = useState([])
-  const [allProducts, setAllProducts] = useState([]) // Store all products for filter options
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(initialError)
   const [totalCount, setTotalCount] = useState(0)
@@ -42,10 +40,6 @@ export default function ShopPage({ initialCategories, initialError }) {
   ])
   const [selectedRating, setSelectedRating] = useState(Number.parseInt(searchParams.get("rating")) || 0)
   const [inStockOnly, setInStockOnly] = useState(searchParams.get("inStock") === "true")
-  const [selectedColor, setSelectedColor] = useState(() => {
-    const colorParam = searchParams.get("color")
-    return colorParam ? colorParam.split(",").filter(Boolean) : []
-  })
   const [selectedGsm, setSelectedGsm] = useState(() => {
     const gsmParam = searchParams.get("gsm")
     return gsmParam ? gsmParam.split(",").filter(Boolean) : []
@@ -83,7 +77,6 @@ export default function ShopPage({ initialCategories, initialError }) {
     if (maxPrice) params.set("maxPrice", maxPrice)
     if (selectedRating > 0) params.set("rating", selectedRating.toString())
     if (inStockOnly) params.set("inStock", "true")
-    if (selectedColor.length > 0) params.set("color", selectedColor.join(","))
     if (selectedGsm.length > 0) params.set("gsm", selectedGsm.join(","))
     if (selectedQuantity.length > 0) params.set("quantity", selectedQuantity.join(","))
 
@@ -97,44 +90,10 @@ export default function ShopPage({ initialCategories, initialError }) {
     maxPrice,
     selectedRating,
     inStockOnly,
-    selectedColor,
     selectedGsm,
     selectedQuantity,
     router,
   ])
-
-  // Fetch all products once for filter options
-  const fetchAllProducts = useCallback(async () => {
-    try {
-      console.log("Fetching all products for filter options...")
-
-      // Fetch all products from different sources
-      const [regularProducts, kitsAndCombos] = await Promise.all([
-        ProductService.getProducts({ limit: 1000 }), // Get all regular products
-        KitsCombosService.getKits()
-          .then((kitsResponse) => {
-            const kits = Array.isArray(kitsResponse.kits) ? kitsResponse.kits : []
-            return KitsCombosService.getCombos().then((combosResponse) => {
-              const combos = Array.isArray(combosResponse.combos) ? combosResponse.combos : []
-              return [...kits, ...combos]
-            })
-          })
-          .catch(() => []), // Fallback to empty array if kits/combos fail
-      ])
-
-      const allProductsData = [...(regularProducts.products || []), ...kitsAndCombos]
-
-      const formattedProducts = allProductsData
-        .map((product) => ProductService.formatProductForDisplay(product))
-        .filter(Boolean)
-
-      setAllProducts(formattedProducts)
-      console.log("All products fetched for filters:", formattedProducts.length)
-    } catch (error) {
-      console.error("Error fetching all products for filters:", error)
-      setAllProducts([])
-    }
-  }, [])
 
   // Fetch products function - Updated to handle new API response structure
   const fetchProducts = useCallback(async () => {
@@ -145,7 +104,6 @@ export default function ShopPage({ initialCategories, initialError }) {
       console.log("Starting fetchProducts for category:", currentCategory);
       console.log("Current filters:", {
         size: selectedSize,
-        color: selectedColor,
         gsm: selectedGsm,
         quantity: selectedQuantity,
         minPrice: minPrice,
@@ -187,7 +145,6 @@ export default function ShopPage({ initialCategories, initialError }) {
             sort,
             filters: {
               size: selectedSize.length > 0 ? selectedSize : undefined,
-              color: selectedColor.length > 0 ? selectedColor : undefined,
               gsm: selectedGsm.length > 0 ? selectedGsm : undefined,
               quantity: selectedQuantity.length > 0 ? selectedQuantity : undefined,
               minPrice: minPrice ? parseFloat(minPrice) : undefined,
@@ -349,14 +306,6 @@ export default function ShopPage({ initialCategories, initialError }) {
         });
       }
 
-      // Apply color filter
-      if (selectedColor.length > 0) {
-        filteredProducts = filteredProducts.filter(product => {
-          const variants = product.variants || [];
-          return variants.some(variant => selectedColor.includes(variant.color));
-        });
-      }
-
       // Apply GSM filter
       if (selectedGsm.length > 0) {
         filteredProducts = filteredProducts.filter(product => {
@@ -444,12 +393,7 @@ export default function ShopPage({ initialCategories, initialError }) {
     } finally {
       setLoading(false);
     }
-  }, [currentCategory, sort, selectedSize, selectedColor, selectedGsm, selectedQuantity, minPrice, maxPrice, selectedRating, inStockOnly]);
-
-  // Fetch all products for filter options on mount
-  useEffect(() => {
-    fetchAllProducts()
-  }, [fetchAllProducts])
+  }, [currentCategory, sort, selectedSize, selectedGsm, selectedQuantity, minPrice, maxPrice, selectedRating, inStockOnly]);
 
   // Fetch products when dependencies change
   useEffect(() => {
@@ -465,7 +409,6 @@ export default function ShopPage({ initialCategories, initialError }) {
   useEffect(() => {
     // Reset all filters when category changes
     setSelectedSize([])
-    setSelectedColor([])
     setSelectedGsm([])
     setSelectedQuantity([])
     setSelectedRating(0)
@@ -497,7 +440,6 @@ export default function ShopPage({ initialCategories, initialError }) {
 
     // Clear all filters when changing category
     setSelectedSize([]);
-    setSelectedColor([]);
     setSelectedGsm([]);
     setSelectedQuantity([]);
     setMinPrice("0");
@@ -526,7 +468,6 @@ export default function ShopPage({ initialCategories, initialError }) {
   const handleClearFilters = useCallback(() => {
     console.log("Clearing all filters");
     setSelectedSize([]);
-    setSelectedColor([]);
     setSelectedGsm([]);
     setSelectedQuantity([]);
     setSelectedRating(0);
@@ -540,7 +481,6 @@ export default function ShopPage({ initialCategories, initialError }) {
   const handleApplyFilters = useCallback(() => {
     console.log("Applying filters:", {
       size: selectedSize,
-      color: selectedColor,
       gsm: selectedGsm,
       quantity: selectedQuantity,
       minPrice,
@@ -550,7 +490,7 @@ export default function ShopPage({ initialCategories, initialError }) {
     });
     setShowMobileFilter(false);
     fetchProducts();
-  }, [selectedSize, selectedColor, selectedGsm, selectedQuantity, minPrice, maxPrice, selectedRating, inStockOnly, fetchProducts]);
+  }, [selectedSize, selectedGsm, selectedQuantity, minPrice, maxPrice, selectedRating, inStockOnly, fetchProducts]);
 
   // Helper functions
   const getCategoryDisplayName = () => {
@@ -572,7 +512,6 @@ export default function ShopPage({ initialCategories, initialError }) {
   const hasActiveFilters = () => {
     return (
       selectedSize.length > 0 ||
-      selectedColor.length > 0 ||
       selectedGsm.length > 0 ||
       selectedQuantity.length > 0 ||
       selectedRating > 0 ||
@@ -585,7 +524,6 @@ export default function ShopPage({ initialCategories, initialError }) {
   const getActiveFiltersCount = () => {
     return [
       selectedSize.length > 0,
-      selectedColor.length > 0,
       selectedGsm.length > 0,
       selectedQuantity.length > 0,
       selectedRating > 0,
@@ -602,23 +540,6 @@ export default function ShopPage({ initialCategories, initialError }) {
     { value: "rating", label: "Customer Rating" },
     { value: "name", label: "Name (A-Z)" },
   ]
-
-  const [categories, setCategories] = useState(initialCategories)
-
-  useEffect(() => {
-    const fetchCategories = async () => {
-      try {
-        const response = await CategoryService.getCategories()
-        if (response.success) {
-          setCategories(response.data || [])
-        }
-      } catch (error) {
-        console.error("Error fetching categories:", error)
-      }
-    }
-
-    fetchCategories()
-  }, [])
 
   return (
     <div className="bg-white min-h-screen">
@@ -703,8 +624,6 @@ export default function ShopPage({ initialCategories, initialError }) {
                 setSelectedRating={setSelectedRating}
                 inStockOnly={inStockOnly}
                 setInStockOnly={setInStockOnly}
-                selectedColor={selectedColor}
-                setSelectedColor={setSelectedColor}
                 selectedGsm={selectedGsm}
                 setSelectedGsm={setSelectedGsm}
                 selectedQuantity={selectedQuantity}
@@ -712,7 +631,6 @@ export default function ShopPage({ initialCategories, initialError }) {
                 onClearFilters={handleClearFilters}
                 onApplyFilters={handleApplyFilters}
                 onCategoryChange={handleCategoryChange}
-                products={allProducts}
               />
             </div>
           )}
@@ -803,8 +721,6 @@ export default function ShopPage({ initialCategories, initialError }) {
                   setSelectedRating={setSelectedRating}
                   inStockOnly={inStockOnly}
                   setInStockOnly={setInStockOnly}
-                  selectedColor={selectedColor}
-                  setSelectedColor={setSelectedColor}
                   selectedGsm={selectedGsm}
                   setSelectedGsm={setSelectedGsm}
                   selectedQuantity={selectedQuantity}
@@ -812,8 +728,6 @@ export default function ShopPage({ initialCategories, initialError }) {
                   onClearFilters={handleClearFilters}
                   onApplyFilters={handleApplyFilters}
                   onCategoryChange={handleCategoryChange}
-                  products={allProducts}
-                  isMobile={true}
                 />
               </div>
             </div>

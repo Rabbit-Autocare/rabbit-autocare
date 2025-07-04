@@ -23,6 +23,7 @@ export async function GET() {
         variants:product_variants(
           id,
           product_id,
+          variant_code,
           gsm,
           size,
           color,
@@ -68,6 +69,7 @@ export async function GET() {
           taglines: product.taglines || [],
           variants: (product.variants || []).map(variant => ({
             id: variant.id,
+            variant_code: variant.variant_code,
             gsm: variant.gsm,
             size: variant.size,
             color: variant.color,

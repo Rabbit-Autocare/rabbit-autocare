@@ -30,6 +30,7 @@ export async function GET(request) {
 				*,
 				product_variants (
 					id,
+					variant_code,
 					gsm,
 					size,
 					color,

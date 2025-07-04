@@ -257,4 +257,112 @@ export class ProductService {
       throw error;
     }
   }
+
+  // ============= DATA TRANSFORMATION =============
+
+  static transformProductData(product) {
+    if (!product) return null;
+
+    // Use product_variants if available, otherwise use variants
+    const variants = product.product_variants || product.variants || [];
+
+    const transformedData = {
+      ...product,
+      category: product.category,
+      subcategory: product.subcategory,
+      variants: variants.map((variant) => {
+        return {
+          id: variant.id,
+          variant_code: variant.variant_code,
+          size: variant.size,
+          quantity: variant.quantity,
+          unit: variant.unit || 'ml',
+          color: variant.color,
+          color_hex: variant.color_hex || null,
+          stock: variant.stock || 0,
+          base_price: variant.base_price || 0,
+        };
+      }),
+    };
+
+    return transformedData;
+  }
+
+  generateVariantId() {
+    return `var_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+  }
+
+  // ============= UTILITY METHODS =============
+
+  static formatProductForDisplay(product) {
+    if (!product) return null;
+
+    const transformedProduct = this.transformProductData(product);
+    if (!transformedProduct || !transformedProduct.id) return null;
+
+    const variants = transformedProduct.variants || [];
+    const totalStock = variants.reduce(
+      (sum, variant) => sum + (variant.stock || 0),
+      0
+    );
+    const availableVariants = variants.filter((v) => (v.stock || 0) > 0).length;
+    const minPrice =
+      variants.length > 0 ? Math.min(...variants.map((v) => v.base_price || 0)) : 0;
+    const maxPrice =
+      variants.length > 0 ? Math.max(...variants.map((v) => v.base_price || 0)) : 0;
+
+    // Ensure we have valid price data
+    if (minPrice === 0 && maxPrice === 0) {
+      console.log('Product has no valid price data:', product.name);
+      return null;
+    }
+
+    return {
+      ...transformedProduct,
+      totalStock,
+      availableVariants,
+      minPrice,
+      maxPrice,
+    };
+  }
+
+  static extractProducts(response) {
+    if (!response) return [];
+    if (Array.isArray(response.products)) {
+      return response.products;
+    }
+    if (Array.isArray(response.data)) {
+      return response.data;
+    }
+    if (Array.isArray(response)) {
+      return response;
+    }
+    return [];
+  }
+
+  static extractTotalCount(response) {
+    if (response && typeof response.total === 'number') {
+      return response.total;
+    }
+    return this.extractProducts(response).length;
+  }
+
+  static hasCategoryData(product) {
+    return (
+      product &&
+      product.category !== undefined &&
+      product.category !== null &&
+      product.category !== ''
+    );
+  }
+
+  static getLowestPrice(variants) {
+    if (!Array.isArray(variants) || variants.length === 0) return 0;
+    return Math.min(...variants.map((v) => Number.parseFloat(v.base_price) || 0));
+  }
+
+  static getHighestPrice(variants) {
+    if (!Array.isArray(variants) || variants.length === 0) return 0;
+    return Math.max(...variants.map((v) => Number.parseFloat(v.base_price) || 0));
+  }
 }

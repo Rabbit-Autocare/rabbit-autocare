@@ -1,8 +1,8 @@
 import { createSupabaseBrowserClient } from '@/lib/supabase/browser-client';
-const supabase = createSupabaseBrowserClient(); // Adjust the import based on your setup
+const supabase = createSupabaseBrowserClient();
 import { StockService } from './stockService';
 import { fetchWithRetry } from '@/lib/utils/fetchWithRetry';
- 
+
 export class ComboService {
   static async uploadComboImage(comboId, imageFile) {
     try {
@@ -14,7 +14,7 @@ export class ComboService {
         .from('product-images')
         .upload(filePath, imageFile, {
           cacheControl: '3600',
-          upsert: true 
+          upsert: true
         });
 
       if (uploadError) throw uploadError;
@@ -50,7 +50,6 @@ export class ComboService {
       const { data, error } = await fetchWithRetry(() => query);
       if (error) throw error;
 
-      // Transform image URLs to use consistent path
       return data.map(combo => ({
         ...combo,
         image_url: combo.image_url || `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/product-images/products/combos/${combo.id}.jpg`,
@@ -66,7 +65,6 @@ export class ComboService {
     try {
       const inventory = comboData.inventory || 1;
 
-      // Create the combo with the image URLs
       const { data: newCombo, error: comboError } = await supabase
         .from('combos')
         .insert({
@@ -75,10 +73,10 @@ export class ComboService {
           original_price: comboData.original_price,
           price: comboData.price,
           discount_percent: comboData.discount_percentage,
-          inventory: inventory,
+          inventory,
           image_url: comboData.image_url,
-          main_image_url: comboData.image_url, // Set the first image as main
-          images: comboData.images || [comboData.image_url].filter(Boolean) // Store all images
+          main_image_url: comboData.image_url,
+          images: comboData.images || [comboData.image_url].filter(Boolean)
         })
         .select()
         .single();
@@ -100,9 +98,9 @@ export class ComboService {
 
       return {
         ...newCombo,
-        image_url: comboData.image_url || `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/product-images/products/combos/${newCombo.id}.jpg`,
-        main_image_url: comboData.image_url || `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/product-images/products/combos/${newCombo.id}.jpg`,
-        images: comboData.images || [comboData.image_url].filter(Boolean)
+        image_url: newCombo.image_url,
+        main_image_url: newCombo.main_image_url,
+        images: newCombo.images,
       };
     } catch (error) {
       console.error('Error creating combo:', error);
@@ -120,10 +118,9 @@ export class ComboService {
         original_price: comboData.original_price,
         price: comboData.price,
         discount_percent: comboData.discount_percentage,
-        inventory: inventory
+        inventory
       };
 
-      // Update image URLs if provided
       if (comboData.image_url) {
         updateData.image_url = comboData.image_url;
         updateData.main_image_url = comboData.image_url;
@@ -132,7 +129,6 @@ export class ComboService {
         updateData.images = comboData.images;
       }
 
-      // Get existing combo products
       const { data: existingProducts, error: fetchError } = await supabase
         .from('combo_products')
         .select('*')
@@ -140,61 +136,75 @@ export class ComboService {
 
       if (fetchError) throw fetchError;
 
-      // Determine which products to add, update, or delete
-      const existingProductIds = existingProducts.map(p => p.id);
-      const newProductIds = comboData.products.map(p => p.id);
+      const existingMap = new Map(existingProducts.map(p => [p.product_id, p]));
+      const incomingMap = new Map(comboData.products.map(p => [p.id, p]));
 
-      const productsToAdd = comboData.products.filter(p => !existingProductIds.includes(p.id));
-      const productsToUpdate = existingProducts.filter(p => newProductIds.includes(p.id));
-      const productIdsToDelete = existingProductIds.filter(id => !newProductIds.includes(id));
+      const productsToAdd = [];
+      const productsToUpdate = [];
+      const productIdsToDelete = [];
 
-      // Add new products
+      for (const [id, incomingProduct] of incomingMap.entries()) {
+        if (!existingMap.has(id)) {
+          productsToAdd.push(incomingProduct);
+        } else {
+          const existing = existingMap.get(id);
+          if (existing.quantity !== incomingProduct.quantity) {
+            productsToUpdate.push({ ...existing, newQuantity: incomingProduct.quantity });
+          }
+        }
+      }
+
+      for (const [id] of existingMap.entries()) {
+        if (!incomingMap.has(id)) {
+          productIdsToDelete.push(id);
+        }
+      }
+
       if (productsToAdd.length > 0) {
-        const newProductsData = productsToAdd.map(p => ({
+        const insertData = productsToAdd.map(p => ({
           combo_id: id,
           product_id: p.id,
           variant_id: p.selected_variant?.id || null,
           quantity: p.quantity || 1
         }));
 
-        const { error: addError } = await supabase
+        const { error } = await supabase
           .from('combo_products')
-          .insert(newProductsData);
-
-        if (addError) throw addError;
+          .insert(insertData);
+        if (error) throw error;
       }
 
-      // Update existing products
-      if (productsToUpdate.length > 0) {
-        for (const update of productsToUpdate) {
-          const { error } = await supabase
-            .from('combo_products')
-            .update({ quantity: update.quantity })
-            .eq('id', update.id);
-          if (error) throw error;
-        }
+      for (const p of productsToUpdate) {
+        const { error } = await supabase
+          .from('combo_products')
+          .update({ quantity: p.newQuantity })
+          .eq('id', p.id);
+        if (error) throw error;
       }
 
-      // Delete removed products
       if (productIdsToDelete.length > 0) {
         const { error } = await supabase
           .from('combo_products')
           .delete()
-          .in('id', productIdsToDelete);
+          .in('product_id', productIdsToDelete)
+          .eq('combo_id', id);
         if (error) throw error;
       }
 
       const { data, error } = await supabase
         .from('combos')
         .update(updateData)
-        .eq('id', id);
+        .eq('id', id)
+        .select()
+        .single();
 
       if (error) throw error;
+
       return {
         ...data,
-        image_url: updateData.image_url || data.image_url || `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/product-images/products/combos/${id}.jpg`,
-        main_image_url: updateData.main_image_url || data.main_image_url || `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/product-images/products/combos/${id}.jpg`,
-        images: updateData.images || data.images || [data.image_url].filter(Boolean)
+        image_url: data.image_url,
+        main_image_url: data.main_image_url,
+        images: data.images
       };
     } catch (error) {
       console.error('Error updating combo:', error);
@@ -204,16 +214,14 @@ export class ComboService {
 
   static async deleteCombo(id) {
     try {
-      // Delete the combo image from storage
       const { error: deleteImageError } = await supabase.storage
         .from('product-images')
         .remove([`products/combos/${id}.jpg`]);
 
       if (deleteImageError) {
-        console.error('Error deleting combo image:', deleteImageError);
+        console.warn('Could not delete combo image:', deleteImageError.message);
       }
 
-      // Delete the combo and its related products
       const { error } = await supabase
         .from('combos')
         .delete()
@@ -226,12 +234,8 @@ export class ComboService {
     }
   }
 
-  // Simplified method for cart drawer - no complex joins
   static async getCombosForCart() {
     try {
-      console.log('[DEBUG] Fetching combos for cart...');
-
-      // Add timeout to prevent infinite loading
       const timeoutPromise = new Promise((_, reject) =>
         setTimeout(() => reject(new Error('Request timeout')), 8000)
       );
@@ -245,14 +249,10 @@ export class ComboService {
 
       if (error) throw error;
 
-      console.log('[DEBUG] Combos for cart fetched:', data);
-
-      // Transform image URLs to use consistent path
       return data.map(combo => ({
         ...combo,
         image_url: combo.image_url || `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/product-images/products/combos/${combo.id}.jpg`,
         main_image_url: combo.main_image_url || combo.image_url || `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/product-images/products/combos/${combo.id}.jpg`,
-        // Add empty combo_products array for compatibility
         combo_products: []
       }));
     } catch (error) {

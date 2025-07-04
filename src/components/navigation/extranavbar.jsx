@@ -330,7 +330,7 @@ export default function ExtraNavbar() {
                   <User className="w-[20px] h-[20px] md:w-5 md:h-5" />
                   <span className="sr-only">User Profile</span>
                 </button>
-              </Link>
+              </Link> 
             ) : (
               <Link href="/login">
                 <button className="h-auto w-auto p-0 hover:bg-transparent bg-transparent border-none cursor-pointer transition-colors">

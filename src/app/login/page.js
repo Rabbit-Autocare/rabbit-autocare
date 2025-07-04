@@ -11,7 +11,7 @@ export default function LoginPage() {
   const [userData, setUserData] = useState(null);
   const [loading, setLoading] = useState(true);
   const supabase = createSupabaseBrowserClient();
-
+ 
   const checkUser = useCallback(async () => {
     try {
       const {
@@ -50,7 +50,8 @@ export default function LoginPage() {
         }
       }
     } catch (error) {
-      console.error('Error checking user:', error);
+      const errorMsg = error?.message || JSON.stringify(error) || String(error);
+      console.error('Error checking user:', errorMsg);
     } finally {
       setLoading(false);
     }

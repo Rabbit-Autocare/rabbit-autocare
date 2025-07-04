@@ -6,7 +6,7 @@ import CartService from "@/lib/service/cartService"
 import { useRouter } from "next/navigation"
 import CartDrawer from "@/components/cart/CartDrawer"
 
-// Create the context
+// Create the context 
 export const CartContext = createContext()
 
 // Helper function to calculate all derived cart state

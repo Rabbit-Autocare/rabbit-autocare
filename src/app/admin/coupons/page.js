@@ -12,8 +12,8 @@ export default function CouponsPage() {
   const [coupons, setCoupons] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [formMode, setFormMode] = useState('add'); // 'add' or 'edit'
-  const [currentView, setCurrentView] = useState('list'); // 'list' or 'form'
+  const [formMode, setFormMode] = useState('add'); 
+  const [currentView, setCurrentView] = useState('list'); 
   const [currentCoupon, setCurrentCoupon] = useState({
     code: '',
     description: '',

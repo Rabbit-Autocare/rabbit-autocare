@@ -11,7 +11,7 @@ class CartService {
         .from('cart_items')
         .select(
           `
-          *,
+          *, 
           product:products(
             id,
             name,

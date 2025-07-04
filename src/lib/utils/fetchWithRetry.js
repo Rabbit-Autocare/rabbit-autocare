@@ -14,7 +14,7 @@ export async function fetchWithRetry(fetchFn, retries = 3, delay = 500) {
       lastError = err;
       if (i < retries - 1) {
         await new Promise((resolve) => setTimeout(resolve, delay));
-      }
+      } 
     }
   }
   throw lastError;

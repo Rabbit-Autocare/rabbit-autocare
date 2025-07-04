@@ -3,7 +3,7 @@
 import { createContext, useContext, useState, useEffect } from 'react'
 import { createSupabaseBrowserClient } from '@/lib/supabase/browser-client'
 
-export const AuthContext = createContext()
+export const AuthContext = createContext() 
 
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null)

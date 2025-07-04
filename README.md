@@ -33,4 +33,48 @@ You can check out [the Next.js GitHub repository](https://github.com/vercel/next
 
 The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details. 
+
+createtable public.kits (
+
+  id uuid notnulldefault extensions.uuid_generate_v4 (),
+
+  name textnotnull,
+
+  description textnull,
+
+  image_url textnull,
+
+  original_price numeric(10,2)notnulldefault0,
+
+  price numeric(10,2)notnulldefault0,
+
+  discount_percent numeric(5,2)nulldefault0,
+
+  inventory integer nulldefault1,
+
+  created_at timestamp with time zone nulldefaultnow(),
+
+  updated_at timestamp with time zone nulldefaultnow(),
+
+  main_image_url textnull,
+
+  images jsonb nulldefault'[]'::jsonb,
+
+  variant_count integer nulldefault0,
+
+  constraint kits_pkey primary key (id)
+
+) TABLESPACE pg_default;
+
+create trigger trg_enforce_kit_variant_minimum BEFORE
+
+update on kits for EACH row
+
+execute FUNCTION enforce_minimum_kit_items ();
+
+create trigger update_kits_timestamp BEFORE
+
+update on kits for EACH row
+
+execute FUNCTION update_timestamp ();

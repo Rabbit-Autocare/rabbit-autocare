@@ -1,13 +1,6 @@
-// Enhanced ProductService with direct category/subcategory storage
-
 import { createSupabaseBrowserClient } from '@/lib/supabase/browser-client';
 
-// No server-side imports at module level
-
-// Check if we're in a server environment
 const isServer = typeof window === 'undefined';
-
-// Base URLs - use full URLs for server-side calls
 const getBaseUrl = () => {
   if (isServer) {
     return (
@@ -30,22 +23,16 @@ const CATEGORIES_API_URL = isServer
   : '/api/products/category';
 
 export class ProductService {
-  // Get Supabase client instance
   static getSupabaseClient() {
     return createSupabaseBrowserClient();
-  } // Note: For server-side operations, use ServerProductService instead
-
-  // ============= PRODUCTS =============
+  }
 
   static async getProducts({ code, limit, sort, filters = {} } = {}) {
-    // Always use fetch API approach for client components
-    // Server components should use the direct methods separately
     const params = new URLSearchParams();
     if (code) params.append('code', code);
     if (limit) params.append('limit', limit);
     if (sort) params.append('sort', sort);
 
-    // Add filters to params
     Object.entries(filters).forEach(([key, value]) => {
       if (value !== undefined && value !== null && value !== '') {
         if (Array.isArray(value)) {
@@ -97,8 +84,6 @@ export class ProductService {
     }
   }
 
-  // Note: For server-side operations, use ServerProductService instead
-
   static async getProduct(productIdentifier, includeRelations = false) {
     try {
       const params = new URLSearchParams();
@@ -129,184 +114,100 @@ export class ProductService {
     }
   }
 
-  // Note: For server-side operations, use ServerProductService instead
+  static transformProductData(product) {
+    if (!product) return null;
 
-  static async createProduct(data) {
-    try {
-      // Only include fields that exist in the products table
-      const productPayload = {
-        product_code: data.product_code,
-        name: data.name,
-        description: data.description,
-        product_type: data.product_type,
-        category: data.category,
-        subcategory: data.subcategory,
-        hsn_code: data.hsn_code,
-        features: data.features,
-        usage_instructions: data.usage_instructions,
-        warnings: data.warnings,
-        main_image_url: data.main_image_url,
-        images: data.images,
-        taglines: data.taglines,
-        // created_at and updated_at are handled by DB
-      };
+    const variants = product.product_variants || product.variants || [];
 
-      // Only include fields that exist in the product_variants table
-      const variants = Array.isArray(data.variants)
-        ? data.variants.map((variant) => ({
-            id: variant.id || `var_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-            variant_code: variant.variant_code || '',
-            size: variant.size || '',
-            quantity: variant.quantity !== undefined ? variant.quantity : null,
-            unit: variant.unit || 'ml',
-            weight_grams: variant.weight_grams !== undefined ? variant.weight_grams : null,
-            gsm: variant.gsm !== undefined ? variant.gsm : null,
-            dimensions: variant.dimensions || '',
-            color: variant.color ? (Array.isArray(variant.color) ? variant.color : [variant.color]) : null,
-            color_hex: variant.color_hex ? (Array.isArray(variant.color_hex) ? variant.color_hex : [variant.color_hex]) : null,
-            base_price: Number.parseFloat(variant.base_price) || 0,
-            base_price_excluding_gst: variant.base_price_excluding_gst !== undefined ? Number.parseFloat(variant.base_price_excluding_gst) : null,
-            stock: variant.stock !== undefined ? Number.parseInt(variant.stock) : 0,
-            is_active: variant.is_active !== undefined ? variant.is_active : true,
-          }))
-        : [];
-
-      const payload = {
-        ...productPayload,
-        variants,
-      };
-
-      const res = await fetch(API_BASE_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-      });
-
-      if (!res.ok) {
-        const errorText = await res.text();
-        console.error('API Error Response:', {
-          status: res.status,
-          statusText: res.statusText,
-          errorText: errorText,
-        });
-
-        try {
-          const errorJson = JSON.parse(errorText);
-          throw new Error(
-            errorJson.error || errorJson.message || `API error: ${res.status}`
-          );
-        } catch (e) {
-          if (errorText) {
-            throw new Error(`API error: ${errorText}`);
-          } else {
-            throw new Error(`API error: ${res.status} ${res.statusText}`);
-          }
-        }
-      }
-
-      const json = await res.json();
-      return this.transformProductData(json.product || json);
-    } catch (error) {
-      console.error('Error in createProduct:', error);
-      console.error('Error details:', {
-        message: error.message,
-        stack: error.stack,
-        data: data,
-      });
-      throw error;
-    }
+    return {
+      ...product,
+      category: product.category,
+      subcategory: product.subcategory,
+      variants: variants.map((variant) => ({
+        id: variant.id,
+        size: variant.size,
+        quantity: variant.quantity,
+        unit: variant.unit || 'ml',
+        color: variant.color,
+        color_hex: variant.color_hex || null,
+        stock: variant.stock || 0,
+        price: variant.price || variant.base_price || 0,
+        mrp: variant.mrp || variant.price || variant.base_price || 0,
+        base_price: variant.base_price || 0,
+      })),
+    };
   }
 
-  static async updateProduct(id, updateData) {
-    try {
-      const transformedData = {
-        id,
-        ...updateData,
-        variants: Array.isArray(updateData.variants)
-          ? updateData.variants.map((variant) => ({
-              id:
-                variant.id ||
-                `var_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-              variant_code: variant.variant_code || '',
-              gsm: variant.gsm || '',
-              size: variant.size || '',
-              color: variant.color || '',
-              color_hex: variant.color_hex || null,
-              quantity: variant.quantity || '',
-              unit: variant.unit || 'ml',
-              base_price: Number.parseFloat(variant.base_price) || 0,
-              base_price_excluding_gst: Number.parseFloat(variant.base_price_excluding_gst) || 0,
-              stock: Number.parseInt(variant.stock) || 0,
-            }))
-          : [],
-        subcategory_names: Array.isArray(updateData.subcategory_names)
-          ? updateData.subcategory_names
-          : updateData.subcategory_names
-          ? [updateData.subcategory_names]
-          : [],
-        key_features: Array.isArray(updateData.key_features)
-          ? updateData.key_features
-          : [],
-        taglines: Array.isArray(updateData.taglines) ? updateData.taglines : [],
-      };
-
-      const res = await fetch(API_BASE_URL, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(transformedData),
-      });
-
-      if (!res.ok) {
-        const errorText = await res.text();
-        try {
-          const errorJson = JSON.parse(errorText);
-          throw new Error(errorJson.error || `API error: ${res.status}`);
-        } catch (e) {
-          throw new Error(
-            `API error: ${errorText || res.statusText || res.status}`
-          );
-        }
-      }
-
-      const json = await res.json();
-      return this.transformProductData(json.product || json);
-    } catch (error) {
-      console.error('Error in updateProduct:', error);
-      throw error;
-    }
+  static extractProducts(response) {
+    if (!response) return [];
+    if (Array.isArray(response.products)) return response.products;
+    if (Array.isArray(response.data)) return response.data;
+    if (Array.isArray(response)) return response;
+    return [];
   }
 
-  static async deleteProduct(id) {
-    try {
-      const res = await fetch(`${API_BASE_URL}?id=${id}`, {
-        method: 'DELETE',
-      });
-
-      if (!res.ok) {
-        const errorText = await res.text();
-        try {
-          const errorJson = JSON.parse(errorText);
-          throw new Error(errorJson.error || `API error: ${res.status}`);
-        } catch (e) {
-          throw new Error(
-            `API error: ${errorText || res.statusText || res.status}`
-          );
-        }
-      }
-
-      const json = await res.json();
-      return json;
-    } catch (error) {
-      console.error('Error in deleteProduct:', error);
-      throw error;
+  static extractTotalCount(response) {
+    if (response && typeof response.total === 'number') {
+      return response.total;
     }
+    return this.extractProducts(response).length;
   }
 
-  // ============= CATEGORIES =============
+  static hasCategoryData(product) {
+    return (
+      product &&
+      product.category !== undefined &&
+      product.category !== null &&
+      product.category !== ''
+    );
+  }
+
+  static getLowestPrice(variants) {
+    if (!Array.isArray(variants) || variants.length === 0) return 0;
+    return Math.min(...variants.map((v) => Number.parseFloat(v.base_price) || 0));
+  }
+
+  static getHighestPrice(variants) {
+    if (!Array.isArray(variants) || variants.length === 0) return 0;
+    return Math.max(...variants.map((v) => Number.parseFloat(v.base_price) || 0));
+  }
+
+  static generateVariantId() {
+    return `var_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+  }
+
+  static formatProductForDisplay(product) {
+    if (!product) return null;
+
+    const transformedProduct = this.transformProductData(product);
+    if (!transformedProduct || !transformedProduct.id) return null;
+
+    const variants = transformedProduct.variants || [];
+    const totalStock = variants.reduce(
+      (sum, variant) => sum + (variant.stock || 0),
+      0
+    );
+    const availableVariants = variants.filter((v) => (v.stock || 0) > 0).length;
+    const minPrice =
+      variants.length > 0 ? Math.min(...variants.map((v) => v.base_price || 0)) : 0;
+    const maxPrice =
+      variants.length > 0 ? Math.max(...variants.map((v) => v.base_price || 0)) : 0;
+
+    if (minPrice === 0 && maxPrice === 0) {
+      console.log('Product has no valid price data:', product.name);
+      return null;
+    }
+
+    return {
+      ...transformedProduct,
+      totalStock,
+      availableVariants,
+      minPrice,
+      maxPrice,
+    };
+  }
 
   static async getCategories() {
-    // Always use fetch API approach for client components
-    // Server components should use the direct methods separately
     try {
       const res = await fetch(CATEGORIES_API_URL);
 
@@ -324,7 +225,6 @@ export class ProductService {
 
       const data = await res.json();
 
-      // Handle different response formats
       const categories = Array.isArray(data.categories)
         ? data.categories
         : Array.isArray(data.data)
@@ -344,14 +244,7 @@ export class ProductService {
     }
   }
 
-  // Note: For server-side operations, use ServerProductService instead
-
-  // ============= PRODUCTS BY CATEGORY =============
-
-  static async getProductsByCategory(
-    categoryName,
-    { limit, sort, filters = {} } = {}
-  ) {
+  static async getProductsByCategory(categoryName, { limit, sort, filters = {} } = {}) {
     try {
       if (!categoryName || categoryName === 'all') {
         return this.getProducts({ limit, sort, filters });

@@ -1,14 +1,14 @@
 import { createSupabaseBrowserClient } from '@/lib/supabase/browser-client';
 const supabase = createSupabaseBrowserClient();
 
-export class StockService {
+export class StockService { 
   static async checkStockAvailability(variantId, quantity) {
     try {
       const { data, error } = await supabase.rpc('check_variant_stock_availability', {
         p_variant_id: variantId,
         p_quantity: quantity
       });
-
+  
       if (error) throw error;
       return data;
     } catch (error) {

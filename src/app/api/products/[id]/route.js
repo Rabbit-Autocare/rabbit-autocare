@@ -28,7 +28,7 @@ export async function GET(request, { params }) {
           unit,
           price,
           stock,
-          compare_at_price
+         compare_at_price 
         )
       `);
 

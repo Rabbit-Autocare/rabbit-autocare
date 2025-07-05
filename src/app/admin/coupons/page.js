@@ -5,15 +5,14 @@ import AdminLayout from '@/components/layouts/AdminLayout';
 import CouponForm from '@/components/forms/CouponForm';
 import CouponTable from './CouponTable';
 import '@/app/globals.css';
-import { Plus, AlertCircle } from 'lucide-react';
 import { createSupabaseBrowserClient } from '@/lib/supabase/browser-client';
 
 export default function CouponsPage() {
   const [coupons, setCoupons] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [formMode, setFormMode] = useState('add'); 
-  const [currentView, setCurrentView] = useState('list'); 
+  const [formMode, setFormMode] = useState('add');
+  const [currentView, setCurrentView] = useState('list');
   const [currentCoupon, setCurrentCoupon] = useState({
     code: '',
     description: '',
@@ -34,6 +33,7 @@ export default function CouponsPage() {
   const fetchCoupons = async () => {
     setLoading(true);
     setError(null);
+
     try {
       const { data, error } = await supabase
         .from('coupons')
@@ -41,8 +41,37 @@ export default function CouponsPage() {
         .order('created_at', { ascending: false });
 
       if (error) throw error;
-      setCoupons(data || []);
-      const active = (data || []).filter((coupon) => coupon.is_active).length;
+
+      const now = new Date();
+
+      // Filter and delete expired coupons
+      const expiredCoupons = (data || []).filter(
+        (coupon) =>
+          !coupon.is_permanent &&
+          coupon.expiry_date &&
+          new Date(coupon.expiry_date) < now
+      );
+
+      if (expiredCoupons.length > 0) {
+        const expiredIds = expiredCoupons.map((c) => c.id);
+        const { error: deleteError } = await supabase
+          .from('coupons')
+          .delete()
+          .in('id', expiredIds);
+
+        if (deleteError) throw deleteError;
+      }
+
+      // Keep only valid coupons
+      const validCoupons = (data || []).filter(
+        (coupon) =>
+          coupon.is_permanent ||
+          !coupon.expiry_date ||
+          new Date(coupon.expiry_date) >= now
+      );
+
+      setCoupons(validCoupons);
+      const active = validCoupons.filter((coupon) => coupon.is_active).length;
       setActiveCount(active);
     } catch (error) {
       setError(`Error fetching coupons: ${error.message}`);

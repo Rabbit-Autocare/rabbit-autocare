@@ -5,35 +5,47 @@ const supabase = createSupabaseBrowserClient(); // Adjust the import based on yo
 class CartService {
   // Get current user's cart items
   async getCartItems(userId) {
-    if (!userId) return { cartItems: [] };
-    try {
-      const { data, error } = await supabase
-        .from('cart_items')
-        .select(
-          `
-          *, 
-          product:products(
-            id,
-            name,
-            main_image_url,
-            product_code,
-            is_microfiber,
-            key_features,
-            taglines,
-            images
-          )
-        `
-        )
-        .eq('user_id', userId)
-        .order('created_at', { ascending: false });
+  if (!userId) return { cartItems: [] };
 
-      if (error) throw error;
-      return { cartItems: data || [] };
-    } catch (error) {
-      console.error('Error in getCartItems:', error);
+  try {
+    const { data, error } = await supabase
+      .from('cart_items')
+      .select(`
+        *,
+        product:products(
+          id,
+          name,
+          main_image_url,
+          product_code,
+          is_microfiber,
+          key_features,
+          taglines,
+          images
+        )
+      `)
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false });
+
+    // Log detailed response
+    console.log('[getCartItems] Raw data:', data);
+    console.log('[getCartItems] Supabase error:', error);
+
+    if (error) {
+      console.error('Error in getCartItems - Supabase error:', error);
       return { error: error.message, cartItems: [] };
     }
+
+    if (!data || !Array.isArray(data)) {
+      console.error('Error in getCartItems - No valid data returned');
+      return { error: 'No data returned from Supabase', cartItems: [] };
+    }
+
+    return { cartItems: data };
+  } catch (error) {
+    console.error('Error in getCartItems - Unexpected exception:', error);
+    return { error: error.message, cartItems: [] };
   }
+}
 
   // New method to find existing cart item with same product and variant
   async findExistingCartItem(productId, variant, userId) {

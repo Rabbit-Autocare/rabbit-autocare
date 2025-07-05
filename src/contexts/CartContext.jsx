@@ -6,7 +6,7 @@ import CartService from "@/lib/service/cartService"
 import { useRouter } from "next/navigation"
 import CartDrawer from "@/components/cart/CartDrawer"
 
-// Create the context 
+// Create the context
 export const CartContext = createContext()
 
 // Helper function to calculate all derived cart state
@@ -42,16 +42,20 @@ const calculateCartState = (cartItems, coupon) => {
 }
 
 // Create the provider component
-export function CartProvider({ children }) {
+export function CartProvider({ children, initialCartItems = [] }) {
+  console.log('[CartProvider] initialCartItems:', initialCartItems);
   const { user, sessionChecked } = useAuth()
   const router = useRouter()
   const [cartState, setCartState] = useState({
-    cartItems: [],
-    cartCount: 0,
+    cartItems: initialCartItems,
+    cartCount: initialCartItems.length,
     subtotal: 0,
     discount: 0,
     total: 0,
   })
+  useEffect(() => {
+    console.log('[CartProvider] cartState.cartItems after init:', cartState.cartItems);
+  }, []);
   const [loading, setLoading] = useState(true)
   const [isCartOpen, setIsCartOpen] = useState(false)
 

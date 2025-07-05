@@ -6,49 +6,20 @@ import { useAuth } from "@/contexts/AuthContext";
 import CouponCard from "@/components/ui/CouponCard";
 import { createSupabaseBrowserClient } from '@/lib/supabase/browser-client';
 
-export default function CouponSection() {
+// SSR Support: Accept availableCoupons as a prop
+export async function fetchAvailableCoupons(userId) {
+	// This function should be called on the server to fetch coupons for the given user
+	// Example: Use Supabase or your backend logic to fetch coupons
+	// return await fetchCouponsForUser(userId);
+	return [];
+}
+
+export default function CouponSection({ availableCoupons = [] }) {
 	const { coupon, applyCoupon, couponLoading, couponError } = useCart();
 	const { user } = useAuth();
 
 	const [couponCode, setCouponCode] = useState("");
-	const [availableCoupons, setAvailableCoupons] = useState([]);
-	const [couponsLoading, setCouponsLoading] = useState(false);
 	const [currentIndex, setCurrentIndex] = useState(0);
-
-	// Fetch user coupons using UserService
-	const fetchUserCoupons = async () => {
-		if (!user) {
-			setAvailableCoupons([]);
-			return;
-		}
-		try {
-			setCouponsLoading(true);
-			const supabase = createSupabaseBrowserClient();
-			const { data: userCoupons, error } = await supabase
-				.from('user_coupons')
-				.select('*, coupons (*)')
-				.eq('user_id', user.id);
-			if (!error) {
-				setAvailableCoupons(userCoupons || []);
-			} else {
-				setAvailableCoupons([]);
-			}
-		} catch (error) {
-			console.error('Error fetching user coupons:', error);
-			setAvailableCoupons([]);
-		} finally {
-			setCouponsLoading(false);
-		}
-	};
-
-	useEffect(() => {
-		fetchUserCoupons();
-	}, [user]); // Refetch when user changes
-
-	// Refetch available coupons whenever the coupon state changes
-	useEffect(() => {
-		fetchUserCoupons();
-	}, [coupon]); // This will refetch when a coupon is applied or removed
 
 	const handleApplyCoupon = (e) => {
 		e.preventDefault();
@@ -147,11 +118,7 @@ export default function CouponSection() {
 			{/* Available Coupons */}
 			<div>
 				<p className="text-sm font-medium mb-2">Available Coupons</p>
-				{couponsLoading ? (
-					<div className="flex items-center justify-center ">
-						<div className="animate-spin rounded-full h-6 w-6 border-b-2 border-gray-900"></div>
-					</div>
-				) : availableCoupons.length > 0 ? (
+				{availableCoupons.length > 0 ? (
 					<div className="flex items-center justify-center gap-4">
 						<button
 							onClick={handlePrev}

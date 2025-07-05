@@ -24,11 +24,8 @@ export default function FeaturedProductCard({ product, className = "", isLastCar
 
   // Check if product is microfiber category
   const isMicrofiber = useMemo(() => {
-    return (
-      product?.is_microfiber === true ||
-      (typeof product?.category_name === "string" && product?.category_name?.toLowerCase()?.includes("microfiber"))
-    )
-  }, [product])
+    return product?.product_type === "microfiber";
+  }, [product]);
 
   // Check if current product variant is in wishlist
   useEffect(() => {
@@ -269,21 +266,16 @@ export default function FeaturedProductCard({ product, className = "", isLastCar
   // Get variant display text (size only for microfiber, quantity for others)
   const getVariantDisplayText = (variant) => {
     if (isMicrofiber) {
-      // For microfiber: display size in cm only, remove any other units
-      let size = variant.size || variant.name || "Size";
-      // Remove any trailing unit (ml, ltr, gm, etc.), even if attached (e.g., '40x40ml')
-      size = size.replace(/(ml|ltr|l|gm|g|kg|pcs?|pieces?)$/gi, '').replace(/\b(ml|ltr|l|gm|g|kg|pcs?|pieces?)\b/gi, '').replace(/\s+/g, ' ').trim();
-      // Ensure it ends with 'cm'
+      let size = variant.size || "Size";
+      size = size.replace(/(ml|ltr|l|gm|g|kg|pcs?|pieces?)$/gi, '').replace(/\s+/g, ' ').trim();
       if (!/cm$/i.test(size)) {
         size = size + ' cm';
-      } else {
-        size = size.replace(/\s*cm$/i, '') + ' cm';
       }
       return size;
     } else {
       const quantity = variant.quantity || variant.size || "";
       const unit = variant.unit || "";
-      return `${quantity}${unit}` || variant.name || "Variant";
+      return `${quantity}${unit}` || "Variant";
     }
   }
 

@@ -1,30 +1,28 @@
 // services/cartService.js
 import { createSupabaseBrowserClient } from '@/lib/supabase/browser-client';
-const supabase = createSupabaseBrowserClient(); // Adjust the import based on your setup
+// If you have a server-side client, import and use it here instead
 
 class CartService {
   // Get current user's cart items
   async getCartItems(userId) {
-  if (!userId) return { cartItems: [] };
-
-  try {
-    const { data, error } = await supabase
-      .from('cart_items')
-      .select(`
-        *,
-        product:products(
-          id,
-          name,
-          main_image_url,
-          product_code,
-          is_microfiber,
-          key_features,
-          taglines,
-          images
+    if (!userId) return { cartItems: [] };
+    try {
+      const { data, error } = await supabase
+        .from('cart_items')
+        .select(
+          `
+          *,
+          product:products(
+            id,
+            name,
+            main_image_url,
+            product_code,
+            images
+          )
+        `
         )
-      `)
-      .eq('user_id', userId)
-      .order('created_at', { ascending: false });
+        .eq('user_id', userId)
+        .order('created_at', { ascending: false });
 
     // Log detailed response
     console.log('[getCartItems] Raw data:', data);
@@ -309,3 +307,20 @@ class CartService {
 }
 
 export default new CartService();
+
+// Server-side fetch for SSR
+export async function fetchCartItems(userId) {
+  if (!userId) return [];
+  const supabase = createSupabaseBrowserClient(); // Replace with server client if available
+  const { data, error } = await supabase
+    .from('cart_items')
+    .select('*, product:products(id, name, main_image_url, product_code, images)')
+    .eq('user_id', userId)
+    .order('created_at', { ascending: false });
+  if (error) {
+    console.error('[fetchCartItems] Error:', error);
+    return [];
+  }
+  console.log('[fetchCartItems] data:', data);
+  return data || [];
+}

@@ -12,8 +12,9 @@ import { useAuth } from "@/contexts/AuthContext"
 import { useEffect, useState } from "react"
 import { createPortal } from "react-dom"
 
-export default function CartDrawer() {
-  const { isCartOpen, closeCart, cartItems, loading, cartCount } = useCart()
+export default function CartDrawer({ cartItems = [], combos = [], availableCoupons = [], loading = false, cartCount = 0 }) {
+  console.log('[CartDrawer] received cartItems:', cartItems);
+  const { isCartOpen, openCart, closeCart, updateCartItem, removeFromCart, clearCart, coupon, couponError, couponLoading, applyCoupon, clearCoupon, updateItemPrice } = useCart()
   const { user } = useAuth()
   const [mounted, setMounted] = useState(false)
 
@@ -55,29 +56,17 @@ export default function CartDrawer() {
 
   // Get variant display text
   const getVariantDisplayText = (variant) => {
-    if (!variant) return "Default"
-
-    if (variant.is_package) {
-      return `Package of ${variant.package_quantity}`
+    if (!variant) return "Default";
+    // Microfiber: display size in cm
+    if (variant.size && (variant.size.includes('x') || variant.size.match(/\d+\s*cm/))) {
+      let size = variant.size.replace(/(ml|ltr|l|gm|g|kg|pcs?|pieces?)/gi, '').replace(/\s+/g, ' ').trim();
+      if (!/cm$/i.test(size)) size = size + ' cm';
+      return size;
     }
-
-    const attributes = variant.attributes || {}
-    const parts = []
-
-    if (attributes.quantity) {
-      parts.push(attributes.quantity.displayValue)
-    }
-    if (attributes.gsm) {
-      parts.push(attributes.gsm.displayValue)
-    }
-    if (attributes.size) {
-      parts.push(attributes.size.displayValue)
-    }
-    if (attributes.color) {
-      parts.push(attributes.color.displayValue)
-    }
-
-    return parts.join(" / ") || "Default"
+    // Regular: display quantity + unit
+    const quantity = variant.quantity || variant.size || "";
+    const unit = variant.unit || "";
+    return `${quantity}${unit}` || "Variant";
   }
 
   // Handle scroll events to prevent propagation to body
@@ -252,10 +241,10 @@ export default function CartDrawer() {
                   </div>
 
                   {/* Frequently Bought Together Section */}
-                  <FrequentlyBoughtTogether />
+                  <FrequentlyBoughtTogether combos={combos} />
 
                   {/* Coupon Section */}
-                  <CouponSection />
+                  <CouponSection availableCoupons={availableCoupons} />
 
                   {/* Price Summary */}
                   <PriceSummary formatPrice={formatPrice} />

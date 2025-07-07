@@ -6,6 +6,7 @@ class CartService {
   // Get current user's cart items
   async getCartItems(userId) {
     if (!userId) return { cartItems: [] };
+    const supabase = createSupabaseBrowserClient();
     try {
       const { data, error } = await supabase
         .from('cart_items')
@@ -48,6 +49,7 @@ class CartService {
   // New method to find existing cart item with same product and variant
   async findExistingCartItem(productId, variant, userId) {
     console.log('findExistingCartItem: Searching for existing item', { productId, variant, userId });
+    const supabase = createSupabaseBrowserClient();
     try {
       // Query cart_items where user_id = userId AND product_id = productId
       const { data, error } = await supabase
@@ -108,6 +110,7 @@ class CartService {
   // Smart add method that handles duplicates
   async addToCartSmart(productOrComboOrKit, variant, quantity = 1, userId) {
     console.log('addToCartSmart input:', productOrComboOrKit, variant, quantity, userId);
+    const supabase = createSupabaseBrowserClient();
     let isCombo = false;
     let isKit = false;
     let comboId = null;
@@ -198,6 +201,7 @@ class CartService {
 
   // Update cart item quantity
   async updateCartItem(cartItemId, quantity, userId) {
+    const supabase = createSupabaseBrowserClient();
     try {
       console.log('Updating cart item:', { cartItemId, quantity, userId });
 
@@ -232,6 +236,7 @@ class CartService {
 
   // Remove item from cart
   async removeFromCart(cartItemId, userId) {
+    const supabase = createSupabaseBrowserClient();
     try {
       console.log('Removing cart item:', { cartItemId, userId });
 
@@ -252,6 +257,7 @@ class CartService {
 
   // Clear entire cart
   async clearCart(userId) {
+    const supabase = createSupabaseBrowserClient();
     try {
       const { error } = await supabase
         .from('cart_items')
@@ -268,6 +274,7 @@ class CartService {
 
   // Get cart summary (total items, total price)
   async getCartSummary(userId) {
+    const supabase = createSupabaseBrowserClient();
     try {
       const { data, error } = await supabase
         .from('cart_items')

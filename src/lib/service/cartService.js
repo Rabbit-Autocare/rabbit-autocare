@@ -109,14 +109,17 @@ class CartService {
     if (productOrComboOrKit && productOrComboOrKit.combo_id) {
       isCombo = true;
       comboId = productOrComboOrKit.combo_id; // always use UUID
-      variantToStore = Array.isArray(variant) ? variant : null;
+      // For combos, ensure variant is an array of full variant objects
+      variantToStore = Array.isArray(variant) ? variant.map(v => ({ ...v })) : [];
     } else if (productOrComboOrKit && productOrComboOrKit.kit_id) {
       isKit = true;
       kitId = productOrComboOrKit.kit_id; // always use UUID
-      variantToStore = Array.isArray(variant) ? variant : null;
+      // For kits, ensure variant is an array of full variant objects
+      variantToStore = Array.isArray(variant) ? variant.map(v => ({ ...v })) : [];
     } else if (productOrComboOrKit && productOrComboOrKit.id) {
       productId = productOrComboOrKit.id; // integer for products
-      variantToStore = variant;
+      // For single products, ensure variant is a full object
+      variantToStore = { ...variant };
     }
 
     // Check if this item already exists in the cart
@@ -301,7 +304,8 @@ class CartService {
   }
 }
 
-export default new CartService();
+const cartService = new CartService();
+export default cartService;
 
 // Server-side fetch for SSR
 export async function fetchCartItems(userId) {

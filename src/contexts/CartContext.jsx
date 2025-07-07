@@ -9,38 +9,57 @@ import CartDrawer from "@/components/cart/CartDrawer"
 // Create the context
 export const CartContext = createContext()
 
-// Helper function to calculate all derived cart state
+const GST_RATE = 18;
+
 const calculateCartState = (cartItems, coupon) => {
-  const subtotal = cartItems.reduce((total, item) => {
-   const price =
-  (item.combo_id && item.combo_price) ||
-  (item.kit_id && item.kit_price) ||
-  item.variant?.base_price || // <-- added this
-  item.variant?.price ||
-  0;
+  let subtotal = 0; // MRP (GST-incl)
 
-    const quantity = item.quantity || 0
-    // console.log(`Calculating item: ${item.product?.name || item.combo?.combo_name || item.kit?.kit_name || 'Unknown'} | Price: ${price} | Quantity: ${quantity} | Subtotal: ${total + price * quantity}`);
-    return total + price * quantity
-  }, 0)
+  // Calculate subtotal
+  cartItems.forEach(item => {
+    const qty = item.quantity || 1;
+    const priceIncl = item.variant?.base_price || item.variant?.price || 0;
+    subtotal += priceIncl * qty;
+    console.log('[CartCalc] Item:', {
+      name: item.product?.name || item.combo?.combo_name || item.kit?.kit_name || 'Unknown',
+      base_price: priceIncl,
+      quantity: qty
+    });
+  });
 
-  const cartCount = cartItems.reduce((sum, item) => sum + (item.quantity || 0), 0)
-
-  const hasComboOrKit = cartItems.some(item => item.combo_id || item.kit_id)
-  let discount = 0
-  if (coupon && !hasComboOrKit) {
-    discount = coupon.discount || 0
+  // Calculate discount on MRP subtotal
+  let discount = 0;
+  if (coupon) {
+    if (coupon.percent) {
+      discount = subtotal * (coupon.percent / 100);
+    } else if (coupon.discount) {
+      discount = coupon.discount;
+    }
   }
 
-  const total = Math.max(0, subtotal - discount)
+  // Final total (MRP - discount)
+  const total = subtotal - discount;
+  const youSaved = discount;
+
+  // For UI compatibility
+  const cartCount = cartItems.reduce((sum, item) => sum + (item.quantity || 0), 0);
+  const hasComboOrKit = cartItems.some(item => item.combo_id || item.kit_id);
+
+  console.log('[CartCalc] Final:', {
+    subtotal,
+    discount,
+    total,
+    youSaved
+  });
 
   return {
     cartItems,
     cartCount,
-    subtotal,
+    subtotal, // MRP
     discount,
     total,
-  }
+    youSaved,
+    hasComboOrKit
+  };
 }
 
 // Create the provider component

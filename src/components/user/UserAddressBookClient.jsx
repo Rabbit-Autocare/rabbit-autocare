@@ -10,7 +10,7 @@ async function fetchAddresses(userId) {
   if (!res.ok) throw new Error('Failed to fetch addresses');
   return await res.json();
 }
-
+ 
 async function createAddress(userId, address) {
   const res = await fetch('/api/user/addresses', {
     method: 'POST',

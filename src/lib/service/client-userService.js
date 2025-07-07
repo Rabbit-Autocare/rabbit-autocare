@@ -5,7 +5,6 @@ export class ClientUserService {
     console.log('ClientUserService - getUserCoupons called for userId:', userId);
 
     if (!userId) {
-      console.log('ClientUserService - No userId provided');
       return {
         success: false,
         data: {
@@ -19,7 +18,7 @@ export class ClientUserService {
       const supabase = createSupabaseBrowserClient();
       const now = new Date().toISOString();
 
-      // 1. Get user's coupon IDs from auth_users
+      // 1. Fetch user coupon IDs from auth_users table
       const { data: userData, error: userError } = await supabase
         .from('auth_users')
         .select('coupons')
@@ -27,10 +26,11 @@ export class ClientUserService {
         .single();
 
       if (userError) throw userError;
+
       const userCouponIds = new Set(userData?.coupons || []);
       console.log('Coupon IDs from user table:', [...userCouponIds]);
 
-      // 2. Fetch full details of user's coupons
+      // 2. Fetch full details of user's coupons only
       let userCouponsDetails = [];
       if (userCouponIds.size > 0) {
         const { data, error } = await supabase
@@ -42,16 +42,28 @@ export class ClientUserService {
         userCouponsDetails = data || [];
       }
 
-      // 3. Fetch all active, valid coupons
-      const { data: allActiveCoupons, error: activeError } = await supabase
+      // 3. Filter only active & valid user coupons
+      const validUserCoupons = userCouponsDetails.filter(coupon => {
+        if (!coupon.is_active) return false;
+        if (!coupon.is_permanent && coupon.expiry_date && new Date(coupon.expiry_date) < new Date()) return false;
+        return true;
+      });
+
+      // 4. Fetch all active + valid coupons (used for available)
+      const { data: allValidCoupons, error: allValidError } = await supabase
         .from('coupons')
         .select('*')
         .eq('is_active', true)
         .or(`is_permanent.eq.true,and(is_permanent.eq.false,expiry_date.gt.${now})`);
 
-      if (activeError) throw activeError;
+      if (allValidError) throw allValidError;
 
-      // 4. Helper to format coupon data
+      // 5. Filter only coupons not already used by user
+      const availableCoupons = (allValidCoupons || []).filter(
+        coupon => !userCouponIds.has(coupon.id)
+      );
+
+      // 6. Format utility
       const formatCoupon = (coupon) => ({
         id: coupon.id,
         code: coupon.code,
@@ -63,31 +75,18 @@ export class ClientUserService {
         isActive: coupon.is_active
       });
 
-      // 5. Filter user coupons for only valid ones
-      const filteredUserCoupons = userCouponsDetails.filter(coupon => {
-        if (!coupon.is_active) return false;
-        if (!coupon.is_permanent && coupon.expiry_date && new Date(coupon.expiry_date) < new Date()) return false;
-        return true;
-      });
-
-      // 6. Filter active coupons not in user's list
-      const filteredAvailableCoupons = (allActiveCoupons || []).filter(
-        coupon => !userCouponIds.has(coupon.id)
-      );
-
       return {
         success: true,
         data: {
-          userCoupons: filteredUserCoupons.map(formatCoupon),
-          availableCoupons: filteredAvailableCoupons.map(formatCoupon)
+          userCoupons: validUserCoupons.map(formatCoupon),
+          availableCoupons: availableCoupons.map(formatCoupon)
         }
       };
     } catch (error) {
-      const errorMessage = error.message || JSON.stringify(error);
-      console.error('ClientUserService - Error in getUserCoupons:', errorMessage);
+      console.error('ClientUserService - Error in getUserCoupons:', error);
       return {
         success: false,
-        error: errorMessage,
+        error: error.message || 'Unknown error',
         data: {
           userCoupons: [],
           availableCoupons: []

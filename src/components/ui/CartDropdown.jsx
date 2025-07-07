@@ -1,79 +1,84 @@
-"use client"
+'use client';
 
-import { useState, useEffect, useRef } from 'react'
-import Image from 'next/image'
-import Link from 'next/link'
-import { X, ShoppingCart } from 'lucide-react'
-import cartService from '@/lib/service/cartService'
+import { useState, useEffect, useRef } from 'react';
+import Image from 'next/image';
+import Link from 'next/link';
+import { X, ShoppingCart } from 'lucide-react';
+import cartService from '@/lib/service/cartService';
+import { useAuth } from '@/contexts/AuthContext';
 
 export default function CartDropdown({ isOpen, onClose }) {
-  const [cartItems, setCartItems] = useState([])
-  const [loading, setLoading] = useState(true)
-  const dropdownRef = useRef(null)
+  const { user } = useAuth();
+  const [cartItems, setCartItems] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const dropdownRef = useRef(null);
 
   useEffect(() => {
     const fetchCartItems = async () => {
       try {
-        const items = await cartService.getCartItems()
-        setCartItems(items)
+        if (!user?.id) return;
+        const { cartItems: items } = await cartService.getCartItems(user.id);
+        setCartItems(items || []);
       } catch (error) {
-        console.error('Error fetching cart items:', error)
+        console.error('Error fetching cart items:', error);
+
         // Fallback to localStorage
-        const storedCart = localStorage.getItem('cart')
+        const storedCart = localStorage.getItem('cart');
         if (storedCart) {
           try {
-            const items = JSON.parse(storedCart)
+            const items = JSON.parse(storedCart);
             if (Array.isArray(items)) {
-              setCartItems(items)
+              setCartItems(items);
             }
           } catch (e) {
-            console.error('Error parsing stored cart:', e)
+            console.error('Error parsing stored cart:', e);
           }
         }
       } finally {
-        setLoading(false)
+        setLoading(false);
       }
-    }
+    };
 
     if (isOpen) {
-      fetchCartItems()
+      fetchCartItems();
     }
-  }, [isOpen])
+  }, [isOpen, user?.id]);
 
   const handleRemoveItem = async (itemId) => {
     try {
-      await cartService.removeFromCart(itemId)
-      setCartItems(prev => prev.filter(item => item.id !== itemId))
+      await cartService.removeFromCart(itemId, user.id);
+      setCartItems(prev => prev.filter(item => item.id !== itemId));
     } catch (error) {
-      console.error('Error removing item:', error)
+      console.error('Error removing item:', error);
+
       // Fallback to localStorage
-      const storedCart = localStorage.getItem('cart')
+      const storedCart = localStorage.getItem('cart');
       if (storedCart) {
         try {
-          const items = JSON.parse(storedCart)
+          const items = JSON.parse(storedCart);
           if (Array.isArray(items)) {
-            const updatedItems = items.filter(item => item.id !== itemId)
-            localStorage.setItem('cart', JSON.stringify(updatedItems))
-            setCartItems(updatedItems)
+            const updatedItems = items.filter(item => item.id !== itemId);
+            localStorage.setItem('cart', JSON.stringify(updatedItems));
+            setCartItems(updatedItems);
           }
         } catch (e) {
-          console.error('Error updating stored cart:', e)
+          console.error('Error updating stored cart:', e);
         }
       }
     }
-  }
+  };
 
   const formatPrice = (price) => {
-    return new Intl.NumberFormat("en-IN", {
-      style: "currency",
-      currency: "INR",
+    return new Intl.NumberFormat('en-IN', {
+      style: 'currency',
+      currency: 'INR',
       minimumFractionDigits: 0,
       maximumFractionDigits: 0,
-    }).format(price)
-  }
+    }).format(price);
+  };
 
-  const totalItems = cartItems.reduce((sum, item) => sum + item.quantity, 0)
-  const totalPrice = cartItems.reduce((sum, item) => sum + (item.price * item.quantity), 0)
+  const totalItems = cartItems.reduce((sum, item) => sum + item.quantity, 0);
+  const totalPrice = cartItems.reduce((sum, item) => sum + ((item.variant?.price || item.product?.price || item.price || 0) * item.quantity), 0);
 
   return (
     <div
@@ -108,16 +113,20 @@ export default function CartDropdown({ isOpen, onClose }) {
                 <div key={item.id} className="flex gap-4 p-2 border-b">
                   <div className="relative w-20 h-20">
                     <Image
-                      src={item.productImage || '/placeholder.svg'}
-                      alt={item.productName}
+                      src={
+                        item.product?.main_image_url || item.product?.image_url || item.productImage || '/placeholder.svg'
+                      }
+                      alt={item.product?.name || item.productName || 'Product'}
                       fill
                       className="object-cover"
                     />
                   </div>
                   <div className="flex-1">
-                    <h3 className="font-medium">{item.productName}</h3>
-                    <p className="text-sm text-gray-600">{item.variant}</p>
-                    <p className="text-sm font-medium">{formatPrice(item.price)}</p>
+                    <h3 className="font-medium">{item.product?.name || item.productName || 'Unknown Product'}</h3>
+                    <p className="text-sm text-gray-600">{item.variant?.size || item.variant || 'Default'}</p>
+                    <p className="text-sm font-medium">
+                      {formatPrice(item.variant?.price || item.product?.price || item.price || 0)}
+                    </p>
                     <div className="flex items-center justify-between mt-2">
                       <span className="text-sm">Qty: {item.quantity}</span>
                       <button
@@ -150,5 +159,5 @@ export default function CartDropdown({ isOpen, onClose }) {
         </div>
       </div>
     </div>
-  )
+  );
 }

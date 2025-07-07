@@ -186,7 +186,7 @@ export default function CheckoutPage() {
           images: data.images,
           variant: null,
           variant_display_text: 'Default',
-          price: data.price,
+          base_price: data.price,
           quantity: qtyParam,
           total_price: data.price * qtyParam,
           is_microfiber: data.is_microfiber,

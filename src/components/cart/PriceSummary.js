@@ -14,7 +14,7 @@ export default function PriceSummary({ formatPrice }) {
 
 	if (cartItems.length === 0) {
 		return null;
-	}
+	} 
 
 	return (
 		<div className="bg-white rounded-lg border p-4">

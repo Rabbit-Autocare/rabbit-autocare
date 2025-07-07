@@ -1,6 +1,7 @@
 // services/cartService.js
 import { createSupabaseBrowserClient } from '@/lib/supabase/browser-client';
 // If you have a server-side client, import and use it here instead
+const supabase = createSupabaseBrowserClient(); // Make sure this is NOT inside the method
 
 class CartService {
   // Get current user's cart items
@@ -22,27 +23,15 @@ class CartService {
           )
         `
         )
-        .eq('user_id', userId)
-        .order('created_at', { ascending: false });
+      `)
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false });
 
-    // Log detailed response
-    console.log('[getCartItems] Raw data:', data);
-    console.log('[getCartItems] Supabase error:', error);
-
-    if (error) {
-      console.error('Error in getCartItems - Supabase error:', error);
-      return { error: error.message, cartItems: [] };
-    }
-
-    if (!data || !Array.isArray(data)) {
-      console.error('Error in getCartItems - No valid data returned');
-      return { error: 'No data returned from Supabase', cartItems: [] };
-    }
-
-    return { cartItems: data };
+    if (error) throw error;
+    return { cartItems: data || [] };
   } catch (error) {
-    console.error('Error in getCartItems - Unexpected exception:', error);
-    return { error: error.message, cartItems: [] };
+    console.error('[getCartItems] Error:', error);
+    return { cartItems: [], error: error.message };
   }
 }
 

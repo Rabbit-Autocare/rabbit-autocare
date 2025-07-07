@@ -12,7 +12,7 @@ export default function CartItem({ item, formatPrice, getVariantDisplayText }) {
   const [comboKitDetails, setComboKitDetails] = useState(null);
 
   useEffect(() => {
-    async function fetchComboKit() {
+    async function fetchComboKit() { 
       if (item.combo_id) {
         const combos = await ComboService.getCombos(item.combo_id);
         const details = combos && combos.length > 0 ? combos[0] : null;
@@ -96,7 +96,13 @@ export default function CartItem({ item, formatPrice, getVariantDisplayText }) {
   }
 
   const productName = item.product?.name || item.name || 'Unknown Product';
-  const currentPrice = item.variant?.price || item.variant?.base_price || item.product?.price || item.product?.base_price || 0;
+ const currentPrice =
+  item.variant?.base_price ||
+  item.variant?.price ||
+  item.product?.base_price ||
+  item.product?.price ||
+  0;
+
   const productImage =
     item.product?.main_image_url || item.product?.image_url || item.image;
   const productStock = item.product?.stock || item.variant?.stock || 999;

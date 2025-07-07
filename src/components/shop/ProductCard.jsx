@@ -27,7 +27,7 @@ export default function ProductCard({ product, index }) {
     try {
       if (product.variants && Array.isArray(product.variants) && product.variants.length > 0) {
         const basePrices = product.variants
-          .map((variant) => Number(variant?.base_price) || 0)
+          .map((variant) => Number(variant?.base_price) || 0 || Number(variant?.price))
           .filter((price) => !isNaN(price));
         if (basePrices.length > 0) {
           return Math.max(...basePrices);

@@ -26,7 +26,7 @@ export default function CouponSection({ availableCoupons = [] }) {
 		if (couponCode.trim()) {
 			applyCoupon(couponCode.trim());
 		}
-	};
+	}; 
 
 	const handleRemoveCoupon = () => {
 		applyCoupon(null);

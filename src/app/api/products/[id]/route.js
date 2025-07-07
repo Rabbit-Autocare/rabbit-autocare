@@ -26,7 +26,7 @@ export async function GET(request, { params }) {
           color_hex,
           quantity,
           unit,
-          price,
+          base_price,
           stock,
          compare_at_price 
         )

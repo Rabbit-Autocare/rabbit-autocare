@@ -8,35 +8,41 @@ import FrequentlyBoughtTogether from "./FrequentlyBoughtTogether"
 import Link from "next/link"
 import { ShoppingCart, ChevronLeft } from "lucide-react"
 import { motion, AnimatePresence } from "framer-motion"
-import { useAuth } from "@/contexts/AuthContext"
 import { useEffect, useState } from "react"
 import { createPortal } from "react-dom"
 
-export default function CartDrawer({ cartItems = [], combos = [], availableCoupons = [], loading = false, cartCount = 0 }) {
-  console.log('[CartDrawer] received cartItems:', cartItems);
-  const { isCartOpen, openCart, closeCart, updateCartItem, removeFromCart, clearCart, coupon, couponError, couponLoading, applyCoupon, clearCoupon, updateItemPrice } = useCart()
-  const { user } = useAuth()
+export default function CartDrawer() {
+  const {
+    isCartOpen,
+    closeCart,
+    cartItems,
+    combos = [],
+    availableCoupons = [],
+    loading,
+    cartCount,
+    coupon,
+    couponError,
+    couponLoading,
+    applyCoupon,
+    clearCoupon,
+    updateItemPrice,
+  } = useCart()
+
   const [mounted, setMounted] = useState(false)
 
   useEffect(() => {
     setMounted(true)
   }, [])
 
-  // Prevent body scroll when cart is open
   useEffect(() => {
     if (isCartOpen) {
-      // Store original body overflow
       const originalOverflow = document.body.style.overflow
       const originalPaddingRight = document.body.style.paddingRight
-
-      // Get scrollbar width to prevent layout shift
       const scrollbarWidth = window.innerWidth - document.documentElement.clientWidth
 
-      // Prevent body scroll
       document.body.style.overflow = "hidden"
       document.body.style.paddingRight = `${scrollbarWidth}px`
 
-      // Cleanup function
       return () => {
         document.body.style.overflow = originalOverflow
         document.body.style.paddingRight = originalPaddingRight
@@ -44,7 +50,6 @@ export default function CartDrawer({ cartItems = [], combos = [], availableCoupo
     }
   }, [isCartOpen])
 
-  // Format price
   const formatPrice = (price) => {
     return new Intl.NumberFormat("en-IN", {
       style: "currency",
@@ -54,55 +59,42 @@ export default function CartDrawer({ cartItems = [], combos = [], availableCoupo
     }).format(price)
   }
 
-  // Get variant display text
   const getVariantDisplayText = (variant) => {
-    if (!variant) return "Default";
-    // Microfiber: display size in cm
+    if (!variant) return "Default"
     if (variant.size && (variant.size.includes('x') || variant.size.match(/\d+\s*cm/))) {
-      let size = variant.size.replace(/(ml|ltr|l|gm|g|kg|pcs?|pieces?)/gi, '').replace(/\s+/g, ' ').trim();
-      if (!/cm$/i.test(size)) size = size + ' cm';
-      return size;
+      let size = variant.size.replace(/(ml|ltr|l|gm|g|kg|pcs?|pieces?)/gi, '').replace(/\s+/g, ' ').trim()
+      if (!/cm$/i.test(size)) size = size + ' cm'
+      return size
     }
-    // Regular: display quantity + unit
-    const quantity = variant.quantity || variant.size || "";
-    const unit = variant.unit || "";
-    return `${quantity}${unit}` || "Variant";
+    const quantity = variant.quantity || variant.size || ""
+    const unit = variant.unit || ""
+    return `${quantity}${unit}` || "Variant"
   }
 
-  // Handle scroll events to prevent propagation to body
   const handleScrollableAreaScroll = (e) => {
     e.stopPropagation()
   }
 
-  // Prevent wheel events from reaching the body
   const handleWheel = (e) => {
     const scrollableArea = e.currentTarget
     const { scrollTop, scrollHeight, clientHeight } = scrollableArea
-
-    // If scrolling up and already at top, prevent default
     if (e.deltaY < 0 && scrollTop === 0) {
       e.preventDefault()
       return
     }
-
-    // If scrolling down and already at bottom, prevent default
     if (e.deltaY > 0 && scrollTop + clientHeight >= scrollHeight) {
       e.preventDefault()
       return
     }
-
-    // Allow normal scrolling within bounds
     e.stopPropagation()
   }
 
-  // Don't render on server or if not mounted
   if (!mounted) return null
 
   const cartContent = (
     <AnimatePresence>
       {isCartOpen && (
         <>
-          {/* Backdrop - Fixed to viewport */}
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -121,7 +113,6 @@ export default function CartDrawer({ cartItems = [], combos = [], availableCoupo
             }}
           />
 
-          {/* Cart Drawer - Completely fixed to viewport */}
           <motion.div
             initial={{ x: "100%" }}
             animate={{ x: 0 }}
@@ -143,9 +134,8 @@ export default function CartDrawer({ cartItems = [], combos = [], availableCoupo
               padding: 0,
               transform: "translateZ(0)",
             }}
-            onWheel={(e) => e.stopPropagation()} // Prevent wheel events from bubbling
+            onWheel={(e) => e.stopPropagation()}
           >
-            {/* FIXED HEADER - Never scrolls */}
             <div
               style={{
                 flexShrink: 0,
@@ -174,7 +164,6 @@ export default function CartDrawer({ cartItems = [], combos = [], availableCoupo
               )}
             </div>
 
-            {/* FIXED PURPLE BANNER - Never scrolls */}
             <div
               style={{
                 flexShrink: 0,
@@ -191,7 +180,6 @@ export default function CartDrawer({ cartItems = [], combos = [], availableCoupo
               Save extra 5% on prepaid orders
             </div>
 
-            {/* SCROLLABLE CONTENT AREA - Only this scrolls */}
             <div
               style={{
                 flex: 1,
@@ -225,7 +213,6 @@ export default function CartDrawer({ cartItems = [], combos = [], availableCoupo
                 </div>
               ) : (
                 <div className="p-4 space-y-6">
-                  {/* Review Your Items Section */}
                   <div>
                     <h3 className="text-lg font-semibold mb-4">Review Your Items</h3>
                     <div className="space-y-4">
@@ -240,22 +227,17 @@ export default function CartDrawer({ cartItems = [], combos = [], availableCoupo
                     </div>
                   </div>
 
-                  {/* Frequently Bought Together Section */}
                   <FrequentlyBoughtTogether combos={combos} />
 
-                  {/* Coupon Section */}
                   <CouponSection availableCoupons={availableCoupons} />
 
-                  {/* Price Summary */}
                   <PriceSummary formatPrice={formatPrice} />
 
-                  {/* Bottom padding for better scrolling */}
                   <div className="h-4"></div>
                 </div>
               )}
             </div>
 
-            {/* FIXED FOOTER - Never scrolls, only shows when cart has items */}
             {cartItems.length > 0 && (
               <div
                 style={{
@@ -283,6 +265,5 @@ export default function CartDrawer({ cartItems = [], combos = [], availableCoupo
     </AnimatePresence>
   )
 
-  // Render using portal to document.body to escape any parent positioning
   return createPortal(cartContent, document.body)
 }

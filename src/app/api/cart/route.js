@@ -9,7 +9,7 @@ function errorResponse(message, status = 500) {
   return NextResponse.json({ error: message }, { status });
 }
 
-// GET - Fetch cart items
+// GET - Fetch cart items 
 export async function GET(request) {
   try {
     // Fetch cart items

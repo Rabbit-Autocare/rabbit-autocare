@@ -12,11 +12,13 @@ export const CartContext = createContext()
 // Helper function to calculate all derived cart state
 const calculateCartState = (cartItems, coupon) => {
   const subtotal = cartItems.reduce((total, item) => {
-    const price =
-      (item.combo_id && item.combo_price) ||
-      (item.kit_id && item.kit_price) ||
-      item.variant?.price ||
-      0
+   const price =
+  (item.combo_id && item.combo_price) ||
+  (item.kit_id && item.kit_price) ||
+  item.variant?.base_price || // <-- added this
+  item.variant?.price ||
+  0;
+
     const quantity = item.quantity || 0
     // console.log(`Calculating item: ${item.product?.name || item.combo?.combo_name || item.kit?.kit_name || 'Unknown'} | Price: ${price} | Quantity: ${quantity} | Subtotal: ${total + price * quantity}`);
     return total + price * quantity

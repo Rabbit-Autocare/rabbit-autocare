@@ -70,7 +70,7 @@ async function fetchVariantById(variantId) {
 
 async function transformProductItem(cartItem) {
   try {
-    // Fetch complete product details
+    // Fetch complete product details (new schema)
     const { data: product, error: productError } = await supabase
       .from('products')
       .select('*')
@@ -82,35 +82,49 @@ async function transformProductItem(cartItem) {
       return null;
     }
 
-    // Use variant directly from cart item
-    let variantDetails = cartItem.variant || null;
-    let variantPrice = 0;
-    if (variantDetails) {
-      variantPrice = variantDetails.base_price || variantDetails.price || product.price || 0;
+    // Always fetch the latest variant data from product_variants
+    let variantDetails = null;
+    if (cartItem.variant && cartItem.variant.id) {
+      const { data: variant, error: variantError } = await supabase
+        .from('product_variants')
+        .select('*')
+        .eq('id', cartItem.variant.id)
+        .single();
+      if (variantError) {
+        console.error('Error fetching product variant:', variantError);
+        // Fallback to cartItem.variant if DB fetch fails
+        variantDetails = cartItem.variant;
+      } else {
+        variantDetails = variant;
+      }
     } else {
-      variantPrice = product.price || 0;
+      variantDetails = cartItem.variant || null;
     }
+
+    // Compose display text for variant
     let variantDisplayText = 'Default';
     if (variantDetails) {
-      if (product.is_microfiber) {
+      if (product.product_type === 'microfiber') {
         const size = variantDetails.size ? `${variantDetails.size}` : '';
         const color = variantDetails.color ? `${variantDetails.color}` : '';
         const gsm = variantDetails.gsm ? `${variantDetails.gsm}gsm` : '';
         variantDisplayText = [size, color, gsm].filter(Boolean).join(', ');
       } else if (variantDetails.quantity && variantDetails.unit) {
         variantDisplayText = `${variantDetails.quantity}${variantDetails.unit}`;
-      } else if (variantDetails.displayText) {
-        variantDisplayText = variantDetails.displayText;
+      } else if (variantDetails.variant_code) {
+        variantDisplayText = `Code: ${variantDetails.variant_code}`;
       } else if (variantDetails.id) {
         variantDisplayText = `Variant ID: ${variantDetails.id}`;
       }
     }
 
-    // Fallback if product price is still undefined
-    if (variantPrice === undefined || variantPrice === null) {
-      variantPrice = 0;
+    // Use correct price fields from new schema
+    let variantPrice = 0;
+    if (variantDetails) {
+      variantPrice = Number(variantDetails.base_price) || Number(variantDetails.price) || 0;
     }
 
+    // Compose the returned object using only valid columns
     return {
       id: cartItem.id,
       type: 'product',
@@ -118,17 +132,34 @@ async function transformProductItem(cartItem) {
       product_code: product.product_code,
       name: product.name,
       description: product.description,
+      product_type: product.product_type,
+      category: product.category,
+      subcategory: product.subcategory,
+      hsn_code: product.hsn_code,
+      features: product.features,
+      usage_instructions: product.usage_instructions,
+      warnings: product.warnings,
       main_image_url: product.main_image_url,
       images: product.images,
+      taglines: product.taglines,
       variant: variantDetails,
       variant_display_text: variantDisplayText,
       price: variantPrice,
+      base_price: variantDetails?.base_price ?? null,
+      base_price_excluding_gst: variantDetails?.base_price_excluding_gst ?? null,
+      compare_at_price: variantDetails?.compare_at_price ?? null,
       quantity: cartItem.quantity,
       total_price: variantPrice * cartItem.quantity,
-      is_microfiber: product.is_microfiber,
-      key_features: product.key_features,
-      taglines: product.taglines,
-      category_name: product.category_name
+      stock: variantDetails?.stock ?? null,
+      is_active: variantDetails?.is_active ?? null,
+      weight_grams: variantDetails?.weight_grams ?? null,
+      gsm: variantDetails?.gsm ?? null,
+      size: variantDetails?.size ?? null,
+      color: variantDetails?.color ?? null,
+      color_hex: variantDetails?.color_hex ?? null,
+      unit: variantDetails?.unit ?? null,
+      dimensions: variantDetails?.dimensions ?? null,
+      variant_code: variantDetails?.variant_code ?? null,
     };
   } catch (error) {
     console.error('Error transforming product item:', error);

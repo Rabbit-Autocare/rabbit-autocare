@@ -64,7 +64,7 @@ const calculateCartState = (cartItems, coupon) => {
 
 // Create the provider component
 export function CartProvider({ children, initialCartItems = [] }) {
-  console.log('[CartProvider] initialCartItems:', initialCartItems);
+  // console.log('[CartProvider] initialCartItems:', initialCartItems);
   const { user, sessionChecked } = useAuth()
   const router = useRouter()
   const [cartState, setCartState] = useState({

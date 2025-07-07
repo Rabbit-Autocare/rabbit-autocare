@@ -82,81 +82,70 @@ export class UserService {
   }
 
   // ============= USER COUPONS =============
+static async getUserCoupons(userId) {
+  try {
+    const supabase = await createSupabaseServerClient();
 
-  static async getUserCoupons(userId) {
-    try {
-      const supabase = await createSupabaseServerClient();
+    // Step 1: Get user's coupon ID list from auth_users table
+    const { data: userData, error: userError } = await supabase
+      .from('auth_users')
+      .select('coupons')
+      .eq('id', userId)
+      .single();
 
-      // 1. Fetch user's coupon IDs from auth_users table
-      const { data: userData, error: userError } = await supabase
-        .from('auth_users')
-        .select('coupons')
-        .eq('id', userId)
-        .single();
+    if (userError) throw userError;
 
-      if (userError) throw userError;
+    const couponIds = userData?.coupons || [];
 
-      // Convert the user's coupons array to a Set for faster lookups
-      const userCouponIds = new Set(userData?.coupons || []);
-
-      // 2. Fetch all active coupons
-      const { data: allActiveCoupons, error: activeCouponsError } = await supabase
-        .from('coupons')
-        .select('*')
-        .eq('is_active', true);
-
-      if (activeCouponsError) throw activeCouponsError;
-
-      // 3. Fetch details for all of the user's coupons (even if inactive)
-      let userCouponsDetails = [];
-      if (userCouponIds.size > 0) {
-        const { data, error } = await supabase
-          .from('coupons')
-          .select('*')
-          .in('id', [...userCouponIds]);
-        if (error) throw error;
-        userCouponsDetails = data || [];
-      }
-
-      // 4. Helper to format coupon data consistently
-      const formatCoupon = (coupon) => {
-        const discount = coupon.discount_percent
-          ? `${coupon.discount_percent}%`
-          : coupon.discount_amount
-          ? `₹${coupon.discount_amount}`
-          : 'Offer';
-        return {
-          id: coupon.id,
-          code: coupon.code,
-          description: coupon.description,
-          discount: discount,
-          validUpto: coupon.expiry_date,
-        };
-      };
-
-      // 5. Process both lists
-      const processedUserCoupons = userCouponsDetails.map(formatCoupon);
-      const processedAvailableCoupons = (allActiveCoupons || [])
-        .filter(coupon => !userCouponIds.has(coupon.id))
-        .map(formatCoupon);
-
+    // Step 2: If no coupons, return empty list
+    if (!Array.isArray(couponIds) || couponIds.length === 0) {
       return {
         success: true,
         data: {
-          userCoupons: processedUserCoupons,
-          availableCoupons: processedAvailableCoupons,
-        },
-      };
-    } catch (error) {
-      const errorMessage = error.message || JSON.stringify(error);
-      console.error('Error fetching user coupons:', errorMessage);
-      return {
-        success: false,
-        error: errorMessage,
-        data: { userCoupons: [], availableCoupons: [] },
+          userCoupons: []
+        }
       };
     }
+
+    // Step 3: Fetch full coupon details only for coupons in user's array
+    const { data: couponData, error: couponError } = await supabase
+      .from('coupons')
+      .select('*')
+      .in('id', couponIds);
+
+    if (couponError) throw couponError;
+
+    // Step 4: Format result
+    const formatCoupon = (coupon) => ({
+      id: coupon.id,
+      code: coupon.code,
+      description: coupon.description || '',
+      discount: coupon.discount_percent
+        ? `${coupon.discount_percent}%`
+        : 'Offer',
+      validUpto: coupon.expiry_date,
+      isActive: coupon.is_active
+    });
+
+    return {
+      success: true,
+      data: {
+        userCoupons: couponData.map(formatCoupon)
+      }
+    };
+
+  } catch (error) {
+    const errorMessage = error.message || 'Unknown error';
+    console.error('Error fetching user coupons:', errorMessage);
+    return {
+      success: false,
+      error: errorMessage,
+      data: {
+        userCoupons: []
+      }
+    };
   }
+}
 
   // ============= USER SESSION =============
 

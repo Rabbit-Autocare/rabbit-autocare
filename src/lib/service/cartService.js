@@ -23,17 +23,16 @@ class CartService {
           )
         `
         )
-      `)
-      .eq('user_id', userId)
-      .order('created_at', { ascending: false });
+        .eq('user_id', userId)
+        .order('created_at', { ascending: false });
 
-    if (error) throw error;
-    return { cartItems: data || [] };
-  } catch (error) {
-    console.error('[getCartItems] Error:', error);
-    return { cartItems: [], error: error.message };
+      if (error) throw error;
+      return { cartItems: data || [] };
+    } catch (error) {
+      console.error('[getCartItems] Error:', error);
+      return { cartItems: [], error: error.message };
+    }
   }
-}
 
   // New method to find existing cart item with same product and variant
   async findExistingCartItem(productId, variant, userId) {

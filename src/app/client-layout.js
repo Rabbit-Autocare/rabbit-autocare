@@ -13,7 +13,7 @@ import MobileNavbar from "@/components/navigation/MobileNavbar"
 
 const supabase = createSupabaseBrowserClient();
 
-export default function ClientLayout({ children }) {
+export default function ClientLayout({ children, initialCartItems = [] }) {
   const router = useRouter()
   const pathname = usePathname()
   const [user, setUser] = useState(null)
@@ -319,7 +319,7 @@ export default function ClientLayout({ children }) {
 
   return (
     <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
-      <CartProvider>
+      <CartProvider initialCartItems={initialCartItems}>
         {/* MobileNavbar Portal - Mobile only */}
         {mobilePortalContainer &&
           createPortal(

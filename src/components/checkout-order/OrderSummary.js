@@ -46,7 +46,7 @@ export default function OrderSummary({ items, updateItemQuantity, coupon, orderT
                 <h4 className="text-lg font-semibold text-black leading-tight mb-2">{item.name}</h4>
                 <div className="space-y-1">
                   <p className="text-sm text-gray-500 font-medium">
-                    Code: <span className="text-gray-700">{item.product_code || "N/A"}</span>
+                    Code: <span className="text-gray-700">{item.variant?.code || "N/A"}</span>
                   </p>
                   {item.variant_display_text && item.variant_display_text !== "Default" && (
                     <p className="text-sm text-[#601E8D] font-medium">

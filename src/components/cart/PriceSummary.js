@@ -16,8 +16,26 @@ export default function PriceSummary({ formatPrice }) {
 
 	cartItems.forEach(item => {
 		const qty = item.quantity || 1;
-		if (Array.isArray(item.variant)) {
-			// Combo/kit: sum for all included variants
+		if (item.kit_id && item.kit_price) {
+			// Kit: use kit price
+			const priceIncl = Number(item.kit_price) || 0;
+			let priceExcl = item.kit_price_excluding_gst;
+			if (priceExcl === undefined || priceExcl === null) {
+				priceExcl = priceIncl ? (priceIncl / 1.18) : 0;
+			}
+			subtotal += priceIncl * qty;
+			subtotalExGST += priceExcl * qty;
+		} else if (item.combo_id && item.combo_price) {
+			// Combo: use combo price
+			const priceIncl = Number(item.combo_price) || 0;
+			let priceExcl = item.combo_price_excluding_gst;
+			if (priceExcl === undefined || priceExcl === null) {
+				priceExcl = priceIncl ? (priceIncl / 1.18) : 0;
+			}
+			subtotal += priceIncl * qty;
+			subtotalExGST += priceExcl * qty;
+		} else if (Array.isArray(item.variant)) {
+			// Fallback: sum for all included variants
 			item.variant.forEach(v => {
 				const priceIncl = Number(v.base_price) || Number(v.price) || 0;
 				let priceExcl = v.base_price_excluding_gst;

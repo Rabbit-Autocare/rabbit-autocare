@@ -84,7 +84,12 @@ async function transformProductItem(cartItem) {
 
     // Use variant directly from cart item
     let variantDetails = cartItem.variant || null;
-    let variantPrice = variantDetails && variantDetails.price ? variantDetails.price : product.price || 0;
+    let variantPrice = 0;
+    if (variantDetails) {
+      variantPrice = variantDetails.base_price || variantDetails.price || product.price || 0;
+    } else {
+      variantPrice = product.price || 0;
+    }
     let variantDisplayText = 'Default';
     if (variantDetails) {
       if (product.is_microfiber) {

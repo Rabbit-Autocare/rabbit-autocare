@@ -14,14 +14,14 @@ export class ComboService {
         .from('product-images')
         .upload(filePath, imageFile, {
           cacheControl: '3600',
-          upsert: true
+          upsert: true,
         });
 
       if (uploadError) throw uploadError;
 
-      const { data: { publicUrl } } = supabase.storage
-        .from('product-images')
-        .getPublicUrl(filePath);
+      const {
+        data: { publicUrl },
+      } = supabase.storage.from('product-images').getPublicUrl(filePath);
 
       return publicUrl;
     } catch (error) {
@@ -32,9 +32,7 @@ export class ComboService {
 
   static async getCombos(id = null) {
     try {
-      const query = supabase
-        .from('combos')
-        .select(`
+      const query = supabase.from('combos').select(`
           *,
           combo_products (
             *,
@@ -50,10 +48,14 @@ export class ComboService {
       const { data, error } = await fetchWithRetry(() => query);
       if (error) throw error;
 
-      return data.map(combo => ({
+      return data.map((combo) => ({
         ...combo,
-        image_url: combo.image_url || `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/product-images/products/combos/${combo.id}.jpg`,
-        main_image_url: combo.main_image_url || `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/product-images/products/combos/${combo.id}.jpg`
+        image_url:
+          combo.image_url ||
+          `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/product-images/products/combos/${combo.id}.jpg`,
+        main_image_url:
+          combo.main_image_url ||
+          `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/product-images/products/combos/${combo.id}.jpg`,
       }));
     } catch (error) {
       console.error('Error fetching combos:', error);
@@ -76,18 +78,18 @@ export class ComboService {
           inventory,
           image_url: comboData.image_url,
           main_image_url: comboData.image_url,
-          images: comboData.images || [comboData.image_url].filter(Boolean)
+          images: comboData.images || [comboData.image_url].filter(Boolean),
         })
         .select()
         .single();
 
       if (comboError) throw comboError;
 
-      const comboProductsData = comboData.products.map(p => ({
+      const comboProductsData = comboData.products.map((p) => ({
         combo_id: newCombo.id,
         product_id: p.id,
         variant_id: p.selected_variant?.id || null,
-        quantity: p.quantity || 1
+        quantity: p.quantity || 1,
       }));
 
       const { error: comboProductsError } = await supabase
@@ -118,7 +120,7 @@ export class ComboService {
         original_price: comboData.original_price,
         price: comboData.price,
         discount_percent: comboData.discount_percentage,
-        inventory
+        inventory,
       };
 
       if (comboData.image_url) {
@@ -136,8 +138,10 @@ export class ComboService {
 
       if (fetchError) throw fetchError;
 
-      const existingMap = new Map(existingProducts.map(p => [p.product_id, p]));
-      const incomingMap = new Map(comboData.products.map(p => [p.id, p]));
+      const existingMap = new Map(
+        existingProducts.map((p) => [p.product_id, p])
+      );
+      const incomingMap = new Map(comboData.products.map((p) => [p.id, p]));
 
       const productsToAdd = [];
       const productsToUpdate = [];
@@ -149,7 +153,10 @@ export class ComboService {
         } else {
           const existing = existingMap.get(id);
           if (existing.quantity !== incomingProduct.quantity) {
-            productsToUpdate.push({ ...existing, newQuantity: incomingProduct.quantity });
+            productsToUpdate.push({
+              ...existing,
+              newQuantity: incomingProduct.quantity,
+            });
           }
         }
       }
@@ -161,11 +168,11 @@ export class ComboService {
       }
 
       if (productsToAdd.length > 0) {
-        const insertData = productsToAdd.map(p => ({
+        const insertData = productsToAdd.map((p) => ({
           combo_id: id,
           product_id: p.id,
           variant_id: p.selected_variant?.id || null,
-          quantity: p.quantity || 1
+          quantity: p.quantity || 1,
         }));
 
         const { error } = await supabase
@@ -204,7 +211,7 @@ export class ComboService {
         ...data,
         image_url: data.image_url,
         main_image_url: data.main_image_url,
-        images: data.images
+        images: data.images,
       };
     } catch (error) {
       console.error('Error updating combo:', error);
@@ -222,10 +229,7 @@ export class ComboService {
         console.warn('Could not delete combo image:', deleteImageError.message);
       }
 
-      const { error } = await supabase
-        .from('combos')
-        .delete()
-        .eq('id', id);
+      const { error } = await supabase.from('combos').delete().eq('id', id);
 
       if (error) throw error;
     } catch (error) {
@@ -242,18 +246,52 @@ export class ComboService {
 
       const combosPromise = supabase
         .from('combos')
-        .select('id, name, description, image_url, original_price, price, discount_percent')
+        .select(
+          `
+          id, 
+          name, 
+          description, 
+          image_url, 
+          original_price, 
+          price, 
+          discount_percent,
+          combo_products (
+            id,
+            quantity,
+            product_id,
+            variant_id,
+            product:products (
+              id,
+              name,
+              main_image_url
+            ),
+            variant:product_variants (
+              id,
+              size,
+              price
+            )
+          )
+        `
+        )
         .order('created_at', { ascending: false });
 
-      const { data, error } = await Promise.race([combosPromise, timeoutPromise]);
+      const { data, error } = await Promise.race([
+        combosPromise,
+        timeoutPromise,
+      ]);
 
       if (error) throw error;
 
-      return data.map(combo => ({
+      return data.map((combo) => ({
         ...combo,
-        image_url: combo.image_url || `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/product-images/products/combos/${combo.id}.jpg`,
-        main_image_url: combo.main_image_url || combo.image_url || `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/product-images/products/combos/${combo.id}.jpg`,
-        combo_products: []
+        image_url:
+          combo.image_url ||
+          `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/product-images/products/combos/${combo.id}.jpg`,
+        main_image_url:
+          combo.main_image_url ||
+          combo.image_url ||
+          `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/product-images/products/combos/${combo.id}.jpg`,
+        products: combo.combo_products || [],
       }));
     } catch (error) {
       console.error('Error fetching combos for cart:', error);

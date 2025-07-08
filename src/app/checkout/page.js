@@ -7,7 +7,8 @@ import { useCart } from '@/contexts/CartContext';
 import { useAuth } from '@/contexts/AuthContext';
 
 import '@/app/globals.css';
-
+import { calculatePriceSummary } from "@/utils/cartTransformUtils";
+import PriceSummary from '@/components/cart/PriceSummary';
 import AddressSection from '@/components/Address/AddressSection';
 import OrderSummary from '@/components/checkout-order/OrderSummary';
 import {
@@ -71,6 +72,7 @@ export default function CheckoutPage() {
   const productId = searchParams.get('id');
   const comboId = searchParams.get('combo_id');
   const qtyParam = Number.parseInt(searchParams.get('qty')) || 1;
+const formatPrice = (amount) => `₹${Number(amount).toFixed(0)}`;
 
   const [userId, setUserId] = useState(null);
   const [product, setProduct] = useState(null);
@@ -86,13 +88,13 @@ export default function CheckoutPage() {
   const [paymentError, setPaymentError] = useState(null);
   const [deliveryCharge, setDeliveryCharge] = useState(0);
   const [orderTotals, setOrderTotals] = useState({
-    subtotal: 0,
-    discount: 0,
-    discountPercentage: 0,
-    grandTotal: 0,
-    itemCount: 0,
-    totalQuantity: 0,
-  });
+  subtotal: 0,
+  discount: 0,
+  grandTotal: 0,
+  itemCount: 0,
+  totalQuantity: 0,
+});
+
 
   useEffect(() => {
     if (user) {
@@ -111,8 +113,15 @@ export default function CheckoutPage() {
   // Recalculate totals when items or coupon change
   useEffect(() => {
     if (transformedItems.length > 0) {
-      const totals = calculateOrderTotals(transformedItems, coupon);
-      setOrderTotals(totals);
+     const summary = calculatePriceSummary(transformedItems, coupon);
+setOrderTotals({
+  subtotal: summary.subtotal,
+  discount: summary.discount,
+  grandTotal: summary.finalTotal,
+  itemCount: transformedItems.length,
+  totalQuantity: transformedItems.reduce((sum, i) => sum + (i.quantity || 1), 0),
+});
+
     }
   }, [transformedItems, coupon]);
 
@@ -165,6 +174,19 @@ export default function CheckoutPage() {
     const { data } = await supabase.auth.getUser();
     if (data?.user) setUserId(data.user.id);
   };
+useEffect(() => {
+  if (transformedItems.length > 0) {
+    const summary = calculatePriceSummary(transformedItems, coupon);
+    setOrderTotals({
+      subtotal: summary.subtotal,
+      discount: summary.discount,
+      grandTotal: summary.finalTotal,
+      itemCount: transformedItems.length,
+      totalQuantity: transformedItems.reduce((sum, i) => sum + (i.quantity || 1), 0),
+    });
+  }
+}, [transformedItems, coupon]);
+
 
   const fetchSingleProduct = async () => {
     try {
@@ -727,15 +749,27 @@ export default function CheckoutPage() {
                       </div>
                     )}
 
-                    <OrderSummary
-                      items={transformedItems}
-                      updateItemQuantity={updateItemQuantity}
-                      coupon={coupon}
-                      orderTotals={orderTotals}
-                      deliveryCharge={deliveryCharge}
-                      loading={loading}
-                      onPlaceOrder={handlePlaceOrder}
-                    />
+                   <div className='lg:col-span-2'>
+  <div className='sticky top-6'>
+    {/* Existing summary */}
+    <OrderSummary
+      items={transformedItems}
+      updateItemQuantity={updateItemQuantity}
+      coupon={coupon}
+      orderTotals={orderTotals}
+      deliveryCharge={deliveryCharge}
+      loading={loading}
+      onPlaceOrder={handlePlaceOrder}
+    />
+
+    {/* Add this: */}
+   <div className="mt-6 hidden">
+  <PriceSummary formatPrice={(amt) => `₹${Number(amt).toFixed(0)}`} />
+</div>
+
+  </div>
+</div>
+
 
                     {/* Security Badges */}
                     <div className='mt-6 bg-white rounded-[4px] p-4 shadow-sm border border-gray-200'>

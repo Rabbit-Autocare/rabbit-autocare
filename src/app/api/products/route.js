@@ -1,6 +1,7 @@
 // /app/api/products/route.js
 import { NextResponse } from 'next/server';
 import { createSupabaseServerClient } from '@/lib/supabase/server-client';
+import { ProductService } from '@/lib/service/productService';
 
 // Utility to handle errors consistently
 function errorResponse(message, status = 500) {
@@ -86,10 +87,28 @@ export async function GET(request) {
     }
 
     // Transform the data to match the expected format
-    const transformedProducts = products.map((product) => ({
-      ...product,
-      variants: product.product_variants || [],
-    }));
+    const transformedProducts = products.map((product) => {
+      const baseProduct = {
+        ...product,
+        variants: product.product_variants || [],
+      };
+      // Remove the product_variants key to avoid duplication
+      delete baseProduct.product_variants;
+
+      // Apply the same transformation used by ProductService
+      const transformed = ProductService.transformProductData(baseProduct);
+
+      // Debug: Log transformation for microfiber products
+      if (transformed?.product_type === 'microfiber') {
+        console.log('🧽 API List Transformation:', {
+          name: transformed.name,
+          variantCount: transformed.variants?.length,
+          stockValues: transformed.variants?.map((v) => v.stock),
+        });
+      }
+
+      return transformed;
+    });
 
     return NextResponse.json({
       success: true,
@@ -134,7 +153,12 @@ export async function POST(request) {
     // Validate variant data
     for (const variant of data.variants) {
       if (data.is_microfiber) {
-        if (!variant.gsm || !variant.size || !variant.color || !variant.base_price) {
+        if (
+          !variant.gsm ||
+          !variant.size ||
+          !variant.color ||
+          !variant.base_price
+        ) {
           return NextResponse.json(
             {
               error:
@@ -221,7 +245,8 @@ export async function POST(request) {
     // Remove 'compare_at_price' from the select
     const { data: fullProduct, error: fetchError } = await supabase
       .from('products')
-      .select(`
+      .select(
+        `
         *,
         product_variants (
           id,
@@ -242,13 +267,17 @@ export async function POST(request) {
           created_at,
           updated_at
         )
-      `)
+      `
+      )
       .eq('id', product.id)
       .single();
 
     if (fetchError) {
       console.error('Error fetching complete product:', fetchError);
-      return NextResponse.json({ error: 'Failed to fetch complete product' }, { status: 500 });
+      return NextResponse.json(
+        { error: 'Failed to fetch complete product' },
+        { status: 500 }
+      );
     }
 
     return NextResponse.json({ success: true, product: fullProduct });

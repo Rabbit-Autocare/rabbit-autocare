@@ -1,5 +1,6 @@
 "use client"
 import Image from "next/image"
+import PriceSummary from "./PriceSummary";
 
 // Helper function to display variant info
 function getVariantDisplayText(variant, isMicrofiber) {
@@ -45,9 +46,10 @@ export default function OrderSummary({ items, updateItemQuantity, coupon, orderT
               <div className="flex-1">
                 <h4 className="text-lg font-semibold text-black leading-tight mb-2">{item.name}</h4>
                 <div className="space-y-1">
-                  <p className="text-sm text-gray-500 font-medium">
-                    Code: <span className="text-gray-700">{item.variant?.code || "N/A"}</span>
-                  </p>
+                 <p className="text-sm text-gray-500 font-medium">
+  Code: <span className="text-gray-700">{item.variant_code || item.product_code || item.variant?.code || 'N/A'}</span>
+</p>
+
                   {item.variant_display_text && item.variant_display_text !== "Default" && (
                     <p className="text-sm text-[#601E8D] font-medium">
                       <span className="inline-flex items-center px-2 py-1 rounded-full text-xs bg-purple-50 text-[#601E8D] border border-purple-200">
@@ -113,11 +115,11 @@ export default function OrderSummary({ items, updateItemQuantity, coupon, orderT
                       {item.included_products.map((included, index) => (
                         <div key={index} className="pl-4 border-l-2 border-gray-200 mb-2">
                           <div className="font-medium text-gray-800">{included.product_name}</div>
-                          {included.product_code && (
-                            <div className="text-xs bg-gray-100 border border-gray-200 rounded px-2 py-0.5 text-gray-500 inline-block mt-1">
-                              {included.product_code}
-                            </div>
-                          )}
+                        <div className="text-xs bg-gray-100 border border-gray-200 rounded px-2 py-0.5 text-gray-700 inline-block mt-1">
+  Code: {included.variant_code || included.product_code || 'N/A'}
+</div>
+
+
                           {included.variant && (
                             <div className="text-xs bg-blue-50 border border-blue-200 rounded px-2 py-0.5 text-blue-700 inline-block mt-1 ml-1">
                               {getVariantDisplayText(included.variant, included.is_microfiber)}
@@ -183,11 +185,10 @@ export default function OrderSummary({ items, updateItemQuantity, coupon, orderT
                       {item.included_products.map((included, index) => (
                         <div key={index} className="pl-4 border-l-2 border-gray-200 mb-2">
                           <div className="font-medium text-gray-800">{included.product_name}</div>
-                          {included.product_code && (
-                            <div className="text-xs bg-gray-100 border border-gray-200 rounded px-2 py-0.5 text-gray-500 inline-block mt-1">
-                              {included.product_code}
-                            </div>
-                          )}
+                        <div className="text-xs bg-gray-100 border border-gray-200 rounded px-2 py-0.5 text-gray-500 inline-block mt-1">
+  Code: {included.variant_code || included.product_code || 'N/A'}
+</div>
+
                           {included.variant && (
                             <div className="text-xs bg-blue-50 border border-blue-200 rounded px-2 py-0.5 text-blue-700 inline-block mt-1 ml-1">
                               {getVariantDisplayText(included.variant, included.is_microfiber)}

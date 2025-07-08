@@ -205,58 +205,63 @@ export default function CheckoutPage() {
   };
 
   const fetchSingleCombo = async () => {
-    try {
-      const { data: combo } = await supabase
-        .from('combos')
-        .select('*')
-        .eq('id', comboId)
-        .single();
+  try {
+    const { data: combo } = await supabase
+      .from('combos')
+      .select('*')
+      .eq('id', comboId)
+      .single();
 
-      if (combo) {
-        setCombo(combo);
-        // Fetch combo products
-        const { data: comboProducts } = await supabase
-          .from('combo_products')
-          .select(
-            `
-						*,
-						product:products(*)
-					`
-          )
-          .eq('combo_id', combo.id);
+    if (!combo) return;
 
-        const transformedCombo = {
-          id: `direct-${combo.id}`,
-          type: 'combo',
-          combo_id: combo.id,
-          name: combo.name,
-          description: combo.description,
-          main_image_url: combo.main_image_url,
-          images: combo.images,
-          price: combo.price,
-          original_price: combo.original_price,
-          discount_percentage: combo.discount_percentage,
-          quantity: 1,
-          total_price: combo.price,
-          included_products:
-            comboProducts?.map((cp) => ({
-              product_id: cp.product_id,
-              product_name: cp.product?.name,
-              product_code: cp.product?.product_code,
-              variant_id: cp.variant_id,
-              quantity: cp.quantity,
-            })) || [],
-          included_variants: [],
-        };
+    setCombo(combo);
 
-        setTransformedItems([transformedCombo]);
-      }
-    } catch (error) {
-      console.error('Error fetching single combo:', error);
-    } finally {
-      setLoading(false);
+    const { data: comboProducts } = await supabase
+      .from('combo_products')
+      .select(`
+        *,
+        product:products(*),
+        variant:product_variants(variant_code)
+      `)
+      .eq('combo_id', combo.id);
+
+    if (!comboProducts) {
+      console.error('No combo products found');
+      return;
     }
-  };
+
+    const transformedCombo = {
+      id: `direct-${combo.id}`,
+      type: 'combo',
+      combo_id: combo.id,
+      name: combo.name,
+      description: combo.description,
+      main_image_url: combo.main_image_url,
+      images: combo.images,
+      price: combo.price,
+      original_price: combo.original_price,
+      discount_percentage: combo.discount_percent,
+      quantity: 1,
+      total_price: combo.price,
+      included_products: comboProducts.map((cp) => ({
+        product_id: cp.product_id,
+        product_name: cp.product?.name,
+        product_code: cp.product?.product_code,
+        variant_id: cp.variant_id,
+        variant_code: cp.variant?.variant_code || '', // ✅ directly fetched
+        quantity: cp.quantity,
+      })),
+      included_variants: [],
+    };
+
+    setTransformedItems([transformedCombo]);
+  } catch (error) {
+    console.error('Error in fetchSingleCombo:', error);
+  } finally {
+    setLoading(false);
+  }
+};
+
 
   const transformCartData = async () => {
     if (!cartItems || cartItems.length === 0) {

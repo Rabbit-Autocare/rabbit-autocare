@@ -49,21 +49,10 @@ export class ClientUserService {
         return true;
       });
 
-      // 4. Fetch all active + valid coupons (used for available)
-      const { data: allValidCoupons, error: allValidError } = await supabase
-        .from('coupons')
-        .select('*')
-        .eq('is_active', true)
-        .or(`is_permanent.eq.true,and(is_permanent.eq.false,expiry_date.gt.${now})`);
+      // 4. Only return coupons from user's list as available
+      const availableCoupons = validUserCoupons;
 
-      if (allValidError) throw allValidError;
-
-      // 5. Filter only coupons not already used by user
-      const availableCoupons = (allValidCoupons || []).filter(
-        coupon => !userCouponIds.has(coupon.id)
-      );
-
-      // 6. Format utility
+      // 5. Format utility
       const formatCoupon = (coupon) => ({
         id: coupon.id,
         code: coupon.code,

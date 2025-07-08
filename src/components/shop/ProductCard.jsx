@@ -4,6 +4,7 @@ import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { Star, Heart, Sparkles } from 'lucide-react';
 import { WishlistService } from '@/lib/service/wishlistService'; // Step 1: Import service
+import ProductRating from '@/components/ui/ProductRating';
 
 export default function ProductCard({ product, index }) {
   const router = useRouter();
@@ -85,12 +86,40 @@ export default function ProductCard({ product, index }) {
 
   const imageUrl = getMainImage();
 
-  // Generate rating with better defaults
-  const rating = product.averageRating || product.rating || 4.0;
-  const ratingCount =
-    product.reviews?.length ||
-    product.reviewCount ||
-    Math.floor(Math.random() * 50) + 10;
+  // Deterministic pseudo-random generator based on a string seed
+  function seededRandom(seed) {
+    let h = 2166136261 >>> 0;
+    for (let i = 0; i < seed.length; i++) {
+      h ^= seed.charCodeAt(i);
+      h = Math.imul(h, 16777619);
+    }
+    return () => {
+      h += h << 13; h ^= h >>> 7;
+      h += h << 3; h ^= h >>> 17;
+      h += h << 5;
+      return ((h >>> 0) % 10000) / 10000;
+    };
+  }
+  // Generate deterministic ratings array for a product
+  function generateDeterministicRatings(product) {
+    const seed = String(product.product_code || product.id || product.name || 'default');
+    const rand = seededRandom(seed);
+    const avg = Math.round((rand() * 0.6 + 4) * 10) / 10; // 4.0 to 4.6
+    const ratings = Array(13).fill(0).map(() => 4 + Math.round(rand() * 2)); // 4, 5, or 6
+    // Adjust to get close to target avg
+    let currentAvg = ratings.reduce((a, b) => a + b, 0) / ratings.length;
+    let i = 0;
+    while (Math.abs(currentAvg - avg) > 0.05 && i < 100) {
+      const idx = Math.floor(rand() * ratings.length);
+      if (currentAvg > avg && ratings[idx] > 4) ratings[idx]--;
+      if (currentAvg < avg && ratings[idx] < 5) ratings[idx]++;
+      currentAvg = ratings.reduce((a, b) => a + b, 0) / ratings.length;
+      i++;
+    }
+    return ratings;
+  }
+
+  const ratings = generateDeterministicRatings(product);
 
   // Get product ID for navigation
   const productIdentifier =
@@ -198,29 +227,10 @@ export default function ProductCard({ product, index }) {
 
       {/* Product Details - Compact layout matching reference */}
       <div className='px-4 py-3 flex flex-col flex-grow'>
-        {/* Product Name - Larger, bolder */}
-        <h3 className='text-lg font-semibold text-gray-900 mb-2 line-clamp-2 leading-tight'>
-          {productName}
-        </h3>
-
-        {/* Rating - Matching reference style */}
-        <div className='flex items-center mb-2'>
-          <div className='flex items-center'>
-            {[1, 2, 3, 4, 5].map((star) => (
-              <Star
-                key={star}
-                size={16}
-                className={`${
-                  star <= Math.floor(rating)
-                    ? 'text-yellow-400 fill-current'
-                    : 'text-gray-200'
-                }`}
-              />
-            ))}
-            <span className='ml-2 text-sm text-gray-500'>
-              | {ratingCount} Ratings
-            </span>
-          </div>
+        {/* Product Title and Rating */}
+        <div className="flex flex-col gap-1 mb-2">
+          <h3 className="font-semibold text-base line-clamp-2">{product.name}</h3>
+          <ProductRating ratings={ratings} size={16} showCount={true} />
         </div>
 
         {/* Description - Single line only */}

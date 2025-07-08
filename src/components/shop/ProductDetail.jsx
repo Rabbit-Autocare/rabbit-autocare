@@ -21,7 +21,7 @@ export default function ProductDetail({ product }) {
   }
 
   return (
-    <div className="space-y-12">
+    <div className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8 space-y-12">
       {/* Success notification */}
       {addedToCart && (
         <div className="fixed top-4 right-4 bg-green-100 border border-green-200 text-green-800 px-4 py-3 rounded-lg shadow-md z-50 transition-all duration-300">

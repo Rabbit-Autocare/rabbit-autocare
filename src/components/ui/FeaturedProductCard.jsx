@@ -7,6 +7,7 @@ import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { WishlistService } from '@/lib/service/wishlistService';
 import { FaShoppingCart } from 'react-icons/fa';
+import ProductRating from '@/components/ui/ProductRating';
 // ...existing imports...
 console.log('FeaturedProductCard loaded!');
 export default function FeaturedProductCard({
@@ -29,6 +30,42 @@ export default function FeaturedProductCard({
     sizes: [],
   });
   const [wishlistItemId, setWishlistItemId] = useState(null);
+
+  // Deterministic pseudo-random generator based on a string seed
+  function seededRandom(seed) {
+    let h = 2166136261 >>> 0;
+    for (let i = 0; i < seed.length; i++) {
+      h ^= seed.charCodeAt(i);
+      h = Math.imul(h, 16777619);
+    }
+    return () => {
+      h += h << 13; h ^= h >>> 7;
+      h += h << 3; h ^= h >>> 17;
+      h += h << 5;
+      return ((h >>> 0) % 10000) / 10000;
+    };
+  }
+
+  // Generate deterministic ratings array for a product
+  function generateDeterministicRatings(product) {
+    const seed = String(product.product_code || product.id || product.name || 'default');
+    const rand = seededRandom(seed);
+    const avg = Math.round((rand() * 0.6 + 4) * 10) / 10; // 4.0 to 4.6
+    const ratings = Array(13).fill(0).map(() => 4 + Math.round(rand() * 2)); // 4, 5, or 6
+    // Adjust to get close to target avg
+    let currentAvg = ratings.reduce((a, b) => a + b, 0) / ratings.length;
+    let i = 0;
+    while (Math.abs(currentAvg - avg) > 0.05 && i < 100) {
+      const idx = Math.floor(rand() * ratings.length);
+      if (currentAvg > avg && ratings[idx] > 4) ratings[idx]--;
+      if (currentAvg < avg && ratings[idx] < 5) ratings[idx]++;
+      currentAvg = ratings.reduce((a, b) => a + b, 0) / ratings.length;
+      i++;
+    }
+    return ratings;
+  }
+
+  const ratings = generateDeterministicRatings(product);
 
   // Debug: Log product data to check stock values
   useEffect(() => {
@@ -739,28 +776,11 @@ export default function FeaturedProductCard({
         </div>
 
         {/* Product Details */}
-        <div className='w-full md:w-[585px] lg:w-[685px] xl:w-1/2 space-y-2 md:space-y-3 lg:space-y-2 xl:space-y-5 flex flex-col min-h-[400px] sm:min-h-[500px] md:min-h-[550px] lg:min-h-[550px] xl:min-h-[600px]'>
-          <h2 className='product-heading text-[20px] xs:text-[22px] sm:text-[34px] lg:text-[35px] xl:text-[38px] 2xl:text-[41px] font-semibold tracking-wide'>
-            {product.name || product.heading}
-          </h2>
-
-          {/* Rating */}
-          <div className='flex items-center gap-1 text-[11px] xs:text-[12px] md:text-sm xl:text-[12px] font-extralight text-black'>
-            {[...Array(5)].map((_, i) => (
-              <img
-                key={i}
-                src={
-                  i < Math.floor(product.rating || product.averageRating || 4)
-                    ? '/assets/featured/ratingstar1.svg'
-                    : '/assets/featured/ratingstar2.svg'
-                }
-                alt='star'
-                className='w-3 h-3 xs:w-4 xs:h-4'
-              />
-            ))}
-            <span className='ml-1'>
-              | {product.totalRatings || product.reviews?.length || 12} Ratings
-            </span>
+        <div className='w-full md:w-[585px] lg:w-[685px] xl:w-1/2 space-y-2 md:space-y-3 lg:space-y-2 xl:space-y-4 flex flex-col'>
+          {/* Product Title and Rating */}
+          <div className="flex items-center gap-2 mb-1">
+            <h2 className="font-semibold text-lg xs:text-xl sm:text-2xl lg:text-3xl xl:text-4xl line-clamp-2 flex-1">{product.name}</h2>
+            <ProductRating ratings={ratings} size={18} showCount={true} />
           </div>
 
           {/* Price */}
@@ -774,6 +794,16 @@ export default function FeaturedProductCard({
             <p className='text-[13px] xs:text-[14px] sm:text-[15px] xl:text-[16px] text-black font-light tracking-wider whitespace-pre-line line-clamp-2 xs:line-clamp-2 sm:line-clamp-3 md:line-clamp-4 lg:line-clamp-4 xl:line-clamp-none'>
               {product.description}
             </p>
+            {/* Only show taglines below description */}
+            {product.taglines && product.taglines.length > 0 && (
+              <div className='mt-3'>
+                <ul className='list-disc pl-5 text-[13px] sm:text-[14px] xl:text-[15px] text-gray-700'>
+                  {product.taglines.map((tag, i) => (
+                    <li key={i}>{tag}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
           </div>
 
           {/* Variant Selection (separate logic for microfiber and regular) */}

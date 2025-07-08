@@ -23,6 +23,7 @@ export default function FeaturedProductCard({
   const [selectedVariant, setSelectedVariant] = useState(null);
   const [selectedColor, setSelectedColor] = useState(null);
   const [selectedSize, setSelectedSize] = useState(null);
+  const [selectedPackSize, setSelectedPackSize] = useState(null);
   const [uniqueColorsAndSizes, setUniqueColorsAndSizes] = useState({
     colors: [],
     sizes: [],
@@ -64,18 +65,20 @@ export default function FeaturedProductCard({
 
         // Check if current product with selected variant is in wishlist
         const currentVariant = isMicrofiber
-          ? getVariantForCombination(selectedColor, selectedSize)
+          ? getVariantForCombination(selectedColor, selectedSize, selectedPackSize)
           : selectedVariant;
 
         const wishlistItem = data?.find((item) => {
           if (item.product_id !== product.id) return false;
 
-          if (isMicrofiber && selectedColor && selectedSize) {
-            // For microfiber, check color and size combination
+          if (isMicrofiber && selectedColor && selectedSize && selectedPackSize) {
+            // For microfiber, check color, size, and pack size combination
             const hasColor = Array.isArray(item.variant?.color)
               ? item.variant.color.includes(selectedColor)
               : item.variant?.color === selectedColor;
-            return hasColor && item.variant?.size === selectedSize;
+            const hasSize = item.variant?.size === selectedSize;
+            const hasPackSize = item.variant?.packSize === selectedPackSize;
+            return hasColor && hasSize && hasPackSize;
           } else if (currentVariant) {
             // For non-microfiber, check variant match
             return item.variant?.id === currentVariant.id;
@@ -103,6 +106,7 @@ export default function FeaturedProductCard({
     selectedVariant,
     selectedColor,
     selectedSize,
+    selectedPackSize,
     isMicrofiber,
   ]);
 
@@ -227,16 +231,27 @@ export default function FeaturedProductCard({
           return currentPrice > highestPrice ? current : highest;
         }
       );
-
       setSelectedVariant(highestPricedVariant);
-
       if (isMicrofiber) {
-        // For microfiber, set color and size separately
+        // For microfiber, set color, size, and default pack size
         if (highestPricedVariant.color) {
           setSelectedColor(highestPricedVariant.color);
         }
         if (highestPricedVariant.size) {
           setSelectedSize(highestPricedVariant.size);
+        }
+        const availablePackSizes = product.variants
+          .filter((v) => {
+            const hasColor = Array.isArray(v.color)
+              ? v.color.includes(highestPricedVariant.color)
+              : v.color === highestPricedVariant.color;
+            return hasColor && v.size === highestPricedVariant.size;
+          })
+          .map((v) => v.variant_code || v.code || v.id)
+          .map((code) => code ? extractPackSize(code) : null)
+          .filter((x) => x !== null && x !== undefined);
+        if (availablePackSizes.length > 0) {
+          setSelectedPackSize(availablePackSizes[0]);
         }
       }
     }
@@ -277,47 +292,47 @@ export default function FeaturedProductCard({
     return product.base_price || product.price || product.mrp || 0;
   };
 
-  // Check if a specific color-size combination exists and is in stock
-  const getVariantForCombination = (color, size) => {
-    if (!isMicrofiber) return null;
-    const variant =
-      product.variants?.find((v) => {
-        const hasColor = Array.isArray(v.color)
-          ? v.color.includes(color)
-          : v.color === color;
-        return hasColor && v.size === size;
-      }) || null;
-
-    // Debug: Log variant lookup
-    if (product?.product_type === 'microfiber') {
-      console.log('🔍 Variant lookup:', {
-        color,
-        size,
-        found: variant,
-        stock: variant?.stock,
-      });
-    }
-
-    return variant;
-  };
-
-  // Check if current selection is available
-  const isCurrentSelectionAvailable = () => {
-    if (!isMicrofiber) {
-      return selectedVariant && selectedVariant.stock > 0;
-    }
-
-    if (!selectedColor || !selectedSize) return false;
-
-    const variant = getVariantForCombination(selectedColor, selectedSize);
-    return variant && variant.stock > 0;
-  };
-
   // Helper to extract pack size from variant code (e.g., RX-MF-20A-1X => 1, RX-MF-20A-5X => 5)
   const extractPackSize = (variantCode) => {
     const match =
       typeof variantCode === 'string' ? variantCode.match(/-(\d+)X$/i) : null;
     return match ? parseInt(match[1], 10) : 1;
+  };
+
+  // Extract unique pack sizes for microfiber products
+  const packSizes = useMemo(() => {
+    if (!isMicrofiber || !product?.variants) return [];
+    const sizes = product.variants
+      .map((v) => {
+        const code = v.variant_code || v.code || v.id;
+        return code ? extractPackSize(code) : null;
+      })
+      .filter((x) => x !== null && x !== undefined);
+    return Array.from(new Set(sizes)).sort((a, b) => a - b);
+  }, [isMicrofiber, product?.variants]);
+
+  // Update getVariantForCombination to include pack size
+  const getVariantForCombination = (color, size, packSize) => {
+    if (!isMicrofiber) return null;
+    return (
+      product.variants?.find((v) => {
+        const hasColor = Array.isArray(v.color)
+          ? v.color.includes(color)
+          : v.color === color;
+        const variantPackSize = extractPackSize(v.variant_code || v.code || v.id);
+        return hasColor && v.size === size && variantPackSize === packSize;
+      }) || null
+    );
+  };
+
+  // Update isCurrentSelectionAvailable to include pack size
+  const isCurrentSelectionAvailable = () => {
+    if (!isMicrofiber) {
+      return selectedVariant && selectedVariant.stock > 0;
+    }
+    if (!selectedColor || !selectedSize || !selectedPackSize) return false;
+    const variant = getVariantForCombination(selectedColor, selectedSize, selectedPackSize);
+    return variant && variant.stock > 0;
   };
 
   // Get variant display text (size only for microfiber, quantity for others)
@@ -394,76 +409,40 @@ export default function FeaturedProductCard({
 
   const handleColorSelect = (color) => {
     setSelectedColor(color);
-
-    // Update selected variant based on current size selection
-    if (selectedSize) {
-      const variant = getVariantForCombination(color, selectedSize);
-      setSelectedVariant(variant);
-    } else {
-      // If no size selected, find the highest-priced variant for this color
-      const colorVariants =
-        product.variants?.filter((v) => {
-          if (Array.isArray(v.color)) {
-            return v.color.includes(color);
-          }
-          return v.color === color;
-        }) || [];
-      if (colorVariants.length > 0) {
-        const highestPricedVariant = colorVariants.reduce(
-          (highest, current) => {
-            const currentPrice =
-              current.base_price || current.price || current.mrp || 0;
-            const highestPrice =
-              highest.base_price || highest.price || highest.mrp || 0;
-            return currentPrice > highestPrice ? current : highest;
-          }
-        );
-        setSelectedVariant(highestPricedVariant);
-        setSelectedSize(highestPricedVariant.size);
-      }
+    // Try to keep current size and pack size if possible
+    if (selectedSize && selectedPackSize) {
+      const variant = getVariantForCombination(color, selectedSize, selectedPackSize);
+      if (variant) setSelectedVariant(variant);
     }
   };
 
   const handleSizeSelect = (size) => {
     setSelectedSize(size);
+    if (selectedColor && selectedPackSize) {
+      const variant = getVariantForCombination(selectedColor, size, selectedPackSize);
+      if (variant) setSelectedVariant(variant);
+    }
+  };
 
-    // Update selected variant based on current color selection
-    if (selectedColor) {
-      const variant = getVariantForCombination(selectedColor, size);
-      setSelectedVariant(variant);
-    } else {
-      // If no color selected, find the highest-priced variant for this size
-      const sizeVariants =
-        product.variants?.filter((v) => v.size === size) || [];
-      if (sizeVariants.length > 0) {
-        const highestPricedVariant = sizeVariants.reduce((highest, current) => {
-          const currentPrice =
-            current.base_price || current.price || current.mrp || 0;
-          const highestPrice =
-            highest.base_price || highest.price || highest.mrp || 0;
-          return currentPrice > highestPrice ? current : highest;
-        });
-        setSelectedVariant(highestPricedVariant);
-        setSelectedColor(highestPricedVariant.color);
-      }
+  const handlePackSizeSelect = (packSize) => {
+    setSelectedPackSize(packSize);
+    if (selectedColor && selectedSize) {
+      const variant = getVariantForCombination(selectedColor, selectedSize, packSize);
+      if (variant) setSelectedVariant(variant);
     }
   };
 
   const handleAddToCart = async () => {
-    if (!selectedVariant && !isMicrofiber) {
+    if (!isMicrofiber && !selectedVariant) {
       alert('Please select a variant.');
       return;
     }
-
-    if (isMicrofiber && (!selectedColor || !selectedSize)) {
-      alert('Please select a color and size.');
+    if (isMicrofiber && (!selectedColor || !selectedSize || !selectedPackSize)) {
+      alert('Please select a color, size, and pack size.');
       return;
     }
-
     setIsAddingToCart(true);
-
     try {
-      // Determine the item details to add
       const itemToAdd = {
         productId: product.id,
         quantity: 1,
@@ -475,22 +454,24 @@ export default function FeaturedProductCard({
           product.images?.[0] ||
           '',
       };
-
       if (isMicrofiber) {
-        const variant = getVariantForCombination(selectedColor, selectedSize);
+        const variant = getVariantForCombination(selectedColor, selectedSize, selectedPackSize);
         if (!variant) {
-          throw new Error('Selected color/size combination not available.');
+          throw new Error('Selected combination not available.');
         }
         itemToAdd.variant = {
           ...variant,
           color: selectedColor,
           size: selectedSize,
-          displayText: selectedSize, // Only show size for microfiber
+          packSize: selectedPackSize,
+          displayText: `${selectedSize} | Pack of ${selectedPackSize}`,
+          variant_code: variant.variant_code || variant.code || '',
         };
       } else if (selectedVariant) {
         itemToAdd.variant = {
           ...selectedVariant,
           displayText: getVariantDisplayText(selectedVariant),
+          variant_code: selectedVariant.variant_code || selectedVariant.code || '',
         };
       } else {
         itemToAdd.variant = {
@@ -499,22 +480,13 @@ export default function FeaturedProductCard({
           displayText: 'Default',
         };
       }
-
-      console.log('FeaturedProductCard: Adding PRODUCT to cart:', {
-        product,
-        variant: itemToAdd.variant,
-        quantity: 1,
-      });
       const success = await addToCart(product, itemToAdd.variant, 1);
-
       if (success) {
-        console.log('Successfully added to cart.');
         openCart();
       } else {
         alert('Failed to add item to cart.');
       }
     } catch (error) {
-      console.error('Error adding to cart:', error);
       alert(`Failed to add item to cart: ${error.message}`);
     } finally {
       setIsAddingToCart(false);
@@ -526,9 +498,7 @@ export default function FeaturedProductCard({
       alert('Please select available variant.');
       return;
     }
-
     setIsAddingToCart(true);
-
     try {
       const itemToAdd = {
         productId: product.id,
@@ -541,22 +511,24 @@ export default function FeaturedProductCard({
           product.images?.[0] ||
           '',
       };
-
       if (isMicrofiber) {
-        const variant = getVariantForCombination(selectedColor, selectedSize);
+        const variant = getVariantForCombination(selectedColor, selectedSize, selectedPackSize);
         if (!variant) {
-          throw new Error('Selected color/size combination not available.');
+          throw new Error('Selected combination not available.');
         }
         itemToAdd.variant = {
           ...variant,
           color: selectedColor,
           size: selectedSize,
-          displayText: selectedSize, // Only show size for microfiber
+          packSize: selectedPackSize,
+          displayText: `${selectedSize} | Pack of ${selectedPackSize}`,
+          variant_code: variant.variant_code || variant.code || '',
         };
       } else if (selectedVariant) {
         itemToAdd.variant = {
           ...selectedVariant,
           displayText: getVariantDisplayText(selectedVariant),
+          variant_code: selectedVariant.variant_code || selectedVariant.code || '',
         };
       } else {
         itemToAdd.variant = {
@@ -565,22 +537,13 @@ export default function FeaturedProductCard({
           displayText: 'Default',
         };
       }
-
-      console.log('FeaturedProductCard: BuyNow PRODUCT addToCart:', {
-        product,
-        variant: itemToAdd.variant,
-        quantity: 1,
-      });
       const success = await addToCart(product, itemToAdd.variant, 1);
-
       if (success) {
-        console.log('Item added to cart, redirecting to checkout.');
         router.push('/checkout');
       } else {
         alert('Failed to add item to cart for direct purchase.');
       }
     } catch (error) {
-      console.error('Error during Buy Now:', error);
       alert(`Failed to complete purchase: ${error.message}`);
     } finally {
       setIsAddingToCart(false);
@@ -596,22 +559,25 @@ export default function FeaturedProductCard({
     try {
       let variantToSave = null;
 
-      if (isMicrofiber && selectedColor && selectedSize) {
-        const variant = getVariantForCombination(selectedColor, selectedSize);
+      if (isMicrofiber && selectedColor && selectedSize && selectedPackSize) {
+        const variant = getVariantForCombination(selectedColor, selectedSize, selectedPackSize);
         if (!variant) {
-          alert('Please select a valid color and size combination.');
+          alert('Please select a valid color, size, and pack size combination.');
           return;
         }
         variantToSave = {
           ...variant,
           color: selectedColor,
           size: selectedSize,
-          displayText: selectedSize, // Only show size for microfiber
+          packSize: selectedPackSize,
+          displayText: `${selectedSize} | Pack of ${selectedPackSize}`,
+          variant_code: variant.variant_code || variant.code || '',
         };
       } else if (selectedVariant) {
         variantToSave = {
           ...selectedVariant,
           displayText: getVariantDisplayText(selectedVariant),
+          variant_code: selectedVariant.variant_code || selectedVariant.code || '',
         };
       } else {
         // Default variant for products without variants
@@ -811,145 +777,82 @@ export default function FeaturedProductCard({
           </div>
 
           {/* Variant Selection (separate logic for microfiber and regular) */}
-          {isMicrofiber
-            ? sizes.length > 0 && (
-                <div className='space-y-2 sm:space-y-3'>
-                  <h4 className='font-medium text-xs xs:text-sm'>
-                    Choose Size:
-                  </h4>
-                  <div className='flex flex-wrap gap-1 xs:gap-2'>
-                    {product.variants
-                      .filter((v) => v.size)
-                      .map((variant, index) => {
-                        const isSelected = selectedSize === variant.size;
-                        const isOutOfStock = variant.stock === 0;
-                        // Use getVariantDisplayText for consistent size display
-                        const size = getVariantDisplayText(variant);
-                        const packSize = extractPackSize(
-                          variant.variant_code || variant.code || variant.id
-                        );
-                        return (
-                          <div
-                            key={variant.id || index}
-                            className='relative group'
-                          >
-                            <button
-                              onClick={() => {
-                                setSelectedSize(variant.size);
-                                setSelectedVariant(variant);
-                              }}
-                              disabled={isOutOfStock}
-                              className={
-                                `px-2 py-1 xs:px-3 xs:py-2 sm:px-4 sm:py-2 text-xs xs:text-sm font-medium transition-all duration-200 rounded-full ` +
-                                (isSelected
-                                  ? 'bg-white text-black border-2 border-black'
-                                  : isOutOfStock
-                                  ? 'bg-gray-100 text-gray-400 cursor-not-allowed border border-gray-200'
-                                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200 border border-transparent')
-                              }
-                            >
-                              <div className='flex flex-col items-center leading-tight'>
-                                <span className='font-semibold'>{size}</span>
-                                {packSize > 1 && (
-                                  <span className='text-xs text-gray-500'>
-                                    Pack of {packSize}
-                                  </span>
-                                )}
-                              </div>
-                            </button>
-                            {/* Out of stock indicator */}
-                            {isOutOfStock && (
-                              <div className='absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none'>
-                                <div className='bg-red-500 text-white rounded-full p-1'>
-                                  <X className='w-2 h-2 xs:w-3 xs:h-3' />
-                                </div>
-                              </div>
-                            )}
-                          </div>
-                        );
-                      })}
-                  </div>
-                  {/* Always show confirmation block for microfiber */}
-                  {(() => {
-                    // Use selectedVariant or first available variant
-                    const variant =
-                      selectedVariant || product.variants.find((v) => v.size);
-                    if (!variant) return null;
+          {isMicrofiber && sizes.length > 0 && (
+            <div className='space-y-2 sm:space-y-3'>
+              <h4 className='font-medium text-xs xs:text-sm'>Choose Size:</h4>
+              <div className='flex flex-wrap gap-1 xs:gap-2'>
+                {product.variants
+                  .filter((v) => v.size)
+                  .map((variant, index) => {
+                    const isSelected = selectedSize === variant.size;
+                    const isOutOfStock = variant.stock === 0;
                     const size = getVariantDisplayText(variant);
-                    const packSize = extractPackSize(
-                      variant.variant_code || variant.code || variant.id
-                    );
                     return (
-                      <div className='mt-2 flex flex-col items-start text-xs text-blue-700'>
-                        <div>
-                          <span className='font-semibold'>Selected Size:</span>{' '}
-                          {size}
-                        </div>
-                        <div>
-                          <span className='font-semibold'>
-                            Selected Pack Size:
-                          </span>{' '}
-                          Pack of {packSize}
-                        </div>
+                      <div key={variant.id || index} className='relative group'>
+                        <button
+                          onClick={() => setSelectedSize(variant.size)}
+                          disabled={isOutOfStock}
+                          className={
+                            `px-2 py-1 xs:px-3 xs:py-2 sm:px-4 sm:py-2 text-xs xs:text-sm font-medium transition-all duration-200 rounded-full ` +
+                            (isSelected
+                              ? 'bg-white text-black border-2 border-black'
+                              : isOutOfStock
+                              ? 'bg-gray-100 text-gray-400 cursor-not-allowed border border-gray-200'
+                              : 'bg-gray-100 text-gray-600 hover:bg-gray-200 border border-transparent')
+                          }
+                        >
+                          <div className='flex flex-col items-center leading-tight'>
+                            <span className='font-semibold'>{size}</span>
+                          </div>
+                        </button>
+                        {isOutOfStock && (
+                          <div className='absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none'>
+                            <div className='bg-red-500 text-white rounded-full p-1'>
+                              <X className='w-2 h-2 xs:w-3 xs:h-3' />
+                            </div>
+                          </div>
+                        )}
                       </div>
                     );
-                  })()}
-                </div>
-              )
-            : allVariants.length > 0 && (
-                <div className='space-y-2 sm:space-y-3'>
-                  <h4 className='font-medium text-xs xs:text-sm'>
-                    Choose Quantity:
-                  </h4>
-                  <div className='flex flex-wrap gap-1 xs:gap-2'>
-                    {allVariants.map((variant, index) => {
-                      const isOutOfStock = variant.stock === 0;
-                      const isSelected = selectedVariant?.id === variant.id;
-                      const quantity = variant.quantity || variant.size || '';
-                      const unit = variant.unit || '';
-                      return (
-                        <div
-                          key={variant.id || index}
-                          className='relative group'
-                        >
-                          <button
-                            onClick={() => handleVariantSelect(variant)}
-                            disabled={isOutOfStock}
-                            className={`
-                            px-2 py-1 xs:px-3 xs:py-2 sm:px-4 sm:py-2 text-xs xs:text-sm font-medium transition-all duration-200 rounded-full
-                            ${
-                              isSelected
-                                ? 'bg-white text-black border-2 border-black'
-                                : isOutOfStock
-                                ? 'bg-gray-100 text-gray-400 cursor-not-allowed border border-gray-200'
-                                : 'bg-gray-100 text-gray-600 hover:bg-gray-200 border border-transparent'
-                            }
-                          `}
-                          >
-                            <span>{`${quantity}${unit}`}</span>
-                          </button>
-                          {/* Out of stock indicator */}
-                          {isOutOfStock && (
-                            <div className='absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none'>
-                              <div className='bg-red-500 text-white rounded-full p-1'>
-                                <X className='w-2 h-2 xs:w-3 xs:h-3' />
-                              </div>
-                            </div>
-                          )}
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              )}
-
-          {/* Stock indicator for selected combination */}
-          {isMicrofiber && selectedColor && selectedSize && (
+                  })}
+              </div>
+            </div>
+          )}
+          {isMicrofiber && packSizes.length > 0 && (
+            <div className='space-y-2 sm:space-y-3'>
+              <h4 className='font-medium text-xs xs:text-sm'>Choose Pack Size:</h4>
+              <div className='flex flex-wrap gap-1 xs:gap-2'>
+                {packSizes.map((packSize) => {
+                  const variant = getVariantForCombination(selectedColor, selectedSize, packSize);
+                  const isOutOfStock = !variant || variant.stock === 0;
+                  const isSelected = selectedPackSize === packSize;
+                  return (
+                    <button
+                      key={packSize}
+                      onClick={() => handlePackSizeSelect(packSize)}
+                      disabled={isOutOfStock}
+                      className={`px-2 py-1 xs:px-3 xs:py-2 sm:px-4 sm:py-2 text-xs xs:text-sm font-medium rounded-full transition-all duration-200 ${
+                        isSelected
+                          ? 'bg-white text-black border-2 border-black'
+                          : isOutOfStock
+                          ? 'bg-gray-100 text-gray-400 cursor-not-allowed border border-gray-200'
+                          : 'bg-gray-100 text-gray-600 hover:bg-gray-200 border border-transparent'
+                      }`}
+                    >
+                      Pack of {packSize}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+          {isMicrofiber && selectedColor && selectedSize && selectedPackSize && (
             <div className='text-xs text-gray-600'>
               {(() => {
                 const variant = getVariantForCombination(
                   selectedColor,
-                  selectedSize
+                  selectedSize,
+                  selectedPackSize
                 );
                 if (variant && variant.stock > 0) {
                   return (
@@ -965,6 +868,46 @@ export default function FeaturedProductCard({
           )}
 
           {/* Stock indicator for non-microfiber selected variant */}
+          {!isMicrofiber && allVariants.length > 0 && (
+            <div className='space-y-2 sm:space-y-3'>
+              <h4 className='font-medium text-xs xs:text-sm'>Choose Quantity:</h4>
+              <div className='flex flex-wrap gap-1 xs:gap-2'>
+                {allVariants.map((variant, index) => {
+                  const isOutOfStock = variant.stock === 0;
+                  const isSelected = selectedVariant?.id === variant.id;
+                  const quantity = variant.quantity || variant.size || '';
+                  const unit = variant.unit || '';
+                  return (
+                    <div key={variant.id || index} className='relative group'>
+                      <button
+                        onClick={() => handleVariantSelect(variant)}
+                        disabled={isOutOfStock}
+                        className={`
+                          px-2 py-1 xs:px-3 xs:py-2 sm:px-4 sm:py-2 text-xs xs:text-sm font-medium transition-all duration-200 rounded-full
+                          ${
+                            isSelected
+                              ? 'bg-white text-black border-2 border-black'
+                              : isOutOfStock
+                              ? 'bg-gray-100 text-gray-400 cursor-not-allowed border border-gray-200'
+                              : 'bg-gray-100 text-gray-600 hover:bg-gray-200 border border-transparent'
+                          }
+                        `}
+                      >
+                        <span>{`${quantity}${unit}`}</span>
+                      </button>
+                      {isOutOfStock && (
+                        <div className='absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none'>
+                          <div className='bg-red-500 text-white rounded-full p-1'>
+                            <X className='w-2 h-2 xs:w-3 xs:h-3' />
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
           {!isMicrofiber && selectedVariant && (
             <div className='text-xs text-gray-600'>
               {selectedVariant.stock > 0 ? (

@@ -12,7 +12,7 @@ export default function CartItem({ item, formatPrice, getVariantDisplayText }) {
   const [comboKitDetails, setComboKitDetails] = useState(null);
 
   useEffect(() => {
-    async function fetchComboKit() { 
+    async function fetchComboKit() {
       if (item.combo_id) {
         const combos = await ComboService.getCombos(item.combo_id);
         const details = combos && combos.length > 0 ? combos[0] : null;
@@ -168,9 +168,16 @@ export default function CartItem({ item, formatPrice, getVariantDisplayText }) {
         ) : (
           // Regular product variant info
           item.variant && (
-            <p className='text-gray-500 text-xs mt-1'>
-              {item.variant.size || item.variant.displayText || getVariantDisplayText(item.variant)}
-            </p>
+            <>
+              <p className='text-gray-500 text-xs mt-1'>
+                {item.variant.size || item.variant.displayText || getVariantDisplayText(item.variant)}
+              </p>
+              {(item.variant.variant_code || item.variant.code || item.variant.id) ? (
+                <p className='text-gray-400 text-xs mt-0.5'>
+                  Code: {item.variant.variant_code || item.variant.code || item.variant.id}
+                </p>
+              ) : null}
+            </>
           )
         )}
 

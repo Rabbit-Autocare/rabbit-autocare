@@ -1,11 +1,11 @@
-// src/lib/shiprocket.js
 import axios from 'axios';
 
-const SHIPROCKET_EMAIL = "yogesh.indietribe@gmail.com"; // ✅ Email you used to login to Shiprocket panel
-const SHIPROCKET_PASSWORD = "3F*PBk^Si&!QIPym";     // ✅ Password for that email
+const SHIPROCKET_EMAIL = "yogesh.indietribe@gmail.com"; // ✅ Your Shiprocket login email
+const SHIPROCKET_PASSWORD = "3F*PBk^Si&!QIPym";          // ✅ Your Shiprocket password
 
 let token = null;
 
+// Authenticate and create order
 export async function createShiprocketOrder(orderData) {
   if (!token) {
     try {
@@ -21,10 +21,9 @@ export async function createShiprocketOrder(orderData) {
           },
         }
       );
-
       token = response.data.token;
     } catch (error) {
-      console.error("🚨 Failed to authenticate with Shiprocket:", error.response?.data || error.message);
+      console.error("🚨 Shiprocket login failed:", error.response?.data || error.message);
       throw new Error("Shiprocket login failed.");
     }
   }
@@ -47,49 +46,51 @@ export async function createShiprocketOrder(orderData) {
   }
 }
 
+// Map your Supabase order object to Shiprocket's format
 export function mapOrderToShiprocket(order) {
   const shipping = order.user_info?.shipping_address || {};
 
-  // Calculate total product-level discount
   function getOrderItems(items) {
     return items.flatMap((item) => {
-      if (item.type === 'kit' && Array.isArray(item.kit_products)) {
-        return item.kit_products.map((kp) => ({
-          name: `${item.name} - ${kp.product?.name || kp.product_name || ''} (${kp.variant?.size || ''}${kp.variant?.unit || ''}${kp.variant?.color ? ', ' + kp.variant.color : ''})`,
-          sku: kp.product_code || kp.product?.product_code || 'SKU123',
-          units: kp.quantity * (item.quantity || 1),
-          selling_price: kp.variant?.price || 0,
-          original_price: kp.variant?.compare_at_price || kp.variant?.price || 0,
+      const extractItem = (entry, multiplier = 1) => {
+        const price = Number(entry.variant?.price || entry.price || 0);
+        const gstPercent = Number(entry.variant?.gst_percent || 18);
+        const hsnCode = entry.variant?.hsn_code || entry.product?.hsn_code || 'NA';
+
+        const basePriceExclGst = price / (1 + gstPercent / 100);
+        const gstAmount = price - basePriceExclGst;
+
+        return {
+          name: entry.product?.name || entry.name || '',
+          sku: entry.product?.product_code || entry.product_code || 'SKU123',
+          units: entry.quantity * multiplier,
+          selling_price: price,
+          original_price: entry.variant?.compare_at_price || price,
           discount_percent: item.discount_percentage || 0,
-        }));
+          hsn: item.hsn || '33073000', 
+          taxable_value: Number(basePriceExclGst.toFixed(2)),
+          gst_percent: gstPercent,
+          gst_amount: Number(gstAmount.toFixed(2)),
+          total: Number(price.toFixed(2)),
+        };
+      };
+
+      if (item.type === 'kit') {
+        return item.kit_products.map((kp) => extractItem(kp, item.quantity));
+      } else if (item.type === 'combo') {
+        return item.combo_products.map((cp) => extractItem(cp, item.quantity));
+      } else {
+        return [extractItem(item)];
       }
-      if (item.type === 'combo' && Array.isArray(item.combo_products)) {
-        return item.combo_products.map((cp) => ({
-          name: `${item.name} - ${cp.product?.name || cp.product_name || ''} (${cp.variant?.size || ''}${cp.variant?.unit || ''}${cp.variant?.color ? ', ' + cp.variant.color : ''})`,
-          sku: cp.product_code || cp.product?.product_code || 'SKU123',
-          units: cp.quantity * (item.quantity || 1),
-          selling_price: cp.variant?.price || 0,
-          original_price: cp.variant?.compare_at_price || cp.variant?.price || 0,
-          discount_percent: item.discount_percentage || 0,
-        }));
-      }
-      // Regular product
-      return [{
-        name: item.name,
-        sku: item.product_code || 'SKU123',
-        units: item.quantity,
-        selling_price: item.price,
-        original_price: item.original_price || item.price,
-        discount_percent: item.discount_percentage || 0,
-      }];
     });
   }
 
-  // Calculate total original price and total discount
-  const orderItems = getOrderItems(order.items);
-  const totalOriginal = orderItems.reduce((sum, i) => sum + (i.original_price || 0) * (i.units || 1), 0);
-  const totalFinal = orderItems.reduce((sum, i) => sum + (i.selling_price || 0) * (i.units || 1), 0);
-  const totalDiscount = totalOriginal - totalFinal;
+  const orderItems = getOrderItems(order.items || []);
+  const subTotal = orderItems.reduce((sum, i) => sum + (i.original_price || 0) * i.units, 0);
+  const total = orderItems.reduce((sum, i) => sum + (i.total || 0) * i.units, 0);
+  const totalGst = orderItems.reduce((sum, i) => sum + (i.gst_amount || 0) * i.units, 0);
+  const totalTaxable = orderItems.reduce((sum, i) => sum + (i.taxable_value || 0) * i.units, 0);
+  const totalDiscount = subTotal - total;
 
   return {
     order_id: order.order_number,
@@ -105,18 +106,37 @@ export function mapOrderToShiprocket(order) {
     billing_email: order.user_info?.email || '',
     billing_phone: shipping.phone || '',
     shipping_is_billing: true,
-    order_items: orderItems,
     payment_method: 'Prepaid',
-    sub_total: totalOriginal,
-    discount: totalDiscount,
-    total_discount: totalDiscount,
-    total: totalFinal,
+    order_items: orderItems,
+    sub_total: Number(totalTaxable.toFixed(2)),
+    gst_total: Number(totalGst.toFixed(2)),
+    discount: Number(totalDiscount.toFixed(2)),
+    total_discount: Number(totalDiscount.toFixed(2)),
+    total: Number(total.toFixed(2)),
     length: 10,
     breadth: 15,
     height: 10,
-    weight: 1,
+    weight: calculateTotalWeight(order.items),
     comment: order.coupon_code
-      ? `Coupon: ${order.coupon_code} | Original: ₹${totalOriginal} | Discount: ₹${totalDiscount} | Final: ₹${totalFinal}`
-      : `Original: ₹${totalOriginal} | Discount: ₹${totalDiscount} | Final: ₹${totalFinal}`,
+      ? `Coupon: ${order.coupon_code} | Taxable: ₹${totalTaxable} | GST: ₹${totalGst} | Final: ₹${total}`
+      : `Taxable: ₹${totalTaxable} | GST: ₹${totalGst} | Final: ₹${total}`,
   };
+}
+
+function calculateTotalWeight(items) {
+  let totalWeight = 0;
+  for (const item of items) {
+    if (item.type === 'kit') {
+      for (const kp of item.kit_products || []) {
+        totalWeight += (kp.variant?.weight_grams || 0) * kp.quantity * item.quantity;
+      }
+    } else if (item.type === 'combo') {
+      for (const cp of item.combo_products || []) {
+        totalWeight += (cp.variant?.weight_grams || 0) * cp.quantity * item.quantity;
+      }
+    } else {
+      totalWeight += (item.variant?.weight_grams || 0) * item.quantity;
+    }
+  }
+  return Math.max(1, +(totalWeight / 1000).toFixed(2)); // in kg, minimum 1kg
 }

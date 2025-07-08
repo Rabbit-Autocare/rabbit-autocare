@@ -114,30 +114,6 @@ export class ProductService {
     }
   }
 
-  static transformProductData(product) {
-    if (!product) return null;
-
-    const variants = product.product_variants || product.variants || [];
-
-    return {
-      ...product,
-      category: product.category,
-      subcategory: product.subcategory,
-      variants: variants.map((variant) => ({
-        id: variant.id,
-        size: variant.size,
-        quantity: variant.quantity,
-        unit: variant.unit || 'ml',
-        color: variant.color,
-        color_hex: variant.color_hex || null,
-        stock: variant.stock || 0,
-        price: variant.price || variant.base_price || 0,
-        mrp: variant.mrp || variant.price || variant.base_price || 0,
-        base_price: variant.base_price || 0,
-      })),
-    };
-  }
-
   static extractProducts(response) {
     if (!response) return [];
     if (Array.isArray(response.products)) return response.products;
@@ -164,12 +140,16 @@ export class ProductService {
 
   static getLowestPrice(variants) {
     if (!Array.isArray(variants) || variants.length === 0) return 0;
-    return Math.min(...variants.map((v) => Number.parseFloat(v.base_price) || 0));
+    return Math.min(
+      ...variants.map((v) => Number.parseFloat(v.base_price) || 0)
+    );
   }
 
   static getHighestPrice(variants) {
     if (!Array.isArray(variants) || variants.length === 0) return 0;
-    return Math.max(...variants.map((v) => Number.parseFloat(v.base_price) || 0));
+    return Math.max(
+      ...variants.map((v) => Number.parseFloat(v.base_price) || 0)
+    );
   }
 
   static generateVariantId() {
@@ -189,9 +169,13 @@ export class ProductService {
     );
     const availableVariants = variants.filter((v) => (v.stock || 0) > 0).length;
     const minPrice =
-      variants.length > 0 ? Math.min(...variants.map((v) => v.base_price || 0)) : 0;
+      variants.length > 0
+        ? Math.min(...variants.map((v) => v.base_price || 0))
+        : 0;
     const maxPrice =
-      variants.length > 0 ? Math.max(...variants.map((v) => v.base_price || 0)) : 0;
+      variants.length > 0
+        ? Math.max(...variants.map((v) => v.base_price || 0))
+        : 0;
 
     if (minPrice === 0 && maxPrice === 0) {
       console.log('Product has no valid price data:', product.name);
@@ -244,7 +228,10 @@ export class ProductService {
     }
   }
 
-  static async getProductsByCategory(categoryName, { limit, sort, filters = {} } = {}) {
+  static async getProductsByCategory(
+    categoryName,
+    { limit, sort, filters = {} } = {}
+  ) {
     try {
       if (!categoryName || categoryName === 'all') {
         return this.getProducts({ limit, sort, filters });
@@ -266,103 +253,142 @@ export class ProductService {
     // Use product_variants if available, otherwise use variants
     const variants = product.product_variants || product.variants || [];
 
+    // Debug logging for microfiber products
+    if (product?.product_type === 'microfiber') {
+      console.log('🔧 ProductService.transformProductData INPUT:', {
+        productName: product.name,
+        productType: product.product_type,
+        variantCount: variants.length,
+        rawVariants: variants.map((v) => ({
+          id: v.id,
+          color: v.color,
+          colorType: typeof v.color,
+          isArray: Array.isArray(v.color),
+          size: v.size,
+          stock: v.stock,
+          base_price: v.base_price,
+        })),
+      });
+    }
+
     const transformedData = {
       ...product,
       category: product.category,
       subcategory: product.subcategory,
       variants: variants.map((variant) => {
-        return {
+        const transformedVariant = {
           id: variant.id,
           variant_code: variant.variant_code,
           size: variant.size,
           quantity: variant.quantity,
           unit: variant.unit || 'ml',
-          color: variant.color,
-          color_hex: variant.color_hex || null,
+          // Handle color as array or string
+          color: Array.isArray(variant.color)
+            ? variant.color[0]
+            : variant.color,
+          color_hex: Array.isArray(variant.color_hex)
+            ? variant.color_hex[0]
+            : variant.color_hex || null,
           stock: variant.stock || 0,
+          price: variant.price || variant.base_price || 0,
+          mrp: variant.mrp || variant.price || variant.base_price || 0,
           base_price: variant.base_price || 0,
         };
+
+        // Debug log for microfiber products
+        if (product?.product_type === 'microfiber') {
+          console.log('🔧 Variant transformation:', {
+            originalColor: variant.color,
+            transformedColor: transformedVariant.color,
+            originalStock: variant.stock,
+            transformedStock: transformedVariant.stock,
+            size: transformedVariant.size,
+          });
+        }
+
+        return transformedVariant;
       }),
     };
+
+    // Final debug log
+    if (product?.product_type === 'microfiber') {
+      console.log('🔧 ProductService.transformProductData OUTPUT:', {
+        productName: transformedData.name,
+        variantCount: transformedData.variants.length,
+        transformedVariants: transformedData.variants.map((v) => ({
+          id: v.id,
+          color: v.color,
+          size: v.size,
+          stock: v.stock,
+          base_price: v.base_price,
+        })),
+      });
+    }
 
     return transformedData;
   }
 
-  generateVariantId() {
+  static generateVariantId() {
     return `var_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
   }
 
-  // ============= UTILITY METHODS =============
+  static async updateProduct(productId, productData) {
+    try {
+      const res = await fetch(`${API_BASE_URL}/${productId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(productData),
+      });
 
-  static formatProductForDisplay(product) {
-    if (!product) return null;
+      if (!res.ok) {
+        const errorText = await res.text();
+        try {
+          const errorJson = JSON.parse(errorText);
+          throw new Error(errorJson.error || `API error: ${res.status}`);
+        } catch (e) {
+          throw new Error(
+            `API error: ${errorText || res.statusText || res.status}`
+          );
+        }
+      }
 
-    const transformedProduct = this.transformProductData(product);
-    if (!transformedProduct || !transformedProduct.id) return null;
-
-    const variants = transformedProduct.variants || [];
-    const totalStock = variants.reduce(
-      (sum, variant) => sum + (variant.stock || 0),
-      0
-    );
-    const availableVariants = variants.filter((v) => (v.stock || 0) > 0).length;
-    const minPrice =
-      variants.length > 0 ? Math.min(...variants.map((v) => v.base_price || 0)) : 0;
-    const maxPrice =
-      variants.length > 0 ? Math.max(...variants.map((v) => v.base_price || 0)) : 0;
-
-    // Ensure we have valid price data
-    if (minPrice === 0 && maxPrice === 0) {
-      console.log('Product has no valid price data:', product.name);
-      return null;
+      const data = await res.json();
+      return this.transformProductData(data.product || data);
+    } catch (error) {
+      console.error('Error in updateProduct:', error);
+      throw error;
     }
-
-    return {
-      ...transformedProduct,
-      totalStock,
-      availableVariants,
-      minPrice,
-      maxPrice,
-    };
   }
 
-  static extractProducts(response) {
-    if (!response) return [];
-    if (Array.isArray(response.products)) {
-      return response.products;
-    }
-    if (Array.isArray(response.data)) {
-      return response.data;
-    }
-    if (Array.isArray(response)) {
-      return response;
-    }
-    return [];
-  }
+  static async createProduct(productData) {
+    try {
+      const res = await fetch(API_BASE_URL, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(productData),
+      });
 
-  static extractTotalCount(response) {
-    if (response && typeof response.total === 'number') {
-      return response.total;
+      if (!res.ok) {
+        const errorText = await res.text();
+        try {
+          const errorJson = JSON.parse(errorText);
+          throw new Error(errorJson.error || `API error: ${res.status}`);
+        } catch (e) {
+          throw new Error(
+            `API error: ${errorText || res.statusText || res.status}`
+          );
+        }
+      }
+
+      const data = await res.json();
+      return this.transformProductData(data.product || data);
+    } catch (error) {
+      console.error('Error in createProduct:', error);
+      throw error;
     }
-    return this.extractProducts(response).length;
-  }
-
-  static hasCategoryData(product) {
-    return (
-      product &&
-      product.category !== undefined &&
-      product.category !== null &&
-      product.category !== ''
-    );
-  }
-
-  static getLowestPrice(variants) {
-    if (!Array.isArray(variants) || variants.length === 0) return 0;
-    return Math.min(...variants.map((v) => Number.parseFloat(v.base_price) || 0));
-  }
-
-  static getHighestPrice(variants) {
-    if (!Array.isArray(variants) || variants.length === 0) return 0;
-    return Math.max(...variants.map((v) => Number.parseFloat(v.base_price) || 0));
   }
 }

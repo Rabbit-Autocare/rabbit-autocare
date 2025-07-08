@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createSupabaseServerClient } from '@/lib/supabase/server-client';
+import { ProductService } from '@/lib/service/productService';
 
 export async function GET(request, { params }) {
   try {
@@ -45,7 +46,16 @@ export async function GET(request, { params }) {
     console.log('Supabase product fetch result:', {
       id,
       product: product
-        ? { ...product, product_variants: product.product_variants?.length }
+        ? {
+            ...product,
+            product_variants: product.product_variants?.map((v) => ({
+              id: v.id,
+              color: v.color,
+              size: v.size,
+              stock: v.stock,
+              base_price: v.base_price,
+            })),
+          }
         : null,
       error,
     });
@@ -83,7 +93,25 @@ export async function GET(request, { params }) {
     // Remove the product_variants key to avoid duplication
     delete transformedProduct.product_variants;
 
-    return NextResponse.json(transformedProduct);
+    // Apply the same transformation used by ProductService
+    const finalProduct =
+      ProductService.transformProductData(transformedProduct);
+
+    // Debug: Log transformation result for microfiber products
+    if (finalProduct?.product_type === 'microfiber') {
+      console.log('🧽 API Transformation Result:', {
+        name: finalProduct.name,
+        variants: finalProduct.variants?.map((v) => ({
+          id: v.id,
+          color: v.color,
+          size: v.size,
+          stock: v.stock,
+          base_price: v.base_price,
+        })),
+      });
+    }
+
+    return NextResponse.json(finalProduct);
   } catch (error) {
     console.error('Error in GET /api/products/[id]:', error);
     return NextResponse.json(

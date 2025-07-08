@@ -7,9 +7,9 @@ import Image from 'next/image';
 // Top navigation links - easy to update
 const topNavLinks = [
   { name: 'HOME', href: '/' },
-  { name: 'ABOUT US', href: '/about' },
-  { name: 'PRODUCTS', href: '/products' },
+  { name: 'PRODUCTS', href: '/shop/all' },
   { name: 'BLOGS', href: '/blog' },
+  { name: 'ABOUT US', href: '/about' },
   { name: 'GET IN TOUCH', href: '/contact' },
 ];
 

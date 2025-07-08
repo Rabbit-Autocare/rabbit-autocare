@@ -1,6 +1,6 @@
 "use client"
 import Image from "next/image"
-import PriceSummary from "./PriceSummary";
+
 
 // Helper function to display variant info
 function getVariantDisplayText(variant, isMicrofiber) {

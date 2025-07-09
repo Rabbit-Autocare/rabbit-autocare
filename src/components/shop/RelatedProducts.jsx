@@ -4,28 +4,78 @@ import { useState, useEffect } from "react"
 import Image from "next/image"
 import Link from "next/link"
 import { ProductService } from "@/lib/service/productService"
+import { KitsCombosService } from "@/lib/service/kitsCombosService"
+import ProductCard from "@/components/shop/ProductCard";
 
-export default function RelatedProducts({ categoryName, currentProductId, limit = 4 }) {
+export default function RelatedProducts({ categoryName, currentProductId, limit = 4, includedProducts }) {
   const [products, setProducts] = useState([])
   const [loading, setLoading] = useState(true)
 
+  // Ensure every product has a valid variants array with base_price
+  const normalizeProduct = (prod) => {
+    const basePrice = Number(prod.base_price || prod.price || 0);
+    let variants = prod.variants;
+    if (!Array.isArray(variants) || variants.length === 0) {
+      variants = [{ base_price: basePrice }];
+    } else {
+      variants = variants.map(v => ({
+        ...v,
+        base_price: Number(v.base_price || v.price || basePrice)
+      }));
+    }
+    return {
+      ...prod,
+      base_price: basePrice,
+      variants,
+      product_code: prod.product_code || prod.id,
+    };
+  };
+
   useEffect(() => {
-    async function fetchRelatedProducts() {
+    async function fetchAllRelated() {
+      setLoading(true)
       try {
-        setLoading(true)
+        // If includedProducts (for kits/combos) is present, just show those
+        if (includedProducts && includedProducts.length > 0) {
+          const mapped = includedProducts.map((item) => {
+            const prod = item.product || item;
+            return normalizeProduct(prod);
+          });
+          setProducts(mapped);
+          setLoading(false);
+          return;
+        }
 
-        // Fetch products from the same category
-        const response = await ProductService.getProductsByCategory(
-          categoryName || "all",
-          { limit: limit + 1 }, // Fetch one extra to filter out current product
-        )
+        // For normal products: fetch category products and kits/combos that include this product
+        const [categoryResp, kitsCombosResp] = await Promise.all([
+          ProductService.getProductsByCategory(
+            categoryName || "all",
+            { limit: limit + 4 }
+          ),
+          KitsCombosService.getRelatedProducts(currentProductId)
+        ]);
 
-        // Filter out the current product and limit to requested number
-        const filteredProducts = ProductService.extractProducts(response)
-          .filter((product) => product.product_code !== currentProductId)
-          .slice(0, limit)
+        // Extract products from category
+        const categoryProducts = ProductService.extractProducts(categoryResp)
+          .filter((product) => product.product_code !== currentProductId && product.id !== currentProductId)
+          .map(normalizeProduct)
+          .slice(0, limit);
 
-        setProducts(filteredProducts)
+        // Extract kits and combos
+        const kits = (kitsCombosResp?.kits || []).map(kit => normalizeProduct(kit));
+        const combos = (kitsCombosResp?.combos || []).map(combo => normalizeProduct(combo));
+
+        // Merge and deduplicate by id
+        const all = [...categoryProducts, ...kits, ...combos];
+        const seen = new Set();
+        const unique = all.filter(item => {
+          if (!item || !item.id) return false;
+          if (seen.has(item.id)) return false;
+          seen.add(item.id);
+          return true;
+        }).slice(0, limit);
+
+        setProducts(unique);
       } catch (error) {
         console.error("Error fetching related products:", error)
       } finally {
@@ -33,10 +83,8 @@ export default function RelatedProducts({ categoryName, currentProductId, limit 
       }
     }
 
-    if (categoryName) {
-      fetchRelatedProducts()
-    }
-  }, [categoryName, currentProductId, limit])
+    fetchAllRelated();
+  }, [categoryName, currentProductId, limit, includedProducts])
 
   // Format price with currency
   const formatPrice = (price) => {
@@ -68,33 +116,17 @@ export default function RelatedProducts({ categoryName, currentProductId, limit 
     return null
   }
 
+  // Debug: Log products and their variants before rendering
+  console.log('RelatedProducts: products to render', products);
+  products.forEach((p, i) => console.log(`Product ${i} variants:`, p.variants));
+
   return (
     <div className="mt-16">
       <h2 className="text-2xl font-bold mb-6">You might also like</h2>
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        {products.map((product) => (
-          <div key={product.id} className="group">
-            <Link href={`/shop/product/${product.product_code}`} className="block">
-              <div className="aspect-square bg-gray-50 rounded-lg overflow-hidden mb-3 relative">
-                <Image
-                  src={product.main_image_url || "/placeholder.svg"}
-                  alt={product.name}
-                  fill
-                  className="object-cover group-hover:scale-105 transition-transform duration-300"
-                />
-              </div>
-              <h3 className="font-medium text-sm line-clamp-2">{product.name}</h3>
-              <p className="text-sm mt-1">
-                {product.minPrice === product.maxPrice
-                  ? formatPrice(product.minPrice)
-                  : `${formatPrice(product.minPrice)} - ${formatPrice(product.maxPrice)}`}
-              </p>
-            </Link>
-            <button className="w-full mt-2 py-2 px-4 border border-gray-300 rounded-md text-sm hover:bg-gray-50 transition-colors">
-              View Product
-            </button>
-          </div>
+        {products.map((product, idx) => (
+          <ProductCard key={product.id || idx} product={product} index={idx} />
         ))}
       </div>
     </div>

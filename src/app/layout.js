@@ -1,5 +1,5 @@
 // app/layout.js
-import { Inter } from "next/font/google";
+import localFont from "next/font/local";
 import "./globals.css";
 import ClientLayout from "./client-layout";
 import { AuthProvider } from '@/contexts/AuthContext'
@@ -8,7 +8,19 @@ import { createSupabaseServerClient } from '@/lib/supabase/server-client';
 import { fetchCartItems } from '@/lib/service/cartService';
 import { transformCartForCheckout } from '@/lib/utils/cartTransformUtils';
 
-const inter = Inter({ subsets: ["latin"] });
+// Montserrat for paragraphs and spans
+const montserrat = localFont({
+  src: '../../public/fonts/Montserrat-Regular.ttf',
+  variable: '--font-montserrat',
+  display: 'swap',
+});
+
+// Sansation for headings and buttons
+const sansation = localFont({
+  src: '../../public/fonts/Sansation-Regular.ttf',
+  variable: '--font-sansation',
+  display: 'swap',
+});
 
 export const metadata = {
   title: "Rabbit Auto Care",
@@ -32,8 +44,8 @@ export default async function RootLayout({ children }) {
   }
 
   return (
-    <html lang="en" suppressHydrationWarning>
-      <body className={inter.className} suppressHydrationWarning>
+    <html lang="en" className={`${montserrat.variable} ${sansation.variable}`} suppressHydrationWarning>
+      <body suppressHydrationWarning>
         <AuthProvider>
           {/* ✅ ScrollSmoother wrapper */}
           <div id="smooth-wrapper">

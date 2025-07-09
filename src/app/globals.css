@@ -115,6 +115,7 @@
   }
   body {
     @apply bg-background text-foreground;
+    font-family: var(--font-montserrat), Arial, sans-serif;
   }
 }
 
@@ -208,4 +209,15 @@ body.mobile-menu-open .theme-component {
   height: 100vh;
   height: -webkit-fill-available;
   height: 100dvh;
+}
+
+/* Font Applications */
+/* Use Montserrat for paragraphs and spans */
+p, span {
+  font-family: var(--font-montserrat), Arial, sans-serif;
+}
+
+/* Use Sansation for headings and buttons */
+h1, h2, h3, h4, h5, h6, button {
+  font-family: var(--font-sansation), Arial, sans-serif;
 }

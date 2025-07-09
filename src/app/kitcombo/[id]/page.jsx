@@ -3,8 +3,11 @@
 import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
 import KitComboCard from "@/components/ui/KitComboCard";
+import ProductTabs from "@/components/shop/ProductTabs";
+import RelatedProducts from "@/components/shop/RelatedProducts";
 import { KitService } from "@/lib/service/kitService";
 import { ComboService } from "@/lib/service/comboService";
+import { ProductService } from "@/lib/service/productService";
 
 export default function KitComboDetailPage() {
   const pathname = usePathname();
@@ -12,6 +15,7 @@ export default function KitComboDetailPage() {
   const [kitCombo, setKitCombo] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [includedProducts, setIncludedProducts] = useState([]);
 
   useEffect(() => {
     const fetchKitCombo = async () => {
@@ -33,12 +37,28 @@ export default function KitComboDetailPage() {
         if (!data) {
           setError("Kit or Combo not found");
           setKitCombo(null);
+          setIncludedProducts([]);
         } else {
           setKitCombo(data);
+
+          // Fetch full product details for included products
+          let included = [];
+          if (data.kit_products && data.kit_products.length > 0) {
+            included = data.kit_products;
+          } else if (data.combo_products && data.combo_products.length > 0) {
+            included = data.combo_products;
+          }
+          // Fetch all products in parallel
+          const productPromises = included.map(item =>
+            ProductService.getProduct(item.product_id)
+          );
+          const fullProducts = await Promise.all(productPromises);
+          setIncludedProducts(fullProducts.filter(Boolean));
         }
       } catch (err) {
         setError("Error fetching kit/combo details");
         setKitCombo(null);
+        setIncludedProducts([]);
       }
       setLoading(false);
     };
@@ -50,13 +70,18 @@ export default function KitComboDetailPage() {
   if (!kitCombo) return null;
 
   return (
-    <div className="space-y-12">
+    <div className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8 space-y-12">
       <div className="flex flex-col md:flex-row items-start gap-8">
         <div className="w-full">
           <KitComboCard product={kitCombo} />
         </div>
       </div>
-      {/* You can add tabs, related products, etc. here if needed */}
+      <ProductTabs product={kitCombo} reviews={kitCombo.reviews} />
+      <RelatedProducts
+        categoryName={kitCombo.category?.name || kitCombo.category_name}
+        currentProductId={kitCombo.product_code || kitCombo.id}
+        includedProducts={includedProducts}
+      />
     </div>
   );
 }

@@ -5,21 +5,21 @@ import Image from 'next/image';
 export default function WhyChooseRabbit() {
   const whyChooseData = [
     {
-      title: "Fast Delivery",
+      title: "Intentional Design",
       description:
-        "Lorem ipsum dolor sit amet consectetur. Tellus massa non varius felis cras. Ullamcorper et ut vitae eget proin donec sed interdum elementum.",
+        "Every bottle, cloth, and box is curated to flex — built for performance, styled for the shelf and socials.",
       icon: "/assets/chooserabbit.svg",
     },
     {
-      title: "Quality Products",
+      title: "Premium Inside",
       description:
-        "Lorem ipsum dolor sit amet consectetur. Tellus massa non varius felis cras. Ullamcorper et ut vitae eget proin donec sed interdum elementum.",
+        "High-performance formulas and pro-level materials give your ride the glow-up it deserves — luxe feel, real results, no gimmicks.",
       icon: "/assets/chooserabbit.svg",
     },
     {
-      title: "Reliable Service",
+      title: "Detail Culture",
       description:
-        "Lorem ipsum dolor sit amet consectetur. Tellus massa non varius felis cras. Ullamcorper et ut vitae eget proin donec sed interdum elementum.",
+        "We're not just car care. We're an aesthetic. From drip to dashboard, it's about the vibe, the vision, the finish.",
       icon: "/assets/chooserabbit.svg",
     },
   ];

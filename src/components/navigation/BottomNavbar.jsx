@@ -384,41 +384,23 @@ export default function BottomNavbar() {
         onMouseLeave={() => setIsCouponsOpen(false)}
       >
         <div className="p-2">
-          {/* <h3 className="font-semibold text-lg mb-4 text-gray-800">Your Available Coupons</h3> */}
-          <div className="coupon-scroll-area">
+          <div className="coupon-scroll-area max-h-80 overflow-y-auto" style={{ overscrollBehavior: 'contain', touchAction: 'auto' }}>
             {authLoading ? (
               <div className="text-center p-4">
                 <p className="text-gray-500">Loading...</p>
               </div>
             ) : user ? (
-              (userCoupons.length > 0 || availableCoupons.length > 0) ? (
+              availableCoupons.length > 0 ? (
                 <div className="space-y-3">
-                  {userCoupons.length > 0 && (
-                    <>
-                      <h4 className="font-semibold text-sm text-gray-600 px-2 pt-2">Your Coupons</h4>
-                      {userCoupons.map((coupon) => (
-                        <CouponCard
-                          key={`user-${coupon.id}`}
-                          code={coupon.code}
-                          discount={coupon.discount}
-                          validUpto={coupon.validUpto}
-                        />
-                      ))}
-                    </>
-                  )}
-                  {availableCoupons.length > 0 && (
-                    <>
-                      <h4 className="font-semibold text-sm text-gray-600 px-2 pt-4">Available Coupons</h4>
-                      {availableCoupons.map((coupon) => (
-                        <CouponCard
-                          key={`avail-${coupon.id}`}
-                          code={coupon.code}
-                          discount={coupon.discount}
-                          validUpto={coupon.validUpto}
-                        />
-                      ))}
-                    </>
-                  )}
+                  <h4 className="font-semibold text-sm text-gray-600 px-2 pt-2">Available Coupons</h4>
+                  {availableCoupons.map((coupon) => (
+                    <CouponCard
+                      key={`avail-${coupon.id}`}
+                      code={coupon.code}
+                      discount={coupon.discount}
+                      validUpto={coupon.validUpto}
+                    />
+                  ))}
                 </div>
               ) : (
                 <div className="text-center py-8 text-gray-500">

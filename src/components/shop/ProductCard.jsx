@@ -176,20 +176,6 @@ export default function ProductCard({ product, index }) {
       style={{ width: '300px', height: '470px' }}
       onClick={handleViewProduct}
     >
-      {/* Wishlist Button */}
-      <button
-        onClick={handleWishlistToggle}
-        className='absolute top-3 right-3 z-10 p-2 rounded-full bg-white/90 hover:bg-white transition-colors shadow-sm border border-gray-100'
-        aria-label={isWishlisted ? 'Remove from wishlist' : 'Add to wishlist'}
-        disabled={wishlistLoading}
-      >
-        <Heart
-          size={16}
-          className={`${
-            isWishlisted ? 'text-red-500 fill-current' : 'text-gray-500'
-          } transition-colors`}
-        />
-      </button>
 
       {/* Product Image - Full width */}
       <div className='relative h-56 w-full bg-gray-50 flex-shrink-0'>

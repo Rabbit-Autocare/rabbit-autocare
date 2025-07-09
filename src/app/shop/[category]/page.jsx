@@ -245,10 +245,11 @@ export default function ShopPage({ initialCategories, initialError }) {
         if (selectedRating > 0) {
           const beforeRatingFilter = filteredProducts.length;
           filteredProducts = filteredProducts.filter(product => {
-            const rating = parseFloat(product.rating) || 0;
-            const passes = rating >= selectedRating;
+            const ratings = generateDeterministicRatings(product);
+            const avg = ratings.reduce((a, b) => a + b, 0) / ratings.length;
+            const passes = avg >= selectedRating;
             if (!passes) {
-              console.log(`Rating filter removed: ${product.name} (rating: ${rating}, required: ${selectedRating})`);
+              console.log(`Rating filter removed: ${product.name} (rating: ${avg}, required: ${selectedRating})`);
             }
             return passes;
           });
@@ -310,7 +311,10 @@ export default function ShopPage({ initialCategories, initialError }) {
       if (selectedGsm.length > 0) {
         filteredProducts = filteredProducts.filter(product => {
           const variants = product.variants || [];
-          return variants.some(variant => selectedGsm.includes(variant.gsm));
+          // Check variant.gsm OR product name
+          const matchesGsm = variants.some(variant => selectedGsm.includes(String(variant.gsm)))
+            || selectedGsm.some(gsm => product.name && product.name.toLowerCase().includes(gsm.toLowerCase()));
+          return matchesGsm;
         });
       }
 
@@ -318,7 +322,12 @@ export default function ShopPage({ initialCategories, initialError }) {
       if (selectedQuantity.length > 0) {
         filteredProducts = filteredProducts.filter(product => {
           const variants = product.variants || [];
-          return variants.some(variant => selectedQuantity.includes(variant.quantity));
+          return variants.some(variant => {
+            // Build a normalized string for the variant's quantity and unit
+            const variantQuantity = `${variant.quantity}${variant.unit ? ' ' + variant.unit : ''}`.replace(/\s+/g, '').toLowerCase();
+            // Check against all selected quantities, normalized
+            return selectedQuantity.some(q => q.replace(/\s+/g, '').toLowerCase() === variantQuantity);
+          });
         });
       }
 
@@ -338,8 +347,9 @@ export default function ShopPage({ initialCategories, initialError }) {
       // Apply rating filter
       if (selectedRating > 0) {
         filteredProducts = filteredProducts.filter(product => {
-          const rating = parseFloat(product.rating) || 0;
-          return rating >= selectedRating;
+          const ratings = generateDeterministicRatings(product);
+          const avg = ratings.reduce((a, b) => a + b, 0) / ratings.length;
+          return avg >= selectedRating;
         });
       }
 
@@ -540,6 +550,35 @@ export default function ShopPage({ initialCategories, initialError }) {
     { value: "rating", label: "Customer Rating" },
     { value: "name", label: "Name (A-Z)" },
   ]
+
+  // Helper: generate deterministic ratings array (copy from ProductCard)
+  function generateDeterministicRatings(product) {
+    const seed = String(product.product_code || product.id || product.name || 'default');
+    let h = 2166136261 >>> 0;
+    for (let i = 0; i < seed.length; i++) {
+      h ^= seed.charCodeAt(i);
+      h = Math.imul(h, 16777619);
+    }
+    const rand = () => {
+      h += h << 13; h ^= h >>> 7;
+      h += h << 3; h ^= h >>> 17;
+      h += h << 5;
+      return ((h >>> 0) % 10000) / 10000;
+    };
+    const avg = Math.round((rand() * 0.6 + 4) * 10) / 10; // 4.0 to 4.6
+    const ratings = Array(13).fill(0).map(() => 4 + Math.round(rand() * 2)); // 4, 5, or 6
+    // Adjust to get close to target avg
+    let currentAvg = ratings.reduce((a, b) => a + b, 0) / ratings.length;
+    let i = 0;
+    while (Math.abs(currentAvg - avg) > 0.05 && i < 100) {
+      const idx = Math.floor(rand() * ratings.length);
+      if (currentAvg > avg && ratings[idx] > 4) ratings[idx]--;
+      if (currentAvg < avg && ratings[idx] < 5) ratings[idx]++;
+      currentAvg = ratings.reduce((a, b) => a + b, 0) / ratings.length;
+      i++;
+    }
+    return ratings;
+  }
 
   return (
     <div className="bg-white min-h-screen">

@@ -48,11 +48,7 @@ export default function MissionVision() {
           <div className="flex gap-2 md:gap-4 px-4 md:px-16">
             {/* <Image src="/assets/purple_shine.svg" alt="Star Icon" width={20} height={20} className="mt-1" /> */}
             <p className="text-[16px] text-[#1A1A1A] tracking-wide md:w-[600px] leading-relaxed">
-              Lorem ipsum dolor sit amet consectetur. Pellentesque tristique sapien neque accumsan viverra.
-              Facilisis ullamcorper imperdiet orci sed aliquam vitae. Sed non egestas fringilla nullam. Sed quis leo
-              tincidunt sit purus ut penatibus ut. Egestas eleifend diam posuere commodo in aliquam. Lacus justo eget
-              quis duis nulla. Risus non ligula quisque malesuada nulla volutpat neque. Libero lectus vestibulum eget
-              ipsum feugiat velit enim.
+            At Rabbit Auto Care, our mission is to elevate car care into a lifestyle. We design every product to deliver standout performance, visual impact, and tactile luxury. From label to liquid, we create with purpose — no filler, no fluff. We’re here to set a new standard: where every detail is curated, and every finish feels personal, powerful, and premium.
             </p>
           </div>
         </div>
@@ -69,11 +65,7 @@ export default function MissionVision() {
             </div>
             <div className="flex gap-2">
               <p className="text-[16px] text-[#1A1A1A] leading-relaxed xl:mr-0 lg:mr-5">
-                Lorem ipsum dolor sit amet consectetur. Pellentesque tristique sapien neque accumsan viverra. Facilisis
-                ullamcorper imperdiet orci sed aliquam vitae. Sed non egestas fringilla nullam. Sed quis leo tincidunt
-                sit purus ut penatibus ut. Egestas eleifend diam posuere commodo in aliquam. Lacus justo eget quis duis
-                nulla. Risus non ligula quisque malesuada nulla volutpat neque. Libero lectus vestibulum eget ipsum
-                feugiat velit enim.
+              At Rabbit Auto Care, our mission is to elevate car care into a lifestyle. We design every product to deliver standout performance, visual impact, and tactile luxury. From label to liquid, we create with purpose — no filler, no fluff. We’re here to set a new standard: where every detail is curated, and every finish feels personal, powerful, and premium.
               </p>
               <Image src="/assets/about/svg/purple_shine.svg" alt="Star Icon" width={28} height={38} className="mt-24 xl:block hidden" />
             </div>
@@ -137,12 +129,10 @@ export default function MissionVision() {
 
           {/* Description */}
           <div className="flex gap-2 px-4 md:gap-4 md:px-16">
-            
+
             <p className="text-[16px] tracking-wide md:w-[600px] text-[#1A1A1A] leading-relaxed">
-              Lorem ipsum dolor sit amet consectetur. Pellentesque tristique sapien neque accumsan viverra.
-              Facilisis ullamcorper imperdiet orci sed aliquam vitae. Sed non egestas fringilla nullam. Sed quis leo
-              tincidunt sit purus ut penatibus ut. Egestas eleifend diam posuere commodo in aliquam. Lacus justo eget
-              quis duis nulla.
+            Rabbit Auto Care envisions a world where car care isn’t an afterthought — it’s part of the culture. We aim to lead a global shift toward design-first, performance-backed detailing products that feel as good as they work. Our vision is simple: make every car, and every driver, look and feel like the main event.
+
             </p>
           </div>
         </div>
@@ -164,11 +154,8 @@ export default function MissionVision() {
             </div>
             <div className="flex gap-2">
               <p className="text-[16px] text-[#1A1A1A] leading-relaxed xl:mr-0 lg:mr-5">
-                Lorem ipsum dolor sit amet consectetur. Pellentesque tristique sapien neque accumsan viverra.
-                Facilisis ullamcorper imperdiet orci sed aliquam vitae. Sed non egestas fringilla nullam. Sed quis leo
-                tincidunt sit purus ut penatibus ut. Egestas eleifend diam posuere commodo in aliquam. Lacus justo eget
-                quis duis nulla. Risus non ligula quisque malesuada nulla volutpat neque. Libero lectus vestibulum eget
-                ipsum feugiat velit enim.
+              Rabbit Auto Care envisions a world where car care isn’t an afterthought — it’s part of the culture. We aim to lead a global shift toward design-first, performance-backed detailing products that feel as good as they work. Our vision is simple: make every car, and every driver, look and feel like the main event.
+
               </p>
               <Image src="/assets/about/svg/purple_shine.svg" alt="Star Icon" width={28} height={38} className="mt-24 xl:block hidden" />
             </div>

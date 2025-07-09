@@ -1,12 +1,12 @@
 'use client';
-import { supabase } from '@/lib/supabase/browser-client';
+// import { supabase } from '@/lib/supabase/browser-client';
 import { useState, useEffect, useMemo } from 'react';
 import { ChevronLeft, ChevronRight, X, ShoppingCart } from 'lucide-react';
 import { useCart } from '@/contexts/CartContext.jsx';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { WishlistService } from '@/lib/service/wishlistService';
-import { FaShoppingCart } from 'react-icons/fa';
+// import { FaShoppingCart } from 'react-icons/fa';
 import ProductRating from '@/components/ui/ProductRating';
 // ...existing imports...
 console.log('FeaturedProductCard loaded!');

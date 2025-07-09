@@ -5,19 +5,19 @@ import Image from 'next/image';
 // ✅ Reusable JSON array for point content
 const whyPoints = [
   {
-    title: "Advanced Formulas, Proven Results",
+    title: " Built Different",
     description:
-      "Our products are formulated with cutting-edge technology that delivers professional-grade detailing and long-lasting protection for your vehicle.",
+      " We don’t do generic. Our products are engineered with precision and styled like streetwear — sleek enough to post, strong enough to perform.",
   },
   {
-    title: "Made for Indian Conditions",
+    title: " Premium, Everywhere",
     description:
-      "Designed to perform even in extreme weather and rough usage – our range is engineered to suit the diverse driving conditions across India.",
+      " From formula to packaging, every detail screams luxe. GSM-marked cloths, monochrome bottles, and branded boxes — it’s not just clean, it’s curated.",
   },
   {
-    title: "Honest Ingredients, No Gimmicks",
+    title: "Culture-Driven Care",
     description:
-      "We believe in transparency. No harsh chemicals, no misleading labels — just clean, safe, and high-performance car care essentials.",
+      "Rabbit is more than car care. It’s a movement. For the ones who care how their ride feels, looks, and represents.",
   },
 ];
 
@@ -25,7 +25,7 @@ export default function WhyChooseus() {
   return (
     <section className="w-full flex justify-center px-4 md:px-16 lg:px-4 py-16">
       <div className="max-w-[1150px] w-full">
-        
+
         {/* Gradient Heading */}
         <h2
           className="text-[36px] md:text-[56px] lg:text-[64px] font-bold bg-clip-text text-transparent mb-0 tracking-wide lg:pl-4 xl:pl-0 heading"
@@ -34,11 +34,11 @@ export default function WhyChooseus() {
               "linear-gradient(to right, #601E8D 0%, #300F47 59%, #000000 97%)",
           }}
         >
-          Why Choose Rabbit
+          What makes RABBIT / RABBIT AUTOCARE different
         </h2>
 
         <div className="flex flex-col lg:flex-row items-center md:gap-12 mt-7 md:mt-7 lg:mt-0">
-          
+
           {/* Left Side: Points */}
           <div className="flex-1 space-y-10 lg:pl-4 xl:pl-0">
             {whyPoints.map((point, index) => (
@@ -71,10 +71,10 @@ export default function WhyChooseus() {
 
           {/* 👉 Tablet & Desktop: Image with Background Box */}
           <div className="relative flex-1 w-full max-w-md mt-8 lg:mt-16 xl:mt-0 md:mr-20 lg:mr-0 lg:ml-0 md:block hidden">
-            
+
             {/* Background Box */}
             <div className="absolute lg:-top-7 lg:right-3 xl:-top-9 xl:-right-14 md:-top-10 md:-right-18  w-[312.14px] h-[318.08px] bg-[#E9D9F7] rounded-[20px] z-0 md:w-[461.09px] md:h-[469.87px] lg:w-[390px] lg:h-[400px] xl:w-[446px] xl:h-[445px]" />
-            
+
             {/* Foreground Image */}
             <div className="relative z-10 rounded-[20px] overflow-hidden w-[312.14px] h-[318.08px] md:w-[461.09px] md:h-[469.87px] lg:w-[390px] lg:h-[400px] xl:w-[446px] xl:h-[445px] left-5">
               <Image
@@ -96,7 +96,7 @@ export default function WhyChooseus() {
             }
             .heading {
               font-size: 38px;
-            }  
+            }
           }
           @media (max-width: 376px) and (min-width:361px) {
             .mobile-svg {
@@ -104,7 +104,7 @@ export default function WhyChooseus() {
             }
             .heading {
               font-size: 34px;
-            }   
+            }
           }
           @media (max-width: 361px) and (min-width: 319px) {
             .mobile-svg {
@@ -112,18 +112,18 @@ export default function WhyChooseus() {
             }
             .heading {
               font-size: 32px;
-            }   
-          }  
+            }
+          }
           @media (max-width: 319px) {
             .mobile-svg {
               margin-left: 10px;
             }
             .heading {
               font-size: 20px;
-            }   
+            }
           }
         `}</style>
-        
+
       </div>
     </section>
   );

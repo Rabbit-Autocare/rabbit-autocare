@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { ChevronLeft, ChevronRight, X } from "lucide-react"
+import { ChevronLeft, ChevronRight,  X, ShoppingCart } from "lucide-react"
 import { useCart } from "@/contexts/CartContext.jsx"
 import Image from "next/image"
 import { useRouter } from 'next/navigation'
@@ -52,13 +52,30 @@ export default function KitComboCard({ product, className = "", isLastCard = fal
   const nextIndex = slideData?.to
   const dir = slideData?.direction
 
-  // Calculate prices and discount
-  const originalPrice = product.original_price || 0
-  const currentPrice = product.price || 0
-  const discountPercent = product.discount_percent || 0
+  // Debug: Log the product data for kits/combos only when product changes
+  useEffect(() => {
+    console.log('KitComboCard product:', product);
+  }, [product]);
+
+  // Get the price: use product.price/base_price if available, otherwise sum included products
+  const getCurrentPrice = () => {
+    if (product.price && product.price > 0) return product.price;
+    if (product.base_price && product.base_price > 0) return product.base_price;
+    // Sum prices of included products if needed
+    const included = product.kit_products || product.combo_products || [];
+    const sum = included.reduce((total, item) => {
+      const prod = item.product || item;
+      const variant = item.variant || {};
+      const price = variant.base_price || variant.price || prod.base_price || prod.price || 0;
+      return total + Number(price);
+    }, 0);
+    return sum > 0 ? sum : 0;
+  };
+  const currentPrice = getCurrentPrice();
+  const originalPrice = product.original_price || 0;
   const calculatedDiscount = originalPrice > currentPrice && originalPrice > 0
     ? Math.round(((originalPrice - currentPrice) / originalPrice) * 100)
-    : discountPercent
+    : product.discount_percent || 0;
 
   const handleImageSwipe = (direction) => {
     const currentIndex = activeImageIndex[product.id] || 0
@@ -440,7 +457,7 @@ export default function KitComboCard({ product, className = "", isLastCard = fal
             <div className="flex items-center w-full">
               <div className="border-1 border-black px-2 py-2 xs:px-3 xs:py-2 sm:px-4 sm:py-2 mr-1 rounded-[4px]">
                 <div className="relative w-4 h-4 xs:w-5 xs:h-5 cursor-pointer">
-                  <Image src="/assets/featured/cartstar.svg" alt="cart-star" fill className="object-contain" />
+                  <Image src="/assets/shine.svg" alt="cart-star" fill className="object-contain" />
                 </div>
               </div>
               <button
@@ -457,9 +474,7 @@ export default function KitComboCard({ product, className = "", isLastCard = fal
                 ) : (
                   <>
                     Add Bundle to Cart
-                    <div className="relative w-4 h-4 xs:w-5 xs:h-5">
-                      <Image src="/assets/featured/cartstar.svg" alt="cart-star" fill className="object-contain" />
-                    </div>
+                    <ShoppingCart className='w-4 h-4 xs:w-5 xs:h-5' />
                   </>
                 )}
               </button>

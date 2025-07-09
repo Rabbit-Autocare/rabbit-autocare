@@ -24,10 +24,76 @@ const STATIC_CATEGORIES = [
   { name: "Kits & Combos", href: "/shop/kits-combos", image: "/assets/images/banner.png" },
 ];
 
+function MobileCouponDropdown({ availableCoupons, authLoading, user, isCouponsOpen, setIsCouponsOpen }) {
+  if (!isCouponsOpen) return null;
+  return (
+    <div className="fixed left-0 right-0 top-[56px] z-50 bg-white shadow-lg border-b border-gray-200 px-4 py-4 w-full">
+      <div className="coupon-scroll-area max-h-80 overflow-y-auto">
+        {authLoading ? (
+          <div className="text-center">
+            <p className="text-gray-500">Loading...</p>
+          </div>
+        ) : user ? (
+          availableCoupons && availableCoupons.length > 0 ? (
+            <div className="space-y-3 mb-3">
+              {availableCoupons.map((coupon) => (
+                <CouponCard
+                  key={coupon.id}
+                  code={coupon.code}
+                  discount={coupon.discount}
+                  validUpto={coupon.validUpto}
+                />
+              ))}
+            </div>
+          ) : (
+            <div className="text-center py-8 text-gray-500">
+              <svg
+                className="mx-auto mb-3 w-12 h-12 text-gray-300"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                />
+              </svg>
+              <p>No coupons available</p>
+            </div>
+          )
+        ) : (
+          <div className="text-center py-8">
+            <svg
+              className="mx-auto mb-3 w-12 h-12 text-gray-300"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
+              />
+            </svg>
+            <p className="text-gray-500 mb-3">Please log in to view your coupons</p>
+            <Link href="/login" className="inline-block bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition-colors">
+              Login
+            </Link>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 export default function ExtraNavbar() {
   const [isLoggedIn, setIsLoggedIn] = useState(false)
   const [isShopOpen, setIsShopOpen] = useState(false)
   const [isCouponsOpen, setIsCouponsOpen] = useState(false)
+  const [showMobileCoupons, setShowMobileCoupons] = useState(false)
   const [searchQuery, setSearchQuery] = useState("")
   const [userCoupons, setUserCoupons] = useState([])
   const [availableCoupons, setAvailableCoupons] = useState([])
@@ -222,13 +288,17 @@ export default function ExtraNavbar() {
             </button>
           </form>
 
-          {/* Coupons icon with hover */}
-          <div className="relative">
+          {/* Coupons icon with hover - Fixed positioning */}
+          <div
+            className="relative"
+            onMouseEnter={() => !isMobile && setIsCouponsOpen(true)}
+            onMouseLeave={() => !isMobile && setIsCouponsOpen(false)}
+          >
             <button
               ref={couponsButtonRef}
               className="h-auto w-auto p-0 hover:bg-transparent bg-transparent border-none cursor-pointer transition-colors"
-              onMouseEnter={() => setIsCouponsOpen(true)}
-              onMouseLeave={() => setIsCouponsOpen(false)}
+              onClick={() => isMobile ? setShowMobileCoupons((v) => !v) : undefined}
+              aria-label="Coupons"
             >
               <svg viewBox="0 0 25 26" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-[20px] h-[20px] md:w-[20px] md:h-[20px]">
                 <path
@@ -262,6 +332,51 @@ export default function ExtraNavbar() {
               </svg>
               <span className="sr-only">Coupons</span>
             </button>
+            {/* Coupons dropdown - Desktop style with fixed positioning */}
+            {isCouponsOpen && !isMobile && (
+              <div className="absolute right-0 top-full mt-1 bg-white shadow-lg z-30 border border-gray-200 rounded-lg overflow-hidden w-80">
+                <div className="p-2">
+                  <div className="coupon-scroll-area max-h-80 overflow-y-auto" style={{ overscrollBehavior: 'contain', touchAction: 'auto' }}>
+                    {authLoading ? (
+                      <div className="text-center p-4">
+                        <p className="text-gray-500">Loading...</p>
+                      </div>
+                    ) : user ? (
+                      availableCoupons.length > 0 ? (
+                        <div className="space-y-3">
+                          <h4 className="font-semibold text-sm text-gray-600 px-2 pt-2">Available Coupons</h4>
+                          {availableCoupons.map((coupon) => (
+                            <CouponCard
+                              key={`avail-${coupon.id}`}
+                              code={coupon.code}
+                              discount={coupon.discount}
+                              validUpto={coupon.validUpto}
+                            />
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="text-center py-8 text-gray-500">
+                          <svg className="mx-auto mb-3 w-12 h-12 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                          </svg>
+                          <p>No coupons available</p>
+                        </div>
+                      )
+                    ) : (
+                      <div className="text-center py-8">
+                        <svg className="mx-auto mb-3 w-12 h-12 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                        </svg>
+                        <p className="text-gray-500 mb-3">Please log in to view your coupons</p>
+                        <Link href="/login" className="inline-block bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition-colors">
+                          Login
+                        </Link>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Wishlist icon - Hidden on mobile, visible on desktop */}
@@ -359,74 +474,15 @@ export default function ExtraNavbar() {
           </div>
         </div>
       </div>
-
-      {/* Coupons dropdown - FIXED STYLING */}
-      <div
-        className={`absolute right-6 top-full bg-white shadow-lg z-30 border border-gray-200 rounded-lg overflow-hidden transition-all duration-300 ease-in-out w-80 ${
-          isCouponsOpen ? "max-h-[400px] opacity-100" : "max-h-0 opacity-0"
-        }`}
-        onMouseEnter={() => setIsCouponsOpen(true)}
-        onMouseLeave={() => setIsCouponsOpen(false)}
-      >
-        <div className="p-2">
-          {/* <h3 className="font-semibold text-lg mb-4 text-gray-800">Your Available Coupons</h3> */}
-          <div className="coupon-scroll-area" style={{ maxHeight: 320, overflowY: 'auto' }}>
-            {authLoading ? (
-              <div className="text-center p-4">
-                <p className="text-gray-500">Loading...</p>
-              </div>
-            ) : user ? (
-              (userCoupons.length > 0 || availableCoupons.length > 0) ? (
-                <div className="space-y-3">
-                  {userCoupons.length > 0 && (
-                    <>
-                      <h4 className="font-semibold text-sm text-gray-600 px-2 pt-2">Your Coupons</h4>
-                      {userCoupons.map((coupon) => (
-                        <CouponCard
-                          key={`user-${coupon.id}`}
-                          code={coupon.code}
-                          discount={coupon.discount}
-                          validUpto={coupon.validUpto}
-                        />
-                      ))}
-                    </>
-                  )}
-                  {availableCoupons.length > 0 && (
-                    <>
-                      <h4 className="font-semibold text-sm text-gray-600 px-2 pt-4">Available Coupons</h4>
-                      {availableCoupons.map((coupon) => (
-                        <CouponCard
-                          key={`avail-${coupon.id}`}
-                          code={coupon.code}
-                          discount={coupon.discount}
-                          validUpto={coupon.validUpto}
-                        />
-                      ))}
-                    </>
-                  )}
-                </div>
-              ) : (
-                <div className="text-center py-8 text-gray-500">
-                  <svg className="mx-auto mb-3 w-12 h-12 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                  <p>No coupons available</p>
-                </div>
-              )
-            ) : (
-              <div className="text-center py-8">
-                <svg className="mx-auto mb-3 w-12 h-12 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                </svg>
-                <p className="text-gray-500 mb-3">Please log in to view your coupons</p>
-                <Link href="/login" className="inline-block bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition-colors">
-                  Login
-                </Link>
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
+      {isMobile && (
+        <MobileCouponDropdown
+          availableCoupons={availableCoupons}
+          authLoading={authLoading}
+          user={user}
+          isCouponsOpen={showMobileCoupons}
+          setIsCouponsOpen={setShowMobileCoupons}
+        />
+      )}
     </header>
   )
 }

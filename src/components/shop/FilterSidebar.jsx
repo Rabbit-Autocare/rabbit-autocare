@@ -38,11 +38,16 @@ const STATIC_GSM = [
   { id: "rabbit-fur-2x", value: "Rabbit fur 2X" },
 ];
 const STATIC_QUANTITIES = [
-  { id: "100ml", value: "100ml" },
-  { id: "250ml", value: "250ml" },
-  { id: "500ml", value: "500ml" },
-  { id: "1l", value: "1L" },
-  { id: "5l", value: "5L" },
+  { id: "100ml", value: "100 ml" },
+  { id: "250ml", value: "250 ml" },
+  { id: "400ml", value: "400 ml" },
+  { id: "300ml195g", value: "300 ml/195g" },
+  { id: "500ml", value: "500 ml" },
+  { id: "50ml", value: "50 ml" },
+  { id: "400ml275g", value: "400ml/275g" },
+  { id: "150ml105g", value: "150ml/105g" },
+  { id: "100g", value: "100 g" },
+  // Add more if needed, but these are from the user's provided list
 ];
 const STATIC_PRICE_RANGE = [0, 1000];
 
@@ -289,32 +294,24 @@ const FilterSidebar = ({
           <div>
             <h3 className="text-lg md:text-xs font-medium text-gray-900 mb-2 uppercase">QUANTITY</h3>
             <div className="space-y-1">
-              {filterOptions.quantities.map((quantity) => {
-                const formatQuantity = (value) => {
-                  const num = Number.parseInt(value.toString().replace(/[^\d]/g, ''));
-                  if (isNaN(num)) return value; // Return original if not a valid number
-                  return num >= 100 ? `${num} ml` : `${num} l`;
-                };
-
-                return (
-                  <label key={quantity.id} className="ml-2 flex items-center">
-                    <input
-                      type="checkbox"
-                      checked={selectedQuantity.includes(quantity.value)}
-                      onChange={(e) => {
-                        if (e.target.checked) {
-                          setSelectedQuantity([...selectedQuantity, quantity.value])
-                        } else {
-                          setSelectedQuantity(selectedQuantity.filter((q) => q !== quantity.value))
-                        }
-                      }}
-                      className="h-5 w-5 md:h-3 md:w-3 border-gray-300 focus:ring-purple-500"
-                      style={{ accentColor: '#601e8d' }}
-                    />
-                    <span className="ml-2 text-lg md:text-xs text-gray-700">{formatQuantity(quantity.value)}</span>
-                  </label>
-                )
-              })}
+              {filterOptions.quantities.map((quantity) => (
+                <label key={quantity.id} className="ml-2 flex items-center">
+                  <input
+                    type="checkbox"
+                    checked={selectedQuantity.includes(quantity.value)}
+                    onChange={(e) => {
+                      if (e.target.checked) {
+                        setSelectedQuantity([...selectedQuantity, quantity.value])
+                      } else {
+                        setSelectedQuantity(selectedQuantity.filter((q) => q !== quantity.value))
+                      }
+                    }}
+                    className="h-5 w-5 md:h-3 md:w-3 border-gray-300 focus:ring-purple-500"
+                    style={{ accentColor: '#601e8d' }}
+                  />
+                  <span className="ml-2 text-lg md:text-xs text-gray-700">{quantity.value}</span>
+                </label>
+              ))}
             </div>
           </div>
         )}

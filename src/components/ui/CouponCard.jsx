@@ -27,7 +27,7 @@ export default function CouponCard({ code, discount, validUpto }) {
 
   return (
     <div
-      className="relative w-full h-[150px] md:h-[100px] cursor-pointer group"
+      className="relative w-full h-28 md:h-[100px] cursor-pointer group"
       onClick={handleCopy}
       title="Click to copy coupon code"
     >
@@ -39,23 +39,23 @@ export default function CouponCard({ code, discount, validUpto }) {
         className="absolute top-0 left-0 w-full h-full rounded-lg"
       />
 
-      <div className="absolute left-17 md:left-11 inset-0 flex">
+      <div className="absolute left-7 md:left-11 inset-0 flex">
         <div className="flex-1 flex flex-col justify-center text-white">
-          <div className="text-2xl md:text-xl font-bold mb-1 tracking-wider">{code}</div>
-          <div className="text-sm md:text-xs opacity-80">
+          <div className="text-lg md:text-xl font-bold mb-1 tracking-wider break-all">{code}</div>
+          <div className="text-xs md:text-xs opacity-80">
             {copied ? "Copied!" : "Click to copy"}
           </div>
-          <div className="text-xl md:text-xs opacity-70 mt-1">
+          <div className="text-xs md:text-xs opacity-70 mt-1">
             {formatDate(validUpto)}
           </div>
         </div>
 
-        <div className="w-24 flex flex-col items-center justify-center mr-5 md:mr-1">
+        <div className="w-16 md:w-24 flex flex-col items-center justify-center mr-6 md:mr-1">
           <div className="transform -rotate-90 text-center">
-            <div className="text-purple-600 text-4xl md:text-2xl font-bold leading-none mb-1">
+            <div className="text-purple-600 text-2xl md:text-3xl font-bold leading-none mb-1">
               {discount}
             </div>
-            <div className="text-purple-600 text-sm font-semibold">OFF</div>
+            <div className="text-purple-600 text-xs md:text-sm font-semibold">OFF</div>
           </div>
         </div>
       </div>

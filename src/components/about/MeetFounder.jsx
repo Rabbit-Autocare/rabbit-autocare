@@ -23,15 +23,13 @@ export default function MeetFounder() {
 
 
             <p className="text-[16px] text-[#1A1A1A] leading-relaxed max-w-xl">
-              Lorem ipsum dolor sit amet consectetur. Pellentesque tristique sapien neque accumsan viverra. Facilisis
-              ullae mcorper imperdiet orci sed aliquam vitae. Sed non egestas fringilla nullam. Sed quis leo tincidunt
-              sit purus ut penatibus ut. Egestas eleifend diam posuere commodo in aliquam. Lacus justo eget quis duis nulla.
+            Rabbit Auto Care was born from frustration and obsession. Our founder, a design purist and car care fanatic, saw the gap — cluttered labels, average formulas, and zero vibe. So they built what didn’t exist: a brand where detailing meets design, and every swipe feels like a statement.
+
+
             </p>
 
             <p className="text-[16px] text-[#1A1A1A] leading-relaxed max-w-xl">
-              Lorem ipsum dolor sit amet consectetur. Pellentesque tristique sapien neque accumsan viverra. Facilisis
-              ullae mcorper imperdiet orci sed aliquam vitae. Sed non egestas fringilla nullam. Sed quis leo tincidunt
-              sit purus ut penatibus ut. Egestas eleifend diam posuere commodo in aliquam. Lacus justo eget quis duis nulla.
+            From handwritten thank-you notes to GSM-marked microfiber, nothing at Rabbit is random. The founder’s vision? Create products that car lovers actually want to show off. Built with precision, styled with intent, and engineered to perform — this isn’t just a brand, it’s their personal rebellion against boring car care.
             </p>
           </div>
 

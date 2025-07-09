@@ -9,6 +9,7 @@ import { Menu, X } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { createSupabaseBrowserClient } from '@/lib/supabase/browser-client';
 import CouponCard from '@/components/ui/CouponCard';
+import { ClientUserService } from '@/lib/service/client-userService';
 
 const categoryImageMap = {
   'car-interior': '/assets/images/carinterior.png',
@@ -71,6 +72,7 @@ export default function MobileNavbar({
   const { theme, toggleTheme } = useTheme();
   const { openCart, cartCount } = useCart();
   const [userCoupons, setUserCoupons] = useState([]);
+  const [availableCoupons, setAvailableCoupons] = useState([]);
   const { user, loading: authLoading } = useAuth();
   const [isReady, setIsReady] = useState(false);
 
@@ -132,21 +134,25 @@ export default function MobileNavbar({
     return () => window.removeEventListener('storage', checkLoginStatus);
   }, []);
 
-  // Fetch user's coupons
+  // Fetch user's coupons (updated to fetch both userCoupons and availableCoupons)
   useEffect(() => {
-    const fetchUserCoupons = async () => {
+    const fetchCoupons = async () => {
       if (user?.id) {
-        const supabase = createSupabaseBrowserClient();
-        const { data: userCoupons, error } = await supabase
-          .from('user_coupons')
-          .select('*, coupons (*)')
-          .eq('user_id', user.id);
-        if (!error) setUserCoupons(userCoupons || []);
+        const { success, data, error } = await ClientUserService.getUserCoupons(user.id);
+        if (success) {
+          setUserCoupons(data.userCoupons || []);
+          setAvailableCoupons(data.availableCoupons || []);
+        } else {
+          setUserCoupons([]);
+          setAvailableCoupons([]);
+        }
+      } else {
+        setUserCoupons([]);
+        setAvailableCoupons([]);
       }
     };
-
     if (!authLoading) {
-      fetchUserCoupons();
+      fetchCoupons();
     }
   }, [user?.id, authLoading]);
 
@@ -360,21 +366,20 @@ export default function MobileNavbar({
       {showCoupons && (
         <div className='bg-white border-b border-gray-200 shadow-lg relative z-40'>
           <div className='px-4 py-4'>
-            {/* <h3 className="font-semibold text-lg mb-3">Available Coupons</h3> */}
-            <div className='coupon-scroll-area'>
+            <div className='coupon-scroll-area max-h-80 overflow-y-auto'>
               {authLoading ? (
                 <div className='text-center '>
                   <p className='text-gray-500'>Loading...</p>
                 </div>
               ) : user ? (
-                userCoupons.length > 0 ? (
+                availableCoupons && availableCoupons.length > 0 ? (
                   <div className='space-y-3 mb-3'>
-                    {userCoupons.map((coupon) => (
+                    {availableCoupons.map((coupon) => (
                       <CouponCard
                         key={coupon.id}
                         code={coupon.code}
                         discount={coupon.discount}
-                        validUpto={coupon.expiry}
+                        validUpto={coupon.validUpto}
                       />
                     ))}
                   </div>

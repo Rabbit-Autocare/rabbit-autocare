@@ -151,17 +151,17 @@ export default function CouponSection({ initialCoupons = [] }) {
             <div className='animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900'></div>
           </div>
         ) : (currentCoupons || []).length > 0 ? (
-          <div className='flex items-center justify-center gap-4'>
+          <div className='relative flex items-center justify-center gap-4'>
             <button
               onClick={handlePrev}
-              className='p-2 h-full  '
+              className='absolute left-[-30px] z-10 p-2 h-full'
               aria-label='Previous coupon'
               disabled={(currentCoupons || []).length <= 1}
             >
               <ChevronLeft size={24} />
             </button>
             <div
-              className='relative  w-[300px] flex-shrink-0'
+              className='relative mx-auto w-[300px] flex-shrink-0'
               onClick={() =>
                 handleCouponCardClick((currentCoupons || [])[currentIndex])
               }
@@ -179,7 +179,7 @@ export default function CouponSection({ initialCoupons = [] }) {
             </div>
             <button
               onClick={handleNext}
-              className='p-2 rounded-full bg-gray-100 hover:bg-gray-200 border border-gray-300'
+              className='absolute right-[-30px] z-10 p-2 rounded-full  '
               aria-label='Next coupon'
               disabled={(currentCoupons || []).length <= 1}
             >

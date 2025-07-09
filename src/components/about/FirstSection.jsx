@@ -6,19 +6,19 @@ export default function FirstSection() {
   return (
     <section className="w-full flex justify-center px-4 md:px-16 lg:px-10 xl:px-4 py-16">
       <div className="max-w-[1240px] w-full text-left relative">
-        
+
         {/* Desktop Heading */}
         <div className="relative w-fit hidden lg:block">
-          <h1 className="text-[64px] w-[800px] font-bold leading-tight">
+          <h1 className="text-[64px] w-[900px] font-bold leading-tight">
             <span className="bg-gradient-to-r from-[#601E8D] to-black bg-clip-text text-transparent tracking-wide">
-              Lorem
+            Rabbit
             </span>{' '}
-            <span className="text-black tracking-wider">ipsum dolor sit</span>{' '}
+            <span className="text-black tracking-wider">Delivers Car Care</span>{' '}
             <span className="bg-gradient-to-r from-[#601E8D] to-black bg-clip-text text-transparent tracking-wide">
-              amet
+            That
             </span>{' '}
             <span className="text-black tracking-wide relative">
-              consectetur lacus.
+            Hits Like Luxury.
             </span>
           </h1>
 
@@ -36,15 +36,15 @@ export default function FirstSection() {
         <div className="relative w-fit lg:hidden">
           <h1 className="text-[36px] sm:text-[40px] md:text-[56px] md:w-[628px] font-bold leading-tight space-y-2">
             <div>
-              <span className="bg-gradient-to-r from-[#601E8D] to-black bg-clip-text text-transparent">Lorem</span>{' '}
-              <span className="text-black">ipsum dolor</span>
+              <span className="bg-gradient-to-r from-[#601E8D] to-black bg-clip-text text-transparent">Rabbit</span>{' '}
+              <span className="text-black">Delivers Car</span>
             </div>
             <div>
-              <span className="bg-gradient-to-r from-[#601E8D] to-black bg-clip-text text-transparent">sit amet</span>
+              <span className="bg-gradient-to-r from-[#601E8D] to-black bg-clip-text text-transparent">Care That</span>
             </div>
             <div>
-              <span className="bg-gradient-to-r from-[#601E8D] to-black bg-clip-text text-transparent">conse</span>
-              <span className="text-black">ctetur lacus.</span>
+              <span className="bg-gradient-to-r from-[#601E8D] to-black bg-clip-text text-transparent">Hits</span>
+              <span className="text-black">Like Luxury.</span>
             </div>
           </h1>
 
@@ -60,8 +60,9 @@ export default function FirstSection() {
 
         {/* Description */}
         <p className="text-[16px] text-[#1A1A1A] leading-relaxed md:max-w-[628px] lg:max-w-[1240px] mt-10 lg:mt-14">
-          Lorem ipsum dolor sit amet consectetur. Pellentesque tristique sapien neque accumsan viverra. Facilisis ullamcorper imperdiet orci sed aliquam vitae. Sed non egestas fringilla nullam. Sed quis leo tincidunt sit purus ut penatibus ut. Egestas eleifend diam posuere commodo in aliquam. Lacus justo eget quis duis nulla. Risus non ligula quisque malesuada nulla volutpat neque. Libero lectus vestibulum eget ipsum feugiat velit enim.
-          Enim eget id nibh enim turpis maecenas id tortor. In enim arcu tincidunt ultrices tincidunt quam rhoncus. Rhoncus eleifend fusce suspendisse sit morbi sed cursus ac. Sed nullam sit lobortis sit neque ut sit nunc volutpat. Ornare mi quis viverra cursus id tristique a id sit. Nullam scelerisque tortor tincidunt purus faucibus. Ac eu augue maecenas velit scelerisque purus dolor. Urna quis sit convallis ut odio proin ac. Integer purus.
+        Rabbit Auto Care isn’t just a product line — it’s a full-blown aesthetic movement in the car care space. Born out of a need for products that perform as sharply as they look, we merge minimalist luxury with no-compromise formulas. Think high-GSM microfiber cloths, precision-labeled bottles, monochrome packaging, and a tactile unboxing experience that rivals top-tier fashion drops.
+<br/>
+        Everything — from the layout of a label to the thank-you card — is intentionally crafted to feel premium, clean, and culture-ready. We’re here for the detailers, the enthusiasts, and the everyday drivers who believe presentation matters as much as performance. This isn’t just about making your car clean — it’s about making it iconic. Welcome to Rabbit — where function meets flex, and every detail speaks volumes.
         </p>
       </div>
     </section>

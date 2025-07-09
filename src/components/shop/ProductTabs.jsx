@@ -182,6 +182,48 @@ export default function ProductTabs({ product, reviews = [], faqs = [] }) {
                 </ul>
               </div>
             )}
+
+            {/* Included Products for Kits/Combos */}
+            {(product.kit_products?.length > 0 || product.combo_products?.length > 0) && (
+              <div className="mb-6">
+                <div className="text-base font-bold text-gray-800 mb-2 border-b border-gray-200 pb-1 tracking-wide">Included Products</div>
+                <div className="overflow-x-auto">
+                  <table className="min-w-full divide-y divide-gray-200">
+                    <thead>
+                      <tr>
+                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Product</th>
+                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Features</th>
+                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Rating</th>
+                      </tr>
+                    </thead>
+                    <tbody className="bg-white divide-y divide-gray-100">
+                      {(product.kit_products || product.combo_products).map((item, idx) => {
+                        const included = item.product || item;
+                        const includedRatings = generateDeterministicRatings(included);
+                        return (
+                          <tr key={included.id || idx}>
+                            <td className="px-4 py-2 font-medium text-gray-900">{included.name}</td>
+                            <td className="px-4 py-2 text-gray-700">
+                              {included.features && included.features.length > 0 ? (
+                                <ul className="list-disc pl-4">
+                                  {included.features.map((f, i) => <li key={i}>{f}</li>)}
+                                </ul>
+                              ) : (
+                                <span className="text-gray-400">-</span>
+                              )}
+                            </td>
+                            <td className="px-4 py-2">
+                              <ProductRating ratings={includedRatings} size={16} showCount={false} />
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+
             {/* Usage Instructions */}
             {product.usage_instructions && product.usage_instructions.length > 0 && (
               <div className="mb-6">

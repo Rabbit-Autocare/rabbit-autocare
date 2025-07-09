@@ -47,6 +47,7 @@ export default function ProductDetail({ product }) {
       <RelatedProducts
         categoryName={product.category?.name || product.category_name}
         currentProductId={product.product_code}
+        includedProducts={isKitOrCombo ? (product.kit_products || product.combo_products) : undefined}
       />
     </div>
   )

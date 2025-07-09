@@ -318,7 +318,7 @@ export default function OrderSummary({ items, updateItemQuantity, coupon, orderT
         </div>
 
         {/* Place Order Button */}
-        <button
+        <button type="button"
           onClick={onPlaceOrder}
           disabled={loading}
           className="mt-8 w-full bg-[#601E8D] hover:bg-[#4a1770] text-white py-4 px-6 rounded-[4px] font-bold text-lg shadow-sm hover:shadow-md disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-300"

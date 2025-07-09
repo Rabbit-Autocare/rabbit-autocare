@@ -1,25 +1,18 @@
+// ✅ FILE: /lib/shiprocket.js
 import axios from 'axios';
 
-const SHIPROCKET_EMAIL = "yogesh.indietribe@gmail.com"; // ✅ Your Shiprocket login email
-const SHIPROCKET_PASSWORD = "3F*PBk^Si&!QIPym";          // ✅ Your Shiprocket password
+const SHIPROCKET_EMAIL = "yogesh.indietribe@gmail.com";
+const SHIPROCKET_PASSWORD = "3F*PBk^Si&!QIPym";
 
 let token = null;
 
-// Authenticate and create order
 export async function createShiprocketOrder(orderData) {
   if (!token) {
     try {
       const response = await axios.post(
         "https://apiv2.shiprocket.in/v1/external/auth/login",
-        {
-          email: SHIPROCKET_EMAIL,
-          password: SHIPROCKET_PASSWORD,
-        },
-        {
-          headers: {
-            "Content-Type": "application/json",
-          },
-        }
+        { email: SHIPROCKET_EMAIL, password: SHIPROCKET_PASSWORD },
+        { headers: { "Content-Type": "application/json" } }
       );
       token = response.data.token;
     } catch (error) {
@@ -46,32 +39,43 @@ export async function createShiprocketOrder(orderData) {
   }
 }
 
-// Map your Supabase order object to Shiprocket's format
 export function mapOrderToShiprocket(order) {
   const shipping = order.user_info?.shipping_address || {};
 
   function getOrderItems(items) {
     return items.flatMap((item) => {
       const extractItem = (entry, multiplier = 1) => {
-        const price = Number(entry.variant?.price || entry.price || 0);
-        const gstPercent = Number(entry.variant?.gst_percent || 18);
-        const hsnCode = entry.variant?.hsn_code || entry.product?.hsn_code || 'NA';
+        const variant = entry.variant || {};
+        const product = entry.product || entry;
 
-        const basePriceExclGst = price / (1 + gstPercent / 100);
-        const gstAmount = price - basePriceExclGst;
+        const gstPercent = Number(variant.gst_percent || 18);
+        let basePriceExGST = Number(variant.base_price_excluding_gst || 0);
+
+        if (!basePriceExGST && entry.price) {
+          basePriceExGST = +(entry.price / (1 + gstPercent / 100)).toFixed(2);
+        }
+
+        const units = entry.quantity * multiplier;
+        const taxable = +(basePriceExGST * units).toFixed(2);
+        const gstAmount = +(taxable * gstPercent / 100).toFixed(2);
+        const cgst = +(gstAmount / 2).toFixed(2);
+        const sgst = +(gstAmount / 2).toFixed(2);
+        const total = +(taxable + gstAmount).toFixed(2);
 
         return {
-          name: entry.product?.name || entry.name || '',
-          sku: entry.product?.product_code || entry.product_code || 'SKU123',
-          units: entry.quantity * multiplier,
-          selling_price: price,
-          original_price: entry.variant?.compare_at_price || price,
-          discount_percent: item.discount_percentage || 0,
-          hsn: item.hsn || '33073000', 
-          taxable_value: Number(basePriceExclGst.toFixed(2)),
+          name: product.name || '',
+          sku: product.product_code || entry.product_code || 'SKU123',
+          units,
+          selling_price: +(basePriceExGST + (basePriceExGST * gstPercent / 100)).toFixed(2),
+          original_price: +(variant.compare_at_price || basePriceExGST + (basePriceExGST * gstPercent / 100)).toFixed(2),
+          discount_percent: 0,
+          hsn: variant.hsn_code || product.hsn_code || 'NA',
+          taxable_value: taxable,
           gst_percent: gstPercent,
-          gst_amount: Number(gstAmount.toFixed(2)),
-          total: Number(price.toFixed(2)),
+          cgst,
+          sgst,
+          gst_amount: gstAmount,
+          total,
         };
       };
 
@@ -86,11 +90,11 @@ export function mapOrderToShiprocket(order) {
   }
 
   const orderItems = getOrderItems(order.items || []);
-  const subTotal = orderItems.reduce((sum, i) => sum + (i.original_price || 0) * i.units, 0);
-  const total = orderItems.reduce((sum, i) => sum + (i.total || 0) * i.units, 0);
-  const totalGst = orderItems.reduce((sum, i) => sum + (i.gst_amount || 0) * i.units, 0);
-  const totalTaxable = orderItems.reduce((sum, i) => sum + (i.taxable_value || 0) * i.units, 0);
-  const totalDiscount = subTotal - total;
+  const totalCgst = orderItems.reduce((sum, i) => sum + i.cgst, 0);
+  const totalSgst = orderItems.reduce((sum, i) => sum + i.sgst, 0);
+  const totalGst = +(totalCgst + totalSgst).toFixed(2);
+  const totalTaxable = orderItems.reduce((sum, i) => sum + i.taxable_value, 0);
+  const total = orderItems.reduce((sum, i) => sum + i.total, 0);
 
   return {
     order_id: order.order_number,
@@ -107,36 +111,38 @@ export function mapOrderToShiprocket(order) {
     billing_phone: shipping.phone || '',
     shipping_is_billing: true,
     payment_method: 'Prepaid',
+    shipping_charges: order.delivery_charge || 0,
     order_items: orderItems,
-    sub_total: Number(totalTaxable.toFixed(2)),
-    gst_total: Number(totalGst.toFixed(2)),
-    discount: Number(totalDiscount.toFixed(2)),
-    total_discount: Number(totalDiscount.toFixed(2)),
-    total: Number(total.toFixed(2)),
+    sub_total: +totalTaxable.toFixed(2),
+    gst_total: totalGst,
+    cgst_total: +totalCgst.toFixed(2),
+    sgst_total: +totalSgst.toFixed(2),
+    discount: 0,
+    total_discount: 0,
+    total: +(total + (order.delivery_charge || 0)).toFixed(2),
     length: 10,
     breadth: 15,
     height: 10,
     weight: calculateTotalWeight(order.items),
-    comment: order.coupon_code
-      ? `Coupon: ${order.coupon_code} | Taxable: ₹${totalTaxable} | GST: ₹${totalGst} | Final: ₹${total}`
-      : `Taxable: ₹${totalTaxable} | GST: ₹${totalGst} | Final: ₹${total}`,
+    comment: `Taxable: ₹${totalTaxable.toFixed(2)} | CGST: ₹${totalCgst.toFixed(2)} | SGST: ₹${totalSgst.toFixed(2)} | Final: ₹${(total + (order.delivery_charge || 0)).toFixed(2)}`,
   };
 }
 
 function calculateTotalWeight(items) {
   let totalWeight = 0;
   for (const item of items) {
+    const quantity = item.quantity || 1;
     if (item.type === 'kit') {
       for (const kp of item.kit_products || []) {
-        totalWeight += (kp.variant?.weight_grams || 0) * kp.quantity * item.quantity;
+        totalWeight += (kp.variant?.weight_grams || 0) * kp.quantity * quantity;
       }
     } else if (item.type === 'combo') {
       for (const cp of item.combo_products || []) {
-        totalWeight += (cp.variant?.weight_grams || 0) * cp.quantity * item.quantity;
+        totalWeight += (cp.variant?.weight_grams || 0) * cp.quantity * quantity;
       }
     } else {
-      totalWeight += (item.variant?.weight_grams || 0) * item.quantity;
+      totalWeight += (item.variant?.weight_grams || 0) * quantity;
     }
   }
-  return Math.max(1, +(totalWeight / 1000).toFixed(2)); // in kg, minimum 1kg
+  return Math.max(0.5, +(totalWeight / 1000).toFixed(2)); // in KG
 }

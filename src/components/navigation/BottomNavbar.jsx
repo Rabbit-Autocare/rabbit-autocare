@@ -141,15 +141,15 @@ export default function BottomNavbar() {
   }, [user?.id, authLoading]);
 
   // Add a debug log when state changes
-  useEffect(() => {
-    console.log('BottomNavbar - Current coupon state:', {
-      userCoupons,
-      availableCoupons,
-      isCouponsOpen,
-      authLoading,
-      user: !!user
-    });
-  }, [userCoupons, availableCoupons, isCouponsOpen, authLoading, user]);
+  // useEffect(() => {
+  //   console.log('BottomNavbar - Current coupon state:', {
+  //     userCoupons,
+  //     availableCoupons,
+  //     isCouponsOpen,
+  //     authLoading,
+  //     user: !!user
+  //   });
+  // }, [userCoupons, availableCoupons, isCouponsOpen, authLoading, user]);
 
   const handleSearch = (e) => {
     e.preventDefault()

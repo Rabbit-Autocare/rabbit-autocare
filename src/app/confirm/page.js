@@ -1,4 +1,4 @@
-import { useRouter } from 'next/router';
+import { useRouter } from 'next/navigation';
 import "../../app/globals.css";
 export default function ConfirmPage() {
   const router = useRouter();

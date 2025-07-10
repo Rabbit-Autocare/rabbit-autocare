@@ -324,6 +324,6 @@ export async function fetchCartItems(userId) {
     console.error('[fetchCartItems] Error:', error);
     return [];
   }
-  console.log('[fetchCartItems] data:', data);
+  // console.log('[fetchCartItems] data:', data);
   return data || [];
 }

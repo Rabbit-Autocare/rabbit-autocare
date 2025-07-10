@@ -7,6 +7,7 @@ import { cookies } from 'next/headers';
 import { createSupabaseServerClient } from '@/lib/supabase/server-client';
 import { fetchCartItems } from '@/lib/service/cartService';
 import { transformCartForCheckout } from '@/lib/utils/cartTransformUtils';
+import ClientOnly from '../components/ClientOnly.jsx';
 
 // Montserrat for paragraphs and spans
 const montserrat = localFont({
@@ -46,14 +47,16 @@ export default async function RootLayout({ children }) {
   return (
     <html lang="en" className={`${montserrat.variable} ${sansation.variable}`} suppressHydrationWarning>
       <body suppressHydrationWarning>
-        <AuthProvider>
-          {/* ✅ ScrollSmoother wrapper */}
-          <div id="smooth-wrapper">
-            <div id="smooth-content">
-              <ClientLayout initialCartItems={initialCartItems}>{children}</ClientLayout>
+        <ClientOnly>
+          <AuthProvider>
+            {/* ✅ ScrollSmoother wrapper */}
+            <div id="smooth-wrapper">
+              <div id="smooth-content">
+                <ClientLayout initialCartItems={initialCartItems}>{children}</ClientLayout>
+              </div>
             </div>
-          </div>
-        </AuthProvider>
+          </AuthProvider>
+        </ClientOnly>
       </body>
     </html>
   );

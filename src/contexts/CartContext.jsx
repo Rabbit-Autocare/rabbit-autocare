@@ -215,13 +215,19 @@ export function CartProvider({ children, initialCartItems = [] }) {
         updateCalculatedState([], coupon);
       } else {
         updateCalculatedState(data.cartItems || [], coupon);
+        // console.log('[CartProvider] Cart items after refresh:', data.cartItems);
+        // If cart is empty after refresh, force loading false
+        if (!data.cartItems || data.cartItems.length === 0) {
+          setLoading(false);
+          console.log('[CartProvider] Cart is empty after refresh, forced loading to false.');
+        }
       }
     } catch (error) {
       console.error('[CartProvider] Error initializing cart:', error);
       updateCalculatedState([], coupon);
     } finally {
       setLoading(false);
-      console.log('[CartProvider] Cart loading complete.');
+      // console.log('[CartProvider] Cart loading complete.');
     }
   }, [
     user,
@@ -311,12 +317,14 @@ export function CartProvider({ children, initialCartItems = [] }) {
         return false;
       }
       await refreshCart();
+      console.log('[CartProvider] removeFromCart: called refreshCart after removal.');
       return true;
     } catch (error) {
       console.error('Error in removeFromCart:', error);
       return false;
     } finally {
       setLoading(false); // Safety net: always set loading to false
+      console.log('[CartProvider] removeFromCart: setLoading(false) called.');
     }
   };
 
@@ -403,6 +411,10 @@ export function CartProvider({ children, initialCartItems = [] }) {
     combosLoading,
     couponsLoading,
   };
+
+  if (!sessionChecked) {
+    return <div className="min-h-screen flex items-center justify-center"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900"></div></div>;
+  }
 
   return (
     <CartContext.Provider value={value}>

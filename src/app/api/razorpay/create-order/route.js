@@ -11,7 +11,7 @@ export async function POST(req) {
           error: 'Invalid amount',
           success: false,
         },
-        { status: 400 }
+        { status: 400 } 
       );
     }
 

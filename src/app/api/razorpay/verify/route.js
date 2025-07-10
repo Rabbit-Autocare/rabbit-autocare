@@ -9,7 +9,7 @@ export async function POST(req) {
       razorpay_order_id,
       razorpay_payment_id,
       razorpay_signature,
-    } = body;
+    } = body; 
 
     // Debug logs
     console.log('[VERIFY] Incoming body:', body);

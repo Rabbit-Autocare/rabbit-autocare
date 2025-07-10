@@ -130,13 +130,12 @@ async function processOrderItems(order) {
       if (item.type === 'product') {
         // Handle single product
         if (item.variant?.id) {
-          // Deduct stock for the variant
+          // Deduct stock for the variant using decrement_stock
           const { error: stockError } = await supabase.rpc(
-            'adjust_variant_stock',
+            'decrement_stock_by_quantity',
             {
-              variant_id_input: item.variant.id,
-              quantity_input: item.quantity,
-              operation: 'subtract',
+              variant_id: item.variant.id,
+              p_quantity: item.quantity,
             }
           );
 
@@ -180,14 +179,13 @@ async function processOrderItems(order) {
           continue;
         }
 
-        // Deduct stock for each related product
+        // Deduct stock for each related product variant
         for (const related of relatedItems) {
           const { error: stockError } = await supabase.rpc(
-            'adjust_variant_stock',
+            'decrement_stock_by_quantity',
             {
-              variant_id_input: related.variant_id,
-              quantity_input: related.quantity * item.quantity,
-              operation: 'subtract',
+              variant_id: related.variant_id,
+              p_quantity: related.quantity * item.quantity,
             }
           );
 

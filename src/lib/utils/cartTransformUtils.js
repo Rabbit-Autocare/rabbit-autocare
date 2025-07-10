@@ -47,7 +47,7 @@ export async function transformCartForCheckout(cartItems, userId) {
       }
     }
 
-    console.log('transformCartForCheckout: Transformed items:', transformedItems);
+    // console.log('transformCartForCheckout: Transformed items:', transformedItems);
     return transformedItems;
   } catch (error) {
     console.error('Error transforming cart for checkout:', error);

@@ -274,7 +274,7 @@ export class QuantityService {
 export class CategoryService {
   static async getCategories() {
     try {
-      console.log('[DEBUG] Fetching categories...');
+      // console.log('[DEBUG] Fetching categories...');
 
       // Add timeout to prevent infinite loading
       const timeoutPromise = new Promise((_, reject) =>
@@ -288,7 +288,7 @@ export class CategoryService {
 
       const { data, error } = await Promise.race([categoriesPromise, timeoutPromise]);
 
-      console.log('[DEBUG] Categories fetched:', data, error);
+      // console.log('[DEBUG] Categories fetched:', data, error);
       if (error) throw error;
       return { success: true, data };
     } catch (error) {

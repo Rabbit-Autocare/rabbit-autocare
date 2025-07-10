@@ -372,7 +372,24 @@ export default function CheckoutPage() {
         payment_status: 'pending',
         created_at: new Date().toISOString(),
       };
-      // Create Razorpay Order
+      // 1. Insert order in DB with status 'pending' and get orderId
+      const { data: createdOrder, error: createOrderError } = await supabase
+        .from('orders')
+        .insert([
+          {
+            ...orderData,
+            status: 'pending',
+            payment_status: 'pending',
+            created_at: new Date().toISOString(),
+          },
+        ])
+        .select()
+        .single();
+      if (createOrderError || !createdOrder?.id) {
+        throw new Error('Failed to create order in database. Please try again.');
+      }
+      const orderId = createdOrder.id;
+      // 2. Create Razorpay Order (pass orderId in notes)
       const razorpayOrderRes = await fetch('/api/razorpay/create-order', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -380,18 +397,14 @@ export default function CheckoutPage() {
           amount: orderTotals.grandTotal + deliveryCharge,
           currency: 'INR',
           receipt: orderNumber,
+          order_id: orderId, // pass DB orderId
         }),
       });
-
-      // Debug: log the full response
       const razorpayOrderData = await razorpayOrderRes.json();
-      console.log('Razorpay order API response:', razorpayOrderData);
-
       if (!razorpayOrderData?.success || !razorpayOrderData?.id) {
-        // Show backend error message if available
         throw new Error(
           razorpayOrderData?.error?.message ||
-          'Failed to create payment order. Please try again.'
+            'Failed to create payment order. Please try again.'
         );
       }
       // Initialize Razorpay checkout
@@ -429,11 +442,14 @@ export default function CheckoutPage() {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                  ...orderData,
-                  payment_status: 'paid',
-                  razorpay_order_id: razorpayOrderData.id,
-                  razorpay_payment_id: response.razorpay_payment_id,
-                  razorpay_signature: response.razorpay_signature,
+                  orderId, // always send DB orderId
+                  paymentDetails: {
+                    payment_status: 'paid',
+                    razorpay_order_id: razorpayOrderData.id,
+                    razorpay_payment_id: response.razorpay_payment_id,
+                    razorpay_signature: response.razorpay_signature,
+                  },
+                  items: orderData.items,
                 }),
               });
               const completeOrderData = await completeOrderRes.json();

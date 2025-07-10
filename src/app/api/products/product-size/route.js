@@ -1,6 +1,6 @@
 // /app/api/products/route.js
 import { NextResponse } from "next/server";
-import { supabase } from "@/lib/supabaseClient";
+import { createSupabaseServerClient } from "@/lib/supabase/server-client";
 
 // Utility to handle errors consistently
 function errorResponse(message, status = 500) {
@@ -11,6 +11,7 @@ function errorResponse(message, status = 500) {
 // GET - Fetch all products or a specific product with filters
 export async function GET(request) {
 	try {
+		const supabase = await createSupabaseServerClient();
 		const { searchParams } = new URL(request.url);
 		const id = searchParams.get("id");
 		const code = searchParams.get("code");
@@ -158,6 +159,7 @@ export async function GET(request) {
 // POST - Create a new product
 export async function POST(request) {
 	try {
+		const supabase = await createSupabaseServerClient();
 		const {
 			product_code,
 			name,
@@ -258,6 +260,7 @@ export async function POST(request) {
 // PUT - Update an existing product
 export async function PUT(request) {
 	try {
+		const supabase = await createSupabaseServerClient();
 		const {
 			id,
 			product_code,
@@ -376,6 +379,7 @@ export async function PUT(request) {
 // DELETE - Delete a product
 export async function DELETE(request) {
 	try {
+		const supabase = await createSupabaseServerClient();
 		const { searchParams } = new URL(request.url);
 		const id = searchParams.get("id");
 

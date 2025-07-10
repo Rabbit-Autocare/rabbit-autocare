@@ -1,19 +1,38 @@
-import { createSupabaseBrowserClient } from '@/lib/supabase/browser-client';
-const supabase = createSupabaseBrowserClient();
-import { NextResponse } from 'next/server';
+import { NextResponse } from "next/server";
+import { createSupabaseServerClient } from "@/lib/supabase/server-client";
 
-export async function POST(request) {
-  const { id } = await request.json();
-  const { data: { user } } = await supabase.auth.getUser();
+export async function DELETE(request) {
+  try {
+    const supabase = await createSupabaseServerClient();
+    const { searchParams } = new URL(request.url);
+    const user_id = searchParams.get("user_id");
+    const product_id = searchParams.get("product_id");
 
-  if (!user) return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
+    if (!user_id || !product_id) {
+      return NextResponse.json(
+        { error: "User ID and Product ID are required" },
+        { status: 400 }
+      );
+    }
 
-  const { error } = await supabase
-    .from('wishlist_items')
-    .delete()
-    .eq('id', id)
-    .eq('user_id', user.id);
+    const { error } = await supabase
+      .from("wishlist")
+      .delete()
+      .eq("user_id", user_id)
+      .eq("product_id", product_id);
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-  return NextResponse.json({ success: true });
+    if (error) {
+      return NextResponse.json(
+        { error: "Failed to remove item from wishlist" },
+        { status: 500 }
+      );
+    }
+
+    return NextResponse.json({ success: true });
+  } catch (error) {
+    return NextResponse.json(
+      { error: "Internal server error" },
+      { status: 500 }
+    );
+  }
 }

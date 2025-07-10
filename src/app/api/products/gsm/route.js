@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server"
-import { supabase } from "@/lib/supabaseClient"
+import { createSupabaseServerClient } from "@/lib/supabase/server-client"
 
 // Utility to handle errors consistently
 function errorResponse(message, status = 500) {
@@ -9,6 +9,7 @@ function errorResponse(message, status = 500) {
 
 export async function GET() {
   try {
+    const supabase = await createSupabaseServerClient();
     const { data, error } = await supabase.from("gsm").select("*").order("gsm")
 
     if (error) {
@@ -25,6 +26,7 @@ export async function GET() {
 
 export async function POST(request) {
   try {
+    const supabase = await createSupabaseServerClient();
     const { gsm } = await request.json()
 
     if (!gsm) return errorResponse("GSM value is required", 400)
@@ -41,6 +43,7 @@ export async function POST(request) {
 
 export async function PUT(request) {
   try {
+    const supabase = await createSupabaseServerClient();
     const { id, gsm } = await request.json()
 
     if (!id) return errorResponse("ID is required", 400)
@@ -58,6 +61,7 @@ export async function PUT(request) {
 
 export async function DELETE(request) {
   try {
+    const supabase = await createSupabaseServerClient();
     const { searchParams } = new URL(request.url)
     const id = searchParams.get("id")
 

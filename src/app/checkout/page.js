@@ -463,25 +463,44 @@ useEffect(() => {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                  orderId, // always send DB orderId
-                  paymentDetails: {
-                    payment_status: 'paid',
-                    razorpay_order_id: razorpayOrderData.id,
-                    razorpay_payment_id: response.razorpay_payment_id,
-                    razorpay_signature: response.razorpay_signature,
+                  user_id: userId,
+                  user_info: {
+                    email: user.email,
+                    shipping_address: shippingAddress,
+                    billing_address: billingAddress,
                   },
+                  shipping_address_id: selectedShippingAddressId,
+                  billing_address_id: billingAddressId,
                   items: orderData.items,
+                  subtotal: orderTotals.subtotal,
+                  total: orderTotals.grandTotal + deliveryCharge,
+                  coupon_id: coupon?.id || null,
+                  discount_amount: orderTotals.discount || 0,
+                  payment_status: 'paid',
+                  razorpay_order_id: razorpayOrderData.id,
+                  razorpay_payment_id: response.razorpay_payment_id,
+                  razorpay_signature: response.razorpay_signature,
                 }),
               });
               const completeOrderData = await completeOrderRes.json();
               if (completeOrderData.success) {
-                // Cleanup cart and coupon
-                await supabase.from('cart_items').delete().eq('user_id', userId);
-                if (coupon) clearCoupon();
-                // Redirect to order confirmation
+                console.log('Navigating to confirmation:', completeOrderData.order_id);
                 router.push(`/order-confirmation/${completeOrderData.order_id}?success=true`);
+                // Fallback: force redirect if router.push fails, and clear cart after navigation
+                setTimeout(async () => {
+                  await supabase.from('cart_items').delete().eq('user_id', userId);
+                  if (coupon) clearCoupon();
+                  if (window.location.pathname.indexOf(`/order-confirmation/${completeOrderData.order_id}`) === -1) {
+                    window.location.href = `/order-confirmation/${completeOrderData.order_id}?success=true`;
+                  }
+                }, 1000);
+                setLoading(false);
+                setPaymentProcessing(false);
               } else {
                 setPaymentError('Order creation failed after payment. Please contact support.');
+                console.error('Order creation failed:', completeOrderData);
+                setLoading(false);
+                setPaymentProcessing(false);
               }
             } else {
               setPaymentError('Payment verification failed. Please contact support.');

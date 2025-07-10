@@ -7,6 +7,8 @@ import { createShiprocketOrder, mapOrderToShiprocket } from '@/lib/shiprocket';
 export async function POST(req) {
   try {
     const body = await req.json();
+    // Debug logs for incoming request
+    console.log('Order Complete Request Body:', JSON.stringify(body, null, 2));
     const {
       user_id,
       user_info,
@@ -22,6 +24,12 @@ export async function POST(req) {
       razorpay_payment_id,
       razorpay_signature,
     } = body;
+    // Log each required field
+    console.log('user_id:', user_id);
+    console.log('shipping_address_id:', shipping_address_id);
+    console.log('billing_address_id:', billing_address_id);
+    console.log('items:', items);
+    console.log('total:', total);
 
     if (!user_id || !shipping_address_id || !billing_address_id || !items || !total) {
       return NextResponse.json(

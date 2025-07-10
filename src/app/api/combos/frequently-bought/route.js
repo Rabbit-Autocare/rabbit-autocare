@@ -1,10 +1,9 @@
 import { NextResponse } from "next/server";
-import { createServerComponentClient } from "@supabase/auth-helpers-nextjs";
-import { cookies } from "next/headers";
+import { createSupabaseServerClient } from "@/lib/supabase/server-client";
 
 export async function POST(request) {
 	try {
-		const supabase = createServerComponentClient({ cookies });
+		const supabase = await createSupabaseServerClient();
 		const { cartItems = [] } = await request.json();
 
 		console.log("API: Received cart items:", cartItems);

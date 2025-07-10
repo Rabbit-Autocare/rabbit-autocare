@@ -1,6 +1,6 @@
 // /app/api/products/by-category/route.js
 import { NextResponse } from "next/server";
-import { supabase } from "@/lib/supabaseClient";
+import { createSupabaseServerClient } from "@/lib/supabase/server-client";
 
 function errorResponse(message, status = 500) {
   return NextResponse.json({ error: message }, { status });
@@ -8,6 +8,7 @@ function errorResponse(message, status = 500) {
 
 export async function GET(request) {
   try {
+    const supabase = await createSupabaseServerClient();
     const { searchParams } = new URL(request.url);
     const categorySlug = searchParams.get("category");
     const limit = parseInt(searchParams.get("limit")) || 20;
@@ -98,6 +99,7 @@ export async function GET(request) {
 // Alternative approach using explicit join syntax (if the above doesn't work)
 export async function GET_ALTERNATIVE(request) {
   try {
+    const supabase = await createSupabaseServerClient();
     const { searchParams } = new URL(request.url);
     const categorySlug = searchParams.get("category");
     const limit = parseInt(searchParams.get("limit")) || 20;

@@ -120,7 +120,9 @@ export function CartProvider({ children, initialCartItems = [] }) {
 
     try {
       setCombosLoading(true);
+      console.log('CartContext: Fetching combos...');
       const combosData = await ComboService.getCombosForCart();
+      console.log('CartContext: Combos fetched successfully:', combosData?.length || 0);
       setCombos(combosData || []);
     } catch (error) {
       console.error('Error fetching combos:', error);
@@ -180,12 +182,7 @@ export function CartProvider({ children, initialCartItems = [] }) {
 
   // Initialize or update cart
   const refreshCart = useCallback(async () => {
-    console.log(
-      '[CartProvider] refreshCart called, sessionChecked:',
-      sessionChecked,
-      'user:',
-      !!user
-    );
+    console.log('[CartProvider] refreshCart called, sessionChecked:', sessionChecked, 'user:', !!user);
 
     // Wait until the AuthContext has finished its initial session check
     if (!sessionChecked) {
@@ -211,18 +208,26 @@ export function CartProvider({ children, initialCartItems = [] }) {
     // Only fetch from server if we don't have initial data or need to refresh
     setLoading(true);
     try {
+      console.log('[CartProvider] Fetching cart from CartService...');
       const data = await CartService.getCartItems(user.id);
       if (data.error) {
-        console.error('Error fetching cart:', data.error);
+        console.error('[CartProvider] Error fetching cart:', data.error);
         updateCalculatedState([], coupon);
       } else {
         updateCalculatedState(data.cartItems || [], coupon);
+        // console.log('[CartProvider] Cart items after refresh:', data.cartItems);
+        // If cart is empty after refresh, force loading false
+        if (!data.cartItems || data.cartItems.length === 0) {
+          setLoading(false);
+          console.log('[CartProvider] Cart is empty after refresh, forced loading to false.');
+        }
       }
     } catch (error) {
-      console.error('Error initializing cart:', error);
+      console.error('[CartProvider] Error initializing cart:', error);
       updateCalculatedState([], coupon);
     } finally {
       setLoading(false);
+      // console.log('[CartProvider] Cart loading complete.');
     }
   }, [
     user,
@@ -312,10 +317,14 @@ export function CartProvider({ children, initialCartItems = [] }) {
         return false;
       }
       await refreshCart();
+      console.log('[CartProvider] removeFromCart: called refreshCart after removal.');
       return true;
     } catch (error) {
       console.error('Error in removeFromCart:', error);
       return false;
+    } finally {
+      setLoading(false); // Safety net: always set loading to false
+      console.log('[CartProvider] removeFromCart: setLoading(false) called.');
     }
   };
 
@@ -335,6 +344,8 @@ export function CartProvider({ children, initialCartItems = [] }) {
     } catch (error) {
       console.error('Error in clearCart:', error);
       return false;
+    } finally {
+      setLoading(false); // Safety net: always set loading to false
     }
   };
 
@@ -400,6 +411,10 @@ export function CartProvider({ children, initialCartItems = [] }) {
     combosLoading,
     couponsLoading,
   };
+
+  if (!sessionChecked) {
+    return <div className="min-h-screen flex items-center justify-center"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900"></div></div>;
+  }
 
   return (
     <CartContext.Provider value={value}>

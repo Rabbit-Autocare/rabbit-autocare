@@ -3,7 +3,7 @@
 import { createContext, useContext, useState, useEffect } from 'react'
 import { createSupabaseBrowserClient } from '@/lib/supabase/browser-client'
 
-export const AuthContext = createContext() 
+export const AuthContext = createContext()
 
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null)
@@ -43,7 +43,7 @@ export function AuthProvider({ children }) {
     checkInitialSession()
 
     // onAuthStateChange is the single source of truth.
-    // It fires with INITIAL_SESSION on load, and SIGNED_IN after login.
+    // It fires with INITIAL_SESSION on load, SIGNED_IN after login, TOKEN_REFRESH on refresh.
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       console.log(`[AuthContext] onAuthStateChange event: ${event}`);
       console.log(`[AuthContext] Session user:`, session?.user?.email);
@@ -59,8 +59,31 @@ export function AuthProvider({ children }) {
       }
     });
 
+    // Periodically check session every 5 minutes
+    const interval = setInterval(async () => {
+      try {
+        console.log('[AuthContext] Periodic session check...');
+        const { data: { session }, error } = await supabase.auth.getSession();
+        if (session?.user) {
+          await checkUserRole(session.user);
+        } else {
+          setUser(null);
+          setIsAdmin(false);
+          setLoading(false);
+          setSessionChecked(true);
+        }
+      } catch (error) {
+        console.error('[AuthContext] Error in periodic session check:', error);
+        setUser(null);
+        setIsAdmin(false);
+        setLoading(false);
+        setSessionChecked(true);
+      }
+    }, 5 * 60 * 1000); // 5 minutes
+
     return () => {
       subscription?.unsubscribe()
+      clearInterval(interval)
     }
   }, [supabase])
 

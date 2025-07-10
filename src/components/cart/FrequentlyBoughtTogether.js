@@ -97,6 +97,20 @@ export default function FrequentlyBoughtTogether({ initialCombos = [] }) {
     return null;
   }
 
+  // Find all variant_id values in the cart
+  const cartVariantIds = cartItems.map(item => item.variant?.id).filter(Boolean);
+  console.log('[FBT] Cart variant IDs:', cartVariantIds);
+
+  // Filter combos to only those that include at least one matching variant_id
+  const filteredCombos = (currentCombos || []).filter(combo => {
+    const comboProducts = combo.products || combo.combo_products || [];
+    const comboVariantIds = comboProducts.map(cp => cp.variant_id).filter(Boolean);
+    const hasMatch = comboProducts.some(cp => cartVariantIds.includes(cp.variant_id));
+    console.log(`[FBT] Combo ${combo.id} variant IDs:`, comboVariantIds, 'Has match:', hasMatch);
+    return hasMatch;
+  });
+  console.log('[FBT] Filtered combos:', filteredCombos.map(c => c.id));
+
   return (
     <div className='bg-gray-50 rounded-lg p-4'>
       <h4 className='text-sm font-medium flex items-center gap-2 mb-3'>
@@ -113,7 +127,7 @@ export default function FrequentlyBoughtTogether({ initialCombos = [] }) {
           <div className='flex items-center justify-center py-8'>
             <div className='animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900'></div>
           </div>
-        ) : (currentCombos || []).length === 0 ? (
+        ) : (filteredCombos || []).length === 0 ? (
           <div className='flex flex-col items-center justify-center py-6 text-center bg-white rounded border border-dashed border-gray-300'>
             <div className='bg-gray-100 p-2 rounded-full mb-2'>
               <Package size={20} className='text-gray-500' />
@@ -125,7 +139,7 @@ export default function FrequentlyBoughtTogether({ initialCombos = [] }) {
           </div>
         ) : (
           <div className='flex overflow-x-auto space-x-3 pb-2 -mx-4 px-4'>
-            {(currentCombos || []).map((item, index) => {
+            {(filteredCombos || []).map((item, index) => {
               const savings = calculateSavings(item);
               return (
                 <motion.div

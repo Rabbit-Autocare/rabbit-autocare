@@ -30,7 +30,9 @@ export class KitService {
 
   static async getKits(id = null) {
     try {
-      const query = supabase
+      console.log('Fetching kits from Supabase...');
+
+      let query = supabase
         .from('kits')
         .select(`
           *,
@@ -42,20 +44,27 @@ export class KitService {
         `);
 
       if (id) {
-        query.eq('id', id);
+        query = query.eq('id', id);
       }
 
       const { data, error } = await query;
-      if (error) throw error;
 
-      return data.map(kit => ({
+      if (error) {
+        console.error('Supabase error fetching kits:', error);
+        throw error;
+      }
+
+      console.log(`Fetched ${data?.length || 0} kits from Supabase`);
+
+      return (data || []).map(kit => ({
         ...kit,
         image_url: kit.image_url || `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/product-images/products/kits/${kit.id}.jpg`,
-        main_image_url: kit.main_image_url || `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/product-images/products/kits/${kit.id}.jpg`,
+        main_image_url: kit.main_image_url || kit.image_url || `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/product-images/products/kits/${kit.id}.jpg`,
       }));
     } catch (error) {
       console.error('Error fetching kits:', error);
-      throw error;
+      // Return empty array instead of throwing to prevent app crashes
+      return [];
     }
   }
 

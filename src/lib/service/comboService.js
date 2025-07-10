@@ -32,34 +32,47 @@ export class ComboService {
 
   static async getCombos(id = null) {
     try {
-      const query = supabase.from('combos').select(`
+      console.log('Fetching combos from Supabase...');
+
+      let query = supabase.from('combos').select(`
+        *,
+        combo_products (
           *,
-          combo_products (
-            *,
-            product:products (*),
-            variant:product_variants (*)
-          )
-        `);
+          product:products (*),
+          variant:product_variants (*)
+        )
+      `);
 
       if (id) {
-        query.eq('id', id);
+        query = query.eq('id', id);
       }
 
-      const { data, error } = await fetchWithRetry(() => query);
-      if (error) throw error;
+      const { data, error } = await query;
 
-      return data.map((combo) => ({
+      if (error) {
+        console.error('Supabase error fetching combos:', error);
+        throw error;
+      }
+
+      console.log(`Fetched ${data?.length || 0} combos from Supabase`);
+
+      // Transform image URLs to use consistent path
+      const transformedData = (data || []).map((combo) => ({
         ...combo,
         image_url:
           combo.image_url ||
           `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/product-images/products/combos/${combo.id}.jpg`,
         main_image_url:
           combo.main_image_url ||
+          combo.image_url ||
           `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/product-images/products/combos/${combo.id}.jpg`,
       }));
+
+      return transformedData;
     } catch (error) {
       console.error('Error fetching combos:', error);
-      throw error;
+      // Return empty array instead of throwing to prevent app crashes
+      return [];
     }
   }
 
@@ -240,49 +253,34 @@ export class ComboService {
 
   static async getCombosForCart() {
     try {
-      const timeoutPromise = new Promise((_, reject) =>
-        setTimeout(() => reject(new Error('Request timeout')), 8000)
-      );
+      console.log('Fetching combos for cart...');
 
-      const combosPromise = supabase
+      // Use a simpler query first to get basic combo data
+      const { data: combos, error } = await supabase
         .from('combos')
-        .select(
-          `
-          id, 
-          name, 
-          description, 
-          image_url, 
-          original_price, 
-          price, 
+        .select(`
+          id,
+          name,
+          description,
+          image_url,
+          main_image_url,
+          original_price,
+          price,
           discount_percent,
-          combo_products (
-            id,
-            quantity,
-            product_id,
-            variant_id,
-            product:products (
-              id,
-              name,
-              main_image_url
-            ),
-            variant:product_variants (
-              id,
-              size,
-              price
-            )
-          )
-        `
-        )
+          inventory,
+          created_at
+        `)
         .order('created_at', { ascending: false });
 
-      const { data, error } = await Promise.race([
-        combosPromise,
-        timeoutPromise,
-      ]);
+      if (error) {
+        console.error('Error fetching combos:', error);
+        throw error;
+      }
 
-      if (error) throw error;
+      console.log(`Fetched ${combos?.length || 0} combos for cart`);
 
-      return data.map((combo) => ({
+      // Transform the data to include proper image URLs and default values
+      const transformedCombos = (combos || []).map((combo) => ({
         ...combo,
         image_url:
           combo.image_url ||
@@ -291,11 +289,15 @@ export class ComboService {
           combo.main_image_url ||
           combo.image_url ||
           `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/product-images/products/combos/${combo.id}.jpg`,
-        products: combo.combo_products || [],
+        products: [], // Initialize empty products array
+        combo_products: [] // Initialize empty combo_products array
       }));
+
+      return transformedCombos;
     } catch (error) {
       console.error('Error fetching combos for cart:', error);
-      throw error;
+      // Return empty array instead of throwing to prevent app crashes
+      return [];
     }
   }
 }

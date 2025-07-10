@@ -1,116 +1,91 @@
-import { NextResponse } from 'next/server';
-import CouponService from '@/lib/service/couponService';
-import { createSupabaseBrowserClient } from '@/lib/supabase/browser-client';
-const supabase = createSupabaseBrowserClient();
+import { NextResponse } from "next/server";
+import { createSupabaseServerClient } from "@/lib/supabase/server-client";
 
-// GET - Get all coupons (admin only)
+// Utility to handle errors consistently
+function errorResponse(message, status = 500) {
+  console.error(`API Error (coupons): ${message}`);
+  return NextResponse.json({ error: message }, { status });
+}
+
 export async function GET(request) {
   try {
-    const result = await CouponService.getAllCoupons();
-    return NextResponse.json({
-      success: true,
-      coupons: result.coupons
-    });
+    const supabase = await createSupabaseServerClient();
+    const { searchParams } = new URL(request.url);
+    const id = searchParams.get("id");
+
+    if (id) {
+      // Get a specific coupon
+      const { data: coupon, error } = await supabase
+        .from("coupons")
+        .select("*")
+        .eq("id", id)
+        .single();
+
+      if (error) return errorResponse(error.message);
+
+      return NextResponse.json({ coupon });
+    }
+
+    // Get all coupons
+    const { data: coupons, error } = await supabase
+      .from("coupons")
+      .select("*")
+      .order("created_at", { ascending: false });
+
+    if (error) return errorResponse(error.message);
+
+    return NextResponse.json({ coupons });
   } catch (error) {
-    console.error('GET /api/coupons error:', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    return errorResponse(error.message);
   }
 }
 
-// POST - Create new coupon (admin only)
 export async function POST(request) {
   try {
-    console.log('Received coupon creation request');
-    const couponData = await request.json();
-    console.log('Parsed coupon data:', couponData);
+    const supabase = await createSupabaseServerClient();
+    const { code, discount_percent, valid_from, valid_until, max_uses, is_active } = await request.json();
 
-    if (!couponData.code || !couponData.discount_percent) {
-      console.error('Missing required fields:', { code: couponData.code, discount_percent: couponData.discount_percent });
-      return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
-    }
+    if (!code) return errorResponse("Code is required", 400);
+    if (!discount_percent) return errorResponse("Discount percent is required", 400);
 
-    const result = await CouponService.createCoupon(couponData);
-    console.log('Coupon creation result:', result);
-
-    if (!result.success) {
-      console.error('Coupon creation failed:', result.error);
-      return NextResponse.json({ error: result.error }, { status: 500 });
-    }
-
-    return NextResponse.json({
-      success: true,
-      coupon: result.coupon
-    });
-  } catch (error) {
-    console.error('POST /api/coupons error:', error);
-    return NextResponse.json({ error: error.message || 'Internal server error' }, { status: 500 });
-  }
-}
-
-// PUT - Update coupon (admin only)
-export async function PUT(request) {
-  try {
-    const { id, ...updateData } = await request.json();
-    if (!id) {
-      return NextResponse.json({ error: 'Coupon ID is required' }, { status: 400 });
-    }
-
-    const result = await CouponService.updateCoupon(id, updateData);
-    return NextResponse.json({
-      success: true,
-      coupon: result.coupon
-    });
-  } catch (error) {
-    console.error('PUT /api/coupons error:', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
-  }
-}
-
-// DELETE - Delete coupon (admin only)
-export async function DELETE(request) {
-  try {
-    const { searchParams } = new URL(request.url);
-    const id = searchParams.get('id');
-    console.log('Attempting to delete coupon with ID:', id);
-
-    if (!id) {
-      console.error('No coupon ID provided');
-      return NextResponse.json({ error: 'Coupon ID is required' }, { status: 400 });
-    }
-
-    // First verify the coupon exists
-    const { data: existingCoupon, error: checkError } = await supabase
-      .from('coupons')
-      .select('id')
-      .eq('id', id)
+    const { data: coupon, error } = await supabase
+      .from("coupons")
+      .insert([{
+        code,
+        discount_percent: parseFloat(discount_percent),
+        valid_from: valid_from || new Date().toISOString(),
+        valid_until: valid_until || null,
+        max_uses: max_uses || null,
+        is_active: is_active !== undefined ? is_active : true
+      }])
+      .select()
       .single();
 
-    if (checkError) {
-      console.error('Error checking coupon existence:', checkError);
-      return NextResponse.json({ error: 'Error checking coupon' }, { status: 500 });
-    }
+    if (error) return errorResponse(error.message);
 
-    if (!existingCoupon) {
-      console.error('Coupon not found:', id);
-      return NextResponse.json({ error: 'Coupon not found' }, { status: 404 });
-    }
-
-    console.log('Found coupon to delete:', existingCoupon);
-
-    const result = await CouponService.deleteCoupon(id);
-    console.log('Delete result:', result);
-
-    if (!result.success) {
-      console.error('Failed to delete coupon:', result.error);
-      return NextResponse.json({ error: result.error }, { status: 500 });
-    }
-
-    return NextResponse.json({
-      success: true,
-      message: 'Coupon deleted successfully'
-    });
+    return NextResponse.json({ success: true, coupon });
   } catch (error) {
-    console.error('DELETE /api/coupons error:', error);
-    return NextResponse.json({ error: error.message || 'Internal server error' }, { status: 500 });
+    return errorResponse(error.message);
+  }
+}
+
+export async function DELETE(request) {
+  try {
+    const supabase = await createSupabaseServerClient();
+    const { searchParams } = new URL(request.url);
+    const id = searchParams.get("id");
+
+    if (!id) return errorResponse("ID is required", 400);
+
+    const { error } = await supabase
+      .from("coupons")
+      .delete()
+      .eq("id", id);
+
+    if (error) return errorResponse(error.message);
+
+    return NextResponse.json({ success: true });
+  } catch (error) {
+    return errorResponse(error.message);
   }
 }

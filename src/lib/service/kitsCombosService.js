@@ -4,16 +4,16 @@ import { createSupabaseBrowserClient } from '@/lib/supabase/browser-client';
 const supabase = createSupabaseBrowserClient();
 import { KitService } from './kitService';
 import { ComboService } from './comboService';
- 
+
 const KITS_API = '/api/kits';
 const COMBOS_API = '/api/combos';
- 
+
 export class KitsCombosService {
   // ============= KITS =============
   static async getKits(id = null) {
     try {
       console.log("Fetching kits from Supabase...");
-      const query = supabase
+      let query = supabase
         .from('kits')
         .select(`
           *,
@@ -25,7 +25,7 @@ export class KitsCombosService {
         `);
 
       if (id) {
-        query.eq('id', id);
+        query = query.eq('id', id);
       }
 
       const { data, error } = await query;
@@ -34,20 +34,20 @@ export class KitsCombosService {
         throw error;
       }
 
-      // console.log("Raw kits data from Supabase:", data);
+      console.log(`Fetched ${data?.length || 0} kits from Supabase`);
 
       // Transform image URLs to use consistent path
-      const transformedData = data.map(kit => ({
+      const transformedData = (data || []).map(kit => ({
         ...kit,
         image_url: kit.image_url || `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/product-images/products/kits/${kit.id}.jpg`,
         main_image_url: kit.main_image_url || kit.image_url || `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/product-images/products/kits/${kit.id}.jpg`
       }));
 
-      // console.log("Transformed kits data:", transformedData);
       return transformedData;
     } catch (error) {
       console.error('Error in getKits:', error);
-      throw error;
+      // Return empty array instead of throwing to prevent app crashes
+      return [];
     }
   }
 
@@ -107,7 +107,7 @@ export class KitsCombosService {
   static async getCombos(id = null) {
     try {
       console.log("Fetching combos from Supabase...");
-      const query = supabase
+      let query = supabase
         .from('combos')
         .select(`
           *,
@@ -119,7 +119,7 @@ export class KitsCombosService {
         `);
 
       if (id) {
-        query.eq('id', id);
+        query = query.eq('id', id);
       }
 
       const { data, error } = await query;
@@ -128,20 +128,20 @@ export class KitsCombosService {
         throw error;
       }
 
-      // console.log("Raw combos data from Supabase:", data);
+      console.log(`Fetched ${data?.length || 0} combos from Supabase`);
 
       // Transform image URLs to use consistent path
-      const transformedData = data.map(combo => ({
+      const transformedData = (data || []).map(combo => ({
         ...combo,
         image_url: combo.image_url || `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/product-images/products/combos/${combo.id}.jpg`,
         main_image_url: combo.main_image_url || combo.image_url || `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/product-images/products/combos/${combo.id}.jpg`
       }));
 
-      // console.log("Transformed combos data:", transformedData);
       return transformedData;
     } catch (error) {
       console.error('Error in getCombos:', error);
-      throw error;
+      // Return empty array instead of throwing to prevent app crashes
+      return [];
     }
   }
 
@@ -334,17 +334,29 @@ export class KitsCombosService {
     try {
       console.log("Starting combined fetch of kits and combos...");
 
-      // Fetch both kits and combos in parallel
-      const [kits, combos] = await Promise.all([
-        this.getKits(),
-        this.getCombos()
-      ]);
+      // Fetch both kits and combos in parallel with error handling
+      let kits = [];
+      let combos = [];
+
+      try {
+        kits = await this.getKits();
+      } catch (error) {
+        console.error('Error fetching kits:', error);
+        kits = [];
+      }
+
+      try {
+        combos = await this.getCombos();
+      } catch (error) {
+        console.error('Error fetching combos:', error);
+        combos = [];
+      }
 
       console.log("Raw kits:", kits);
       console.log("Raw combos:", combos);
 
       // Transform the data to match the product format expected by the shop page
-      const transformedKits = kits.map(kit => ({
+      const transformedKits = (kits || []).map(kit => ({
         id: kit.id,
         name: kit.name,
         description: kit.description,
@@ -357,10 +369,12 @@ export class KitsCombosService {
           price: kit.price || 0,
           stock: kit.inventory || 0,
           is_default: true
-        }]
+        }],
+        created_at: kit.created_at,
+        stock_quantity: kit.inventory || 0
       }));
 
-      const transformedCombos = combos.map(combo => ({
+      const transformedCombos = (combos || []).map(combo => ({
         id: combo.id,
         name: combo.name,
         description: combo.description,
@@ -373,7 +387,9 @@ export class KitsCombosService {
           price: combo.price || 0,
           stock: combo.inventory || 0,
           is_default: true
-        }]
+        }],
+        created_at: combo.created_at,
+        stock_quantity: combo.inventory || 0
       }));
 
       const combinedData = [...transformedKits, ...transformedCombos];
@@ -381,7 +397,8 @@ export class KitsCombosService {
       return combinedData;
     } catch (error) {
       console.error('Error in getKitsAndCombos:', error);
-      throw error;
+      // Return empty array instead of throwing to prevent app crashes
+      return [];
     }
   }
 }

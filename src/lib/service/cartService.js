@@ -9,7 +9,11 @@ class CartService {
     if (!userId) return { cartItems: [] };
     const supabase = createSupabaseBrowserClient();
     try {
-      const { data, error } = await supabase
+      // Add a timeout to prevent hanging
+      const timeoutPromise = new Promise((_, reject) =>
+        setTimeout(() => reject(new Error('Cart fetch timeout')), 10000)
+      );
+      const cartPromise = supabase
         .from('cart_items')
         .select(
           `
@@ -25,12 +29,12 @@ class CartService {
         )
         .eq('user_id', userId)
         .order('created_at', { ascending: false });
-
+      const { data, error } = await Promise.race([cartPromise, timeoutPromise]);
       if (error) throw error;
       return { cartItems: data || [] };
     } catch (error) {
       console.error('[getCartItems] Error:', error);
-      return { cartItems: [], error: error.message };
+      return { cartItems: [], error: error.message || 'Unknown error' };
     }
   }
 
@@ -320,6 +324,6 @@ export async function fetchCartItems(userId) {
     console.error('[fetchCartItems] Error:', error);
     return [];
   }
-  console.log('[fetchCartItems] data:', data);
+  // console.log('[fetchCartItems] data:', data);
   return data || [];
 }

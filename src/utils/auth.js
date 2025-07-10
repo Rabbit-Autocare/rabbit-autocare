@@ -1,10 +1,11 @@
-import { supabase } from "@/lib/supabaseClient";
+import { createSupabaseServerClient } from "@/lib/supabase/server-client";
 
 // Handle user redirect after auth
 export async function handlePostLogin(user) {
 	const { email, id } = user;
 
 	try {
+		const supabase = await createSupabaseServerClient();
 		// Check user in auth_users table
 		const { data: userData, error: userError } = await supabase
 			.from("auth_users")
@@ -63,6 +64,7 @@ export async function handlePostLogin(user) {
 
 // Get current session
 export async function getCurrentSession() {
+	const supabase = await createSupabaseServerClient();
 	const {
 		data: { session },
 		error,

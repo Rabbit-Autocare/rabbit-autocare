@@ -382,6 +382,13 @@ export default function KitComboCard({ product, className = "", isLastCard = fal
             )}
           </div>
 
+          {/* Number of included items */}
+          {includedProducts.length > 0 && (
+            <div className="text-sm text-blue-700 font-medium mb-2">
+              Includes {includedProducts.length} item{includedProducts.length > 1 ? 's' : ''} in this {product.kit_products ? 'kit' : 'combo'}
+            </div>
+          )}
+
           {/* Description */}
           {/* <div className="xl:flex-grow">
             <p className="text-[13px] xs:text-[14px] sm:text-[15px] xl:text-[16px] text-black font-light tracking-wider whitespace-pre-line line-clamp-2 xs:line-clamp-2 sm:line-clamp-3 md:line-clamp-4 lg:line-clamp-4 xl:line-clamp-none">

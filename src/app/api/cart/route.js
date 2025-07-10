@@ -1,7 +1,6 @@
 // app/api/cart/route.js
 import { NextResponse } from 'next/server';
-import { createSupabaseBrowserClient } from '@/lib/supabase/browser-client';
-const supabase = createSupabaseBrowserClient();
+import { createSupabaseServerClient } from '@/lib/supabase/server-client';
 
 // Utility to handle errors consistently
 function errorResponse(message, status = 500) {
@@ -9,9 +8,10 @@ function errorResponse(message, status = 500) {
   return NextResponse.json({ error: message }, { status });
 }
 
-// GET - Fetch cart items 
+// GET - Fetch cart items
 export async function GET(request) {
   try {
+    const supabase = await createSupabaseServerClient();
     // Fetch cart items
     const { data: cartItems, error: cartError } = await supabase
       .from('cart_items')
@@ -45,6 +45,7 @@ export async function GET(request) {
 // POST - Add item to cart
 export async function POST(request) {
   try {
+    const supabase = await createSupabaseServerClient();
     const { product_id, variant, quantity = 1, user_id } = await request.json();
 
     // Validate required fields
@@ -158,6 +159,7 @@ export async function POST(request) {
 // PUT - Update cart item quantity
 export async function PUT(request) {
   try {
+    const supabase = await createSupabaseServerClient();
     const { cart_item_id, quantity } = await request.json();
 
     if (!cart_item_id || !quantity || quantity < 1) {
@@ -193,6 +195,7 @@ export async function PUT(request) {
 // DELETE - Remove item from cart
 export async function DELETE(request) {
   try {
+    const supabase = await createSupabaseServerClient();
     const { searchParams } = new URL(request.url);
     const cart_item_id = searchParams.get('id');
 

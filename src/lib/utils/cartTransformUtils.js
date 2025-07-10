@@ -7,7 +7,7 @@ const supabase = createSupabaseBrowserClient();
  */
 export async function transformCartForCheckout(cartItems, userId) {
   try {
-    console.log('transformCartForCheckout: Starting transformation with cartItems:', cartItems);
+    // console.log('transformCartForCheckout: Starting transformation with cartItems:', cartItems);
 
     if (!cartItems || !Array.isArray(cartItems) || cartItems.length === 0) {
       console.log('transformCartForCheckout: No cart items to transform');

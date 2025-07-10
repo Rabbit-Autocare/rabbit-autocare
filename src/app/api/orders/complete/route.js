@@ -1,204 +1,38 @@
-import { NextResponse } from 'next/server';
-import { createSupabaseBrowserClient } from '@/lib/supabase/browser-client';
-const supabase = createSupabaseBrowserClient();
-import { sendOrderConfirmation, sendAdminNotification } from '@/lib/service/emailService';
-import { createShiprocketOrder, mapOrderToShiprocket } from '@/lib/shiprocket';
+import { NextResponse } from "next/server";
+import { createSupabaseServerClient } from "@/lib/supabase/server-client";
 
-export async function POST(req) {
+export async function POST(request) {
   try {
-    const body = await req.json();
-    const {
-      user_id,
-      user_info,
-      shipping_address_id,
-      billing_address_id,
-      items,
-      subtotal,
-      total,
-      coupon_id,
-      discount_amount,
-      payment_status,
-      razorpay_order_id,
-      razorpay_payment_id,
-      razorpay_signature,
-      delivery_charge,
-    } = body;
+    const supabase = await createSupabaseServerClient();
+    const { orderId, paymentDetails } = await request.json();
 
-    if (!user_id || !shipping_address_id || !billing_address_id || !items || !total) {
-      return NextResponse.json(
-        { success: false, error: 'Missing required order details' },
-        { status: 400 }
-      );
+    if (!orderId) {
+      return NextResponse.json({ error: "Order ID is required" }, { status: 400 });
     }
 
-    // Generate order number
-    const orderNumber = generateOrderNumber();
-
-    // Create order in DB
-    const { data: order, error: orderError } = await supabase
-      .from('orders')
-      .insert([
-        {
-          user_id,
-          user_info,
-          shipping_address_id,
-          billing_address_id,
-          items,
-          subtotal,
-          total,
-          coupon_id: coupon_id || null,
-          discount_amount: discount_amount || 0,
-          delivery_charge: delivery_charge || 0,
-          payment_status: payment_status || 'paid',
-          status: 'confirmed',
-          razorpay_order_id,
-          razorpay_payment_id,
-          razorpay_signature,
-          order_number: orderNumber,
-          completed_at: new Date().toISOString(),
-        },
-      ])
+    // Update order status to completed
+    const { data: updatedOrder, error: updateError } = await supabase
+      .from("orders")
+      .update({
+        status: "completed",
+        payment_details: paymentDetails,
+        completed_at: new Date().toISOString(),
+      })
+      .eq("id", orderId)
       .select()
       .single();
 
-    if (orderError) {
-      console.error('Error creating order:', orderError);
-      return NextResponse.json(
-        { success: false, error: 'Failed to create order' },
-        { status: 500 }
-      );
+    if (updateError) {
+      console.error("Error updating order:", updateError);
+      return NextResponse.json({ error: "Failed to update order" }, { status: 500 });
     }
-
-    // Process inventory and send emails
-    await processOrderItems(order);
-
-    // Send emails
-    try {
-      await sendOrderConfirmation(order.user_info?.email, order);
-      await sendAdminNotification(order);
-    } catch (emailError) {
-      console.error('Error sending emails:', emailError);
-    }
-
-    // --- SHIPROCKET INTEGRATION START ---
-    try {
-      const shiprocketPayload = mapOrderToShiprocket(order);
-      console.log('Shiprocket payload:', shiprocketPayload);
-      const shiprocketResult = await createShiprocketOrder(shiprocketPayload);
-      console.log('Shiprocket order created:', shiprocketResult);
-    } catch (shiprocketError) {
-      console.error('Shiprocket order error:', shiprocketError?.response?.data || shiprocketError.message || shiprocketError);
-    }
-    // --- SHIPROCKET INTEGRATION END ---
 
     return NextResponse.json({
       success: true,
-      order_id: order.id,
-      order_number: order.order_number,
+      order: updatedOrder,
     });
   } catch (error) {
-    console.error('Error completing order:', error);
-    return NextResponse.json(
-      { success: false, error: 'Internal server error' },
-      { status: 500 }
-    );
-  }
-}
-
-function generateOrderNumber() {
-  const now = new Date();
-  const date = now.toISOString().slice(0, 10).replace(/-/g, '');
-  const rand = Math.floor(1000 + Math.random() * 9000);
-  return `${date}-${rand}`;
-}
-
-async function processOrderItems(order) {
-  try {
-    const items = order.items || [];
-    const orderNumber = order.order_number;
-
-    for (const item of items) {
-      if (item.type === 'product') {
-        if (item.variant?.id) {
-          const { error: stockError } = await supabase.rpc(
-            'update_variant_stock',
-            {
-              variant_id_input: item.variant.id,
-              quantity_input: item.quantity,
-              operation: 'subtract',
-            }
-          );
-
-          if (stockError) {
-            console.error(
-              `Stock adjustment failed for variant ${item.variant.id}:`,
-              stockError
-            );
-          }
-        }
-
-        await supabase.from('sales_records').insert({
-          order_id: order.id,
-          order_number: orderNumber,
-          product_name: item.name,
-          product_code: item.product_code || '',
-          variant_details: item.variant_display_text || null,
-          quantity: item.quantity,
-          unit_price: item.price,
-          total_price: item.total_price,
-          sale_type: 'direct',
-          category_name: item.category_name || null,
-          sale_date: new Date().toISOString().split('T')[0],
-        });
-      } else if (item.type === 'kit' || item.type === 'combo') {
-        const sourceTable = item.type === 'kit' ? 'kit_products' : 'combo_products';
-        const sourceIdColumn = item.type === 'kit' ? 'kit_id' : 'combo_id';
-        const sourceId = item.type === 'kit' ? item.kit_id : item.combo_id;
-
-        const { data: relatedItems, error: relatedError } = await supabase
-          .from(sourceTable)
-          .select('variant_id, quantity')
-          .eq(sourceIdColumn, sourceId);
-
-        if (relatedError) {
-          console.error(`Error fetching related items for ${item.type}:`, relatedError);
-          continue;
-        }
-
-        for (const related of relatedItems) {
-          const { error: stockError } = await supabase.rpc(
-            'update_variant_stock',
-            {
-              variant_id_input: related.variant_id,
-              quantity_input: related.quantity * item.quantity,
-              operation: 'subtract',
-            }
-          );
-
-          if (stockError) {
-            console.error(
-              `Stock adjustment failed for variant ${related.variant_id}:`,
-              stockError
-            );
-          }
-        }
-
-        await supabase.from('sales_records').insert({
-          order_id: order.id,
-          order_number: orderNumber,
-          product_name: item.name,
-          product_code: item.product_code || '',
-          variant_details: `${item.type.toUpperCase()} - ${item.included_products?.length || 0} items`,
-          quantity: item.quantity,
-          unit_price: item.price,
-          total_price: item.total_price,
-          sale_type: item.type,
-          category_name: item.category_name || null,
-          sale_date: new Date().toISOString().split('T')[0],
-        });
-      }
-    }
-  } catch (error) {
-    console.error('Error processing order items:', error);
+    console.error("Error completing order:", error);
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }

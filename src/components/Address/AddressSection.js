@@ -37,7 +37,7 @@ export default function AddressSection({
     };
 
     fetchAddresses();
-  }, [userId]);
+  }, [userId, selectedAddressId, setSelectedAddressId, supabase]);
 
   const handleAddOrUpdate = (newAddress) => {
     const exists = addresses.some((a) => a.id === newAddress.id);

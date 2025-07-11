@@ -685,10 +685,12 @@ export default function FeaturedProductCard({
           {/* Thumbnail Navigation */}
           <div className='flex-col space-y-2 items-start hidden md:block mt-2'>
             {thumbnails.map((thumb, i) => (
-              <img
+              <Image
                 key={i}
                 src={thumb || '/placeholder.svg'}
                 alt={`${product.name} thumbnail ${i + 1}`}
+                width={68}
+                height={55}
                 onClick={() =>
                   setActiveImageIndex((prev) => ({ ...prev, [product.id]: i }))
                 }
@@ -717,28 +719,34 @@ export default function FeaturedProductCard({
             <div className='w-full h-full relative z-10 overflow-hidden'>
               {slideData ? (
                 <>
-                  <img
+                  <Image
                     key={`prev-${prevIndex}`}
                     src={thumbnails[prevIndex] || '/placeholder.svg'}
                     alt={`${product.name} - previous`}
+                    fill
+                    sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
                     className={`absolute w-full h-full object-contain transition-all duration-300 ease-in-out ${
                       dir === 'next' ? '-translate-x-full' : 'translate-x-full'
                     }`}
                   />
-                  <img
+                  <Image
                     key={`next-${nextIndex}`}
                     src={thumbnails[nextIndex] || '/placeholder.svg'}
                     alt={`${product.name} - next`}
+                    fill
+                    sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
                     className={`absolute w-full h-full object-contain transition-all duration-300 ease-in-out ${
                       dir === 'next' ? 'translate-x-0' : 'translate-x-0'
                     }`}
                   />
                 </>
               ) : (
-                <img
+                <Image
                   key={`active-${activeIndex}`}
                   src={activeSrc || '/placeholder.svg'}
                   alt={product.name}
+                  fill
+                  sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
                   className='w-full h-full object-contain transition-all duration-300'
                 />
               )}
@@ -759,10 +767,12 @@ export default function FeaturedProductCard({
         {/* Mobile Thumbnails */}
         <div className='flex flex-row justify-start space-x-2 md:hidden overflow-x-auto w-full'>
           {thumbnails.map((thumb, i) => (
-            <img
+            <Image
               key={i}
               src={thumb || '/placeholder.svg'}
               alt={`${product.name} thumbnail ${i + 1}`}
+              width={68}
+              height={55}
               onClick={() =>
                 setActiveImageIndex((prev) => ({ ...prev, [product.id]: i }))
               }

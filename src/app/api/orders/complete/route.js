@@ -133,27 +133,91 @@ async function processOrderItems(order) {
     const orderNumber = order.order_number;
 
     for (const item of items) {
-      if (item.type === 'product' && item.variant?.id) {
-        await supabase.rpc('adjust_variant_stock', {
-          variant_id_input: item.variant.id,
-          quantity_input: item.quantity,
-          operation: 'subtract',
+      if (item.type === 'product') {
+        // Handle single product
+        if (item.variant?.id) {
+          // Deduct stock for the variant using decrement_stock
+          const { error: stockError } = await supabase.rpc(
+            'decrement_stock_by_quantity',
+            {
+              variant_id: item.variant.id,
+              p_quantity: item.quantity,
+            }
+          );
+
+          if (stockError) {
+            console.error(
+              `Stock adjustment failed for variant ${item.variant.id}:`,
+              stockError
+            );
+            // Continue processing other items even if one fails
+          }
+        }
+
+        // Create sales record
+        await supabase.from('sales_records').insert({
+          order_id: order.id,
+          order_number: orderNumber,
+          product_name: item.name,
+          product_code: item.product_code || '',
+          variant_details: item.variant_display_text || null,
+          quantity: item.quantity,
+          unit_price: item.price,
+          total_price: item.total_price,
+          sale_type: 'direct',
+          category_name: item.category_name || null,
+          sale_date: new Date().toISOString().split('T')[0],
+        });
+      } else if (item.type === 'kit' || item.type === 'combo') {
+        // Process kits and combos
+        const sourceTable = item.type === 'kit' ? 'kit_products' : 'combo_products';
+        const sourceIdColumn = item.type === 'kit' ? 'kit_id' : 'combo_id';
+        const sourceId = item.type === 'kit' ? item.kit_id : item.combo_id;
+
+        // Get related products for this kit/combo
+        const { data: relatedItems, error: relatedError } = await supabase
+          .from(sourceTable)
+          .select('variant_id, quantity')
+          .eq(sourceIdColumn, sourceId);
+
+        if (relatedError) {
+          console.error(`Error fetching related items for ${item.type}:`, relatedError);
+          continue;
+        }
+
+        // Deduct stock for each related product variant
+        for (const related of relatedItems) {
+          const { error: stockError } = await supabase.rpc(
+            'decrement_stock_by_quantity',
+            {
+              variant_id: related.variant_id,
+              p_quantity: related.quantity * item.quantity,
+            }
+          );
+
+          if (stockError) {
+            console.error(
+              `Stock adjustment failed for variant ${related.variant_id}:`,
+              stockError
+            );
+          }
+        }
+
+        // Create sales record for kit/combo
+        await supabase.from('sales_records').insert({
+          order_id: order.id,
+          order_number: orderNumber,
+          product_name: item.name,
+          product_code: item.product_code || '',
+          variant_details: `${item.type.toUpperCase()} - ${item.included_products?.length || 0} items`,
+          quantity: item.quantity,
+          unit_price: item.price,
+          total_price: item.total_price,
+          sale_type: item.type,
+          category_name: item.category_name || null,
+          sale_date: new Date().toISOString().split('T')[0],
         });
       }
-
-      await supabase.from('sales_records').insert({
-        order_id: order.id,
-        order_number: orderNumber,
-        product_name: item.name,
-        product_code: item.product_code || '',
-        variant_details: item.variant_display_text || null,
-        quantity: item.quantity,
-        unit_price: item.price,
-        total_price: item.total_price,
-        sale_type: item.type || 'direct',
-        category_name: item.category_name || null,
-        sale_date: new Date().toISOString().split('T')[0],
-      });
     }
   } catch (error) {
     console.error('Error processing order items:', error);

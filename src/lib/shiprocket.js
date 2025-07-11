@@ -75,15 +75,15 @@ export function mapOrderToShiprocket(order) {
         sku: item.product?.product_code || item.variant_code || 'SKU123',
         units: item.quantity,
         selling_price: item.price,
-        deliveryCharge: order.delivery_charge || 0,
       }];
     });
   }
 
-  let orderItems = getOrderItems(order.items || []);
-  const deliveryCharge = Number(order.delivery_charge);
+  const orderItems = getOrderItems(order.items || []);
+  const deliveryCharge = Number(order.delivery_charge || 0);
 
-  const grandTotal = orderItems.reduce((sum, item) => sum + item.selling_price * item.units, 0);
+  const grandSubtotal = orderItems.reduce((sum, item) => sum + item.selling_price * item.units, 0);
+  const grandTotal = grandSubtotal + deliveryCharge;
 
   return {
     order_id: order.order_number,
@@ -103,7 +103,7 @@ export function mapOrderToShiprocket(order) {
 
     order_items: orderItems,
     payment_method: 'Prepaid',
-    sub_total: grandTotal,
+    sub_total: grandSubtotal,
     total: grandTotal,
     shipping_charges: deliveryCharge,
     length: 10,
@@ -111,6 +111,6 @@ export function mapOrderToShiprocket(order) {
     height: 10,
     weight: 1,
 
-    comment: `Delivery: ₹${deliveryCharge}`,
+    comment: `Includes delivery charge of ₹${deliveryCharge}`,
   };
 }

@@ -187,7 +187,7 @@ export default function EnhancedCustomersTable({ initialUsers, initialError }) {
             <RefreshCw size={16} className={refreshing ? 'animate-spin' : ''} />
             Refresh
           </button>
-          
+
         </div>
       </div>
 
@@ -281,7 +281,7 @@ export default function EnhancedCustomersTable({ initialUsers, initialError }) {
               )}
               {searchTerm && (
                 <span className='inline-flex items-center gap-1 px-2 py-1 bg-green-100 text-green-800 rounded-full text-xs'>
-                  Search:"{searchTerm}"
+                  Search:&quot;{searchTerm}&quot;
                   <button
                     onClick={() => setSearchTerm('')}
                     className='hover:bg-green-200 rounded-full p-0.5'

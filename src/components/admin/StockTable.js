@@ -3,6 +3,7 @@
 import React, { useState } from 'react';
 import { createSupabaseBrowserClient } from '@/lib/supabase/browser-client';
 import { Search, Edit, Save, X, Plus, Minus, ChevronDown, ChevronUp } from 'lucide-react';
+import Image from 'next/image';
 
 export default function StockTable({ initialProducts }) {
   const [products, setProducts] = useState(initialProducts || []);
@@ -159,9 +160,11 @@ export default function StockTable({ initialProducts }) {
                 onClick={() => toggleProductExpansion(product.id)}
               >
                 <div className="flex items-center space-x-4">
-                  <img
+                  <Image
                     src={product.main_image_url || '/placeholder.svg'}
                     alt={product.name}
+                    width={48}
+                    height={48}
                     className="w-12 h-12 rounded-md object-cover bg-gray-100"
                   />
                   <div>

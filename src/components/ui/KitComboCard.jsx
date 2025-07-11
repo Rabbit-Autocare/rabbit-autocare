@@ -238,10 +238,12 @@ export default function KitComboCard({ product, className = "", isLastCard = fal
           {/* Thumbnail Navigation */}
           <div className="flex-col space-y-2 items-start hidden md:block mt-2">
             {thumbnails.map((thumb, i) => (
-              <img
+              <Image
                 key={i}
                 src={thumb || "/placeholder.svg"}
                 alt={`${product.name} thumbnail ${i + 1}`}
+                width={68}
+                height={55}
                 onClick={() => setActiveImageIndex((prev) => ({ ...prev, [product.id]: i }))}
                 className={`w-[50px] h-[40px] xl:w-[68px] xl:h-[55px] cursor-pointer transition-all duration-200 ease-in-out ring-2 object-cover ${
                   activeIndex === i ? "ring-black opacity-100" : "ring-transparent opacity-50"
@@ -266,28 +268,34 @@ export default function KitComboCard({ product, className = "", isLastCard = fal
             <div className="w-full h-full relative z-10 overflow-hidden">
               {slideData ? (
                 <>
-                  <img
+                  <Image
                     key={`prev-${prevIndex}`}
                     src={thumbnails[prevIndex] || "/placeholder.svg"}
                     alt={`${product.name} - previous`}
+                    fill
+                    sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
                     className={`absolute w-full h-full object-contain transition-all duration-300 ease-in-out ${
                       dir === "next" ? "-translate-x-full" : "translate-x-full"
                     }`}
                   />
-                  <img
+                  <Image
                     key={`next-${nextIndex}`}
                     src={thumbnails[nextIndex] || "/placeholder.svg"}
                     alt={`${product.name} - next`}
+                    fill
+                    sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
                     className={`absolute w-full h-full object-contain transition-all duration-300 ease-in-out ${
                       dir === "next" ? "translate-x-0" : "translate-x-0"
                     }`}
                   />
                 </>
               ) : (
-                <img
+                <Image
                   key={`active-${activeIndex}`}
                   src={activeSrc || "/placeholder.svg"}
                   alt={product.name}
+                  fill
+                  sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
                   className="w-full h-full object-contain transition-all duration-300"
                 />
               )}
@@ -308,10 +316,12 @@ export default function KitComboCard({ product, className = "", isLastCard = fal
         {/* Mobile Thumbnails */}
         <div className="flex flex-row justify-start space-x-2 md:hidden overflow-x-auto w-full">
           {thumbnails.map((thumb, i) => (
-            <img
+            <Image
               key={i}
               src={thumb || "/placeholder.svg"}
               alt={`${product.name} thumbnail ${i + 1}`}
+              width={68}
+              height={55}
               onClick={() => setActiveImageIndex((prev) => ({ ...prev, [product.id]: i }))}
               className={`w-[50px] h-[40px] xl:w-[68px] xl:h-[55px] cursor-pointer transition-all duration-200 ease-in-out ring-2 object-cover ${
                 activeIndex === i ? "ring-black opacity-100" : "ring-transparent opacity-50"
@@ -342,7 +352,7 @@ export default function KitComboCard({ product, className = "", isLastCard = fal
           {/* Rating */}
           <div className="flex items-center gap-2 text-sm font-extralight text-black ">
             {[...Array(5)].map((_, i) => (
-              <img
+              <Image
                 key={i}
                 src={
                   i < 4 // Default to 4 stars for kits/combos
@@ -350,6 +360,8 @@ export default function KitComboCard({ product, className = "", isLastCard = fal
                     : "/assets/featured/ratingstar2.svg"
                 }
                 alt="star"
+                width={24}
+                height={24}
                 className="w-5 h-5 sm:w-6 sm:h-6"
               />
             ))}
@@ -408,9 +420,11 @@ export default function KitComboCard({ product, className = "", isLastCard = fal
                   return (
                     <div key={idx} className="p-3 bg-gray-50 rounded-lg border">
                       <div className="flex items-center gap-3">
-                        <img
+                        <Image
                           src={product?.main_image_url || product?.image_url || "/placeholder.svg"}
                           alt={product?.name}
+                          width={56}
+                          height={56}
                           className="w-14 h-14 object-contain rounded"
                         />
                         <div className="flex-1 min-w-0">

@@ -1,5 +1,5 @@
 'use client';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { createSupabaseBrowserClient } from '@/lib/supabase/browser-client';
 const supabase = createSupabaseBrowserClient();
@@ -102,13 +102,128 @@ const formatPrice = (amount) => `₹${Number(amount).toFixed(0)}`;
     }
   }, [user]);
 
+  const fetchSingleProduct = useCallback(async () => {
+    try {
+      const { data } = await supabase
+        .from('products')
+        .select('*')
+        .eq('id', productId)
+        .single();
+
+      if (data) {
+        const transformedProduct = {
+          id: `direct-${data.id}`,
+          type: 'product',
+          product_id: data.id,
+          product_code: data.product_code,
+          name: data.name,
+          description: data.description,
+          main_image_url: data.main_image_url,
+          images: data.images,
+          variant: null,
+          variant_display_text: 'Default',
+          base_price: data.price,
+          quantity: qtyParam,
+          total_price: data.price * qtyParam,
+          is_microfiber: data.is_microfiber,
+          key_features: data.key_features,
+          taglines: data.taglines,
+          category_name: data.category_name,
+        };
+
+        setTransformedItems([transformedProduct]);
+      }
+    } catch (error) {
+      console.error('Error fetching single product:', error);
+    } finally {
+      setLoading(false);
+    }
+  }, [productId, qtyParam]);
+
+  const fetchSingleCombo = useCallback(async () => {
+    try {
+      const { data: combo } = await supabase
+        .from('combos')
+        .select('*')
+        .eq('id', comboId)
+        .single();
+
+      if (!combo) return;
+
+      setCombo(combo);
+
+      const { data: comboProducts } = await supabase
+        .from('combo_products')
+        .select(`
+          *,
+          product:products(*),
+          variant:product_variants(variant_code)
+        `)
+        .eq('combo_id', combo.id);
+
+      if (!comboProducts) {
+        console.error('No combo products found');
+        return;
+      }
+
+      const transformedCombo = {
+        id: `direct-${combo.id}`,
+        type: 'combo',
+        combo_id: combo.id,
+        name: combo.name,
+        description: combo.description,
+        main_image_url: combo.main_image_url,
+        images: combo.images,
+        price: combo.price,
+        original_price: combo.original_price,
+        discount_percentage: combo.discount_percent,
+        quantity: 1,
+        total_price: combo.price,
+        included_products: comboProducts.map((cp) => ({
+          product_id: cp.product_id,
+          product_name: cp.product?.name,
+          product_code: cp.product?.product_code,
+          variant_id: cp.variant_id,
+          variant_code: cp.variant?.variant_code || '', // ✅ directly fetched
+          quantity: cp.quantity,
+        })),
+        included_variants: [],
+      };
+
+      setTransformedItems([transformedCombo]);
+    } catch (error) {
+      console.error('Error in fetchSingleCombo:', error);
+    } finally {
+      setLoading(false);
+    }
+  }, [comboId]);
+
+  const transformCartData = useCallback(async () => {
+    if (!cartItems || cartItems.length === 0) {
+      setTransformedItems([]);
+      setLoading(false);
+      return;
+    }
+
+    try {
+      setLoading(true);
+      const transformed = await transformCartForCheckout(cartItems, userId);
+      setTransformedItems(transformed);
+    } catch (error) {
+      console.error('Error transforming cart data:', error);
+      setTransformedItems([]);
+    } finally {
+      setLoading(false);
+    }
+  }, [cartItems, userId]);
+
   useEffect(() => {
     if (userId) {
       if (productId) fetchSingleProduct();
       else if (comboId) fetchSingleCombo();
       else transformCartData();
     }
-  }, [userId, cartItems]);
+  }, [userId, productId, comboId, fetchSingleProduct, fetchSingleCombo, transformCartData]);
 
   // Recalculate totals when items or coupon change
   useEffect(() => {
@@ -188,121 +303,7 @@ useEffect(() => {
 }, [transformedItems, coupon]);
 
 
-  const fetchSingleProduct = async () => {
-    try {
-      const { data } = await supabase
-        .from('products')
-        .select('*')
-        .eq('id', productId)
-        .single();
 
-      if (data) {
-        const transformedProduct = {
-          id: `direct-${data.id}`,
-          type: 'product',
-          product_id: data.id,
-          product_code: data.product_code,
-          name: data.name,
-          description: data.description,
-          main_image_url: data.main_image_url,
-          images: data.images,
-          variant: null,
-          variant_display_text: 'Default',
-          base_price: data.price,
-          quantity: qtyParam,
-          total_price: data.price * qtyParam,
-          is_microfiber: data.is_microfiber,
-          key_features: data.key_features,
-          taglines: data.taglines,
-          category_name: data.category_name,
-        };
-
-        setTransformedItems([transformedProduct]);
-      }
-    } catch (error) {
-      console.error('Error fetching single product:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const fetchSingleCombo = async () => {
-  try {
-    const { data: combo } = await supabase
-      .from('combos')
-      .select('*')
-      .eq('id', comboId)
-      .single();
-
-    if (!combo) return;
-
-    setCombo(combo);
-
-    const { data: comboProducts } = await supabase
-      .from('combo_products')
-      .select(`
-        *,
-        product:products(*),
-        variant:product_variants(variant_code)
-      `)
-      .eq('combo_id', combo.id);
-
-    if (!comboProducts) {
-      console.error('No combo products found');
-      return;
-    }
-
-    const transformedCombo = {
-      id: `direct-${combo.id}`,
-      type: 'combo',
-      combo_id: combo.id,
-      name: combo.name,
-      description: combo.description,
-      main_image_url: combo.main_image_url,
-      images: combo.images,
-      price: combo.price,
-      original_price: combo.original_price,
-      discount_percentage: combo.discount_percent,
-      quantity: 1,
-      total_price: combo.price,
-      included_products: comboProducts.map((cp) => ({
-        product_id: cp.product_id,
-        product_name: cp.product?.name,
-        product_code: cp.product?.product_code,
-        variant_id: cp.variant_id,
-        variant_code: cp.variant?.variant_code || '', // ✅ directly fetched
-        quantity: cp.quantity,
-      })),
-      included_variants: [],
-    };
-
-    setTransformedItems([transformedCombo]);
-  } catch (error) {
-    console.error('Error in fetchSingleCombo:', error);
-  } finally {
-    setLoading(false);
-  }
-};
-
-
-  const transformCartData = async () => {
-    if (!cartItems || cartItems.length === 0) {
-      setTransformedItems([]);
-      setLoading(false);
-      return;
-    }
-
-    try {
-      setLoading(true);
-      const transformed = await transformCartForCheckout(cartItems, userId);
-      setTransformedItems(transformed);
-    } catch (error) {
-      console.error('Error transforming cart data:', error);
-      setTransformedItems([]);
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const updateItemQuantity = (itemId, newQuantity) => {
     if (newQuantity < 1) return;

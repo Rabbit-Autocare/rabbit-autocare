@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { createSupabaseBrowserClient } from '@/lib/supabase/browser-client';
 const supabase = createSupabaseBrowserClient();
 import DatePicker from 'react-datepicker';
@@ -53,11 +53,7 @@ export default function SalesDashboard({
   // Create Supabase client for browser-side data fetching
   const supabase = createSupabaseBrowserClient();
 
-  useEffect(() => {
-    fetchSalesData();
-  }, [startDate, endDate, currentPage, sortConfig]);
-
-  const fetchSalesData = async () => {
+  const fetchSalesData = useCallback(async () => {
     setLoading(true);
     try {
       const from = startDate.toISOString().split('T')[0];
@@ -85,7 +81,11 @@ export default function SalesDashboard({
     } finally {
       setLoading(false);
     }
-  };
+  }, [startDate, endDate, currentPage, sortConfig, itemsPerPage, supabase]);
+
+  useEffect(() => {
+    fetchSalesData();
+  }, [fetchSalesData]);
 
   const handleSort = (key) => {
     setSortConfig((prevConfig) => ({

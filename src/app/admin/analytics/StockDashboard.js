@@ -1,7 +1,7 @@
 // components/admin/analytics/StockDashboard.js
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { createSupabaseBrowserClient } from '@/lib/supabase/browser-client';
 const supabase = createSupabaseBrowserClient();
 
@@ -48,11 +48,7 @@ export default function StockDashboard() {
   const [pageSize] = useState(10);
   const [totalRows, setTotalRows] = useState(0);
 
-  useEffect(() => {
-    fetchStockData();
-  }, [page]);
-
-  const fetchStockData = async () => {
+  const fetchStockData = useCallback(async () => {
     setLoading(true);
     try {
       // Fetch analytics KPIs
@@ -87,7 +83,11 @@ export default function StockDashboard() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [page, pageSize]);
+
+  useEffect(() => {
+    fetchStockData();
+  }, [fetchStockData]);
 
   const totalPages = Math.ceil(totalRows / pageSize);
 

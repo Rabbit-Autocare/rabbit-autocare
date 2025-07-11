@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import dynamic from 'next/dynamic';
 import '@/app/globals.css';
 import AdminLayout from '@/components/layouts/AdminLayout';
@@ -19,6 +19,7 @@ import { ProductService } from '@/lib/service/productService';
 import { StockService } from '@/lib/service/stockService';
 import { KitService } from '@/lib/service/kitService';
 import { ComboService } from '@/lib/service/comboService';
+import Image from 'next/image';
 
 // Dynamically import the shared form
 const KitsCombosForm = dynamic(() =>
@@ -83,12 +84,7 @@ export default function KitsAndCombosPage() {
 
   const itemLabel = activeTab === 'kits' ? 'Kit' : 'Combo';
 
-  useEffect(() => {
-    fetchItems();
-    fetchProducts();
-  }, [activeTab]);
-
-  const fetchItems = async () => {
+  const fetchItems = useCallback(async () => {
     setLoading(true);
     try {
       const response =
@@ -104,9 +100,9 @@ export default function KitsAndCombosPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [activeTab]);
 
-  const fetchProducts = async () => {
+  const fetchProducts = useCallback(async () => {
     try {
       console.log('Fetching products from ProductService...');
       const response = await ProductService.getProducts({});
@@ -158,7 +154,12 @@ export default function KitsAndCombosPage() {
       console.error('Error fetching products:', err);
       setAllProducts([]);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    fetchItems();
+    fetchProducts();
+  }, [fetchItems, fetchProducts]);
 
   const getImageUrl = (path) => {
     if (!path) return null;
@@ -596,9 +597,11 @@ export default function KitsAndCombosPage() {
                                 <div className='relative flex-shrink-0'>
                                   <div className='w-16 h-16 rounded-lg overflow-hidden border border-gray-200'>
                                     {item.image_url ? (
-                                      <img
+                                      <Image
                                         src={getImageUrl(item.image_url)}
                                         alt={item.name}
+                                        width={64}
+                                        height={64}
                                         className='w-full h-full object-cover'
                                       />
                                     ) : (
@@ -827,11 +830,13 @@ export default function KitsAndCombosPage() {
                                                       <div className='flex items-center gap-3'>
                                                         {product?.main_image_url && (
                                                           <div className='w-10 h-10 rounded-lg overflow-hidden border border-gray-200 flex-shrink-0'>
-                                                            <img
+                                                            <Image
                                                               src={getImageUrl(
                                                                 product.main_image_url
                                                               )}
                                                               alt={product.name}
+                                                              width={40}
+                                                              height={40}
                                                               className='w-full h-full object-cover'
                                                             />
                                                           </div>

@@ -54,57 +54,47 @@ export function mapOrderToShiprocket(order) {
     return items.flatMap((item) => {
       if (item.type === 'kit' && Array.isArray(item.kit_products)) {
         return item.kit_products.map((kp) => ({
-          name: `${item.name} - ${kp.product?.name || kp.product_name || ''} (${kp.variant?.size || ''}${kp.variant?.unit || ''}${kp.variant?.color ? ', ' + kp.variant.color : ''})`,
+          name: `${item.name} - ${kp.product?.name || kp.product_name || ''}`,
           sku: kp.product?.product_code || kp.product_code || 'SKU123',
-          hsn: kp.product?.hsn_code || '71179010',
           units: kp.quantity * (item.quantity || 1),
           selling_price: kp.variant?.price || 0,
-          original_price: kp.variant?.compare_at_price || kp.variant?.price || 0,
-          discount_percent: item.discount_percentage || 0,
-        }));
-      }
-      if (item.type === 'combo' && Array.isArray(item.combo_products)) {
-        return item.combo_products.map((cp) => ({
-          name: `${item.name} - ${cp.product?.name || cp.product_name || ''} (${cp.variant?.size || ''}${cp.variant?.unit || ''}${cp.variant?.color ? ', ' + cp.variant.color : ''})`,
-          sku: cp.product?.product_code || cp.product_code || 'SKU123',
-          hsn: cp.product?.hsn_code || '71179010',
-          units: cp.quantity * (item.quantity || 1),
-          selling_price: cp.variant?.price || 0,
-          original_price: cp.variant?.compare_at_price || cp.variant?.price || 0,
-          discount_percent: item.discount_percentage || 0,
         }));
       }
 
-      // Regular product
+      if (item.type === 'combo' && Array.isArray(item.combo_products)) {
+        return item.combo_products.map((cp) => ({
+          name: `${item.name} - ${cp.product?.name || cp.product_name || ''}`,
+          sku: cp.product?.product_code || cp.product_code || 'SKU123',
+          units: cp.quantity * (item.quantity || 1),
+          selling_price: cp.variant?.price || 0,
+        }));
+      }
+
       return [{
         name: item.name,
         sku: item.product?.product_code || item.variant_code || 'SKU123',
-        hsn: item.product?.hsn_code || '71179010',
         units: item.quantity,
         selling_price: item.price,
-        original_price: item.original_price || item.price,
-        discount_percent: item.discount_percentage || 0,
+        deliveryCharge: order.delivery_charge || 0,
       }];
     });
   }
 
-  const orderItems = getOrderItems(order.items);
-  const totalOriginal = orderItems.reduce((sum, i) => sum + (i.original_price || 0) * (i.units || 1), 0);
-  const totalFinal = orderItems.reduce((sum, i) => sum + (i.selling_price || 0) * (i.units || 1), 0);
-  const totalDiscount = totalOriginal - totalFinal;
+  let orderItems = getOrderItems(order.items || []);
+  const deliveryCharge = Number(order.delivery_charge);
 
-  const deliveryCharge = Number(order.delivery_charge) || 0;
-  const grandTotal = totalFinal + deliveryCharge;
+  const grandTotal = orderItems.reduce((sum, item) => sum + item.selling_price * item.units, 0);
 
   return {
     order_id: order.order_number,
     order_date: new Date(order.created_at).toISOString().split('T')[0],
     pickup_location: 'warehouse',
-    billing_customer_name: shipping.name || shipping.full_name || '',
+
+    billing_customer_name: shipping.name || '',
     billing_last_name: '',
-    billing_address: shipping.street || shipping.address || '',
+    billing_address: shipping.address || '',
     billing_city: shipping.city || '',
-    billing_pincode: shipping.pincode || shipping.postal_code || '',
+    billing_pincode: shipping.pincode || '',
     billing_state: shipping.state || '',
     billing_country: 'India',
     billing_email: order.user_info?.email || '',
@@ -112,21 +102,15 @@ export function mapOrderToShiprocket(order) {
     shipping_is_billing: true,
 
     order_items: orderItems,
-
     payment_method: 'Prepaid',
-    sub_total: totalOriginal,
-    discount: totalDiscount,
-    total_discount: totalDiscount,
+    sub_total: grandTotal,
     total: grandTotal,
-    shipping_charges: deliveryCharge, // ✅ Explicit delivery charges field
-
+    shipping_charges: deliveryCharge,
     length: 10,
     breadth: 15,
     height: 10,
     weight: 1,
 
-    comment: order.coupon_code
-      ? `Coupon: ${order.coupon_code} | Original: ₹${totalOriginal} | Discount: ₹${totalDiscount} | Delivery: ₹${deliveryCharge} | Final: ₹${grandTotal}`
-      : `Original: ₹${totalOriginal} | Discount: ₹${totalDiscount} | Delivery: ₹${deliveryCharge} | Final: ₹${grandTotal}`,
+    comment: `Delivery: ₹${deliveryCharge}`,
   };
 }

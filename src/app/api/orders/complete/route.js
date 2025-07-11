@@ -22,7 +22,7 @@ export async function POST(req) {
       razorpay_order_id,
       razorpay_payment_id,
       razorpay_signature,
-      delivery_charge
+      delivery_charge,
     } = body;
 
     if (!user_id || !shipping_address_id || !billing_address_id || !items || !total) {
@@ -31,6 +31,8 @@ export async function POST(req) {
         { status: 400 }
       );
     }
+
+    console.log('Delivery Charge:', delivery_charge); // Debug log
 
     const orderNumber = generateOrderNumber();
 
@@ -54,7 +56,8 @@ export async function POST(req) {
           razorpay_signature,
           order_number: orderNumber,
           completed_at: new Date().toISOString(),
-          delivery_charge: delivery_charge},
+          delivery_charge,
+        },
       ])
       .select()
       .single();
@@ -134,9 +137,7 @@ async function processOrderItems(order) {
 
     for (const item of items) {
       if (item.type === 'product') {
-        // Handle single product
         if (item.variant?.id) {
-          // Deduct stock for the variant using decrement_stock
           const { error: stockError } = await supabase.rpc(
             'decrement_stock_by_quantity',
             {
@@ -150,11 +151,9 @@ async function processOrderItems(order) {
               `Stock adjustment failed for variant ${item.variant.id}:`,
               stockError
             );
-            // Continue processing other items even if one fails
           }
         }
 
-        // Create sales record
         await supabase.from('sales_records').insert({
           order_id: order.id,
           order_number: orderNumber,
@@ -169,12 +168,10 @@ async function processOrderItems(order) {
           sale_date: new Date().toISOString().split('T')[0],
         });
       } else if (item.type === 'kit' || item.type === 'combo') {
-        // Process kits and combos
         const sourceTable = item.type === 'kit' ? 'kit_products' : 'combo_products';
         const sourceIdColumn = item.type === 'kit' ? 'kit_id' : 'combo_id';
         const sourceId = item.type === 'kit' ? item.kit_id : item.combo_id;
 
-        // Get related products for this kit/combo
         const { data: relatedItems, error: relatedError } = await supabase
           .from(sourceTable)
           .select('variant_id, quantity')
@@ -185,7 +182,6 @@ async function processOrderItems(order) {
           continue;
         }
 
-        // Deduct stock for each related product variant
         for (const related of relatedItems) {
           const { error: stockError } = await supabase.rpc(
             'decrement_stock_by_quantity',
@@ -203,7 +199,6 @@ async function processOrderItems(order) {
           }
         }
 
-        // Create sales record for kit/combo
         await supabase.from('sales_records').insert({
           order_id: order.id,
           order_number: orderNumber,

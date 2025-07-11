@@ -1,5 +1,5 @@
 'use client';
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { createSupabaseBrowserClient } from '@/lib/supabase/browser-client';
 const supabase = createSupabaseBrowserClient();
@@ -102,128 +102,13 @@ const formatPrice = (amount) => `₹${Number(amount).toFixed(0)}`;
     }
   }, [user]);
 
-  const fetchSingleProduct = useCallback(async () => {
-    try {
-      const { data } = await supabase
-        .from('products')
-        .select('*')
-        .eq('id', productId)
-        .single();
-
-      if (data) {
-        const transformedProduct = {
-          id: `direct-${data.id}`,
-          type: 'product',
-          product_id: data.id,
-          product_code: data.product_code,
-          name: data.name,
-          description: data.description,
-          main_image_url: data.main_image_url,
-          images: data.images,
-          variant: null,
-          variant_display_text: 'Default',
-          base_price: data.price,
-          quantity: qtyParam,
-          total_price: data.price * qtyParam,
-          is_microfiber: data.is_microfiber,
-          key_features: data.key_features,
-          taglines: data.taglines,
-          category_name: data.category_name,
-        };
-
-        setTransformedItems([transformedProduct]);
-      }
-    } catch (error) {
-      console.error('Error fetching single product:', error);
-    } finally {
-      setLoading(false);
-    }
-  }, [productId, qtyParam]);
-
-  const fetchSingleCombo = useCallback(async () => {
-    try {
-      const { data: combo } = await supabase
-        .from('combos')
-        .select('*')
-        .eq('id', comboId)
-        .single();
-
-      if (!combo) return;
-
-      setCombo(combo);
-
-      const { data: comboProducts } = await supabase
-        .from('combo_products')
-        .select(`
-          *,
-          product:products(*),
-          variant:product_variants(variant_code)
-        `)
-        .eq('combo_id', combo.id);
-
-      if (!comboProducts) {
-        console.error('No combo products found');
-        return;
-      }
-
-      const transformedCombo = {
-        id: `direct-${combo.id}`,
-        type: 'combo',
-        combo_id: combo.id,
-        name: combo.name,
-        description: combo.description,
-        main_image_url: combo.main_image_url,
-        images: combo.images,
-        price: combo.price,
-        original_price: combo.original_price,
-        discount_percentage: combo.discount_percent,
-        quantity: 1,
-        total_price: combo.price,
-        included_products: comboProducts.map((cp) => ({
-          product_id: cp.product_id,
-          product_name: cp.product?.name,
-          product_code: cp.product?.product_code,
-          variant_id: cp.variant_id,
-          variant_code: cp.variant?.variant_code || '', // ✅ directly fetched
-          quantity: cp.quantity,
-        })),
-        included_variants: [],
-      };
-
-      setTransformedItems([transformedCombo]);
-    } catch (error) {
-      console.error('Error in fetchSingleCombo:', error);
-    } finally {
-      setLoading(false);
-    }
-  }, [comboId]);
-
-  const transformCartData = useCallback(async () => {
-    if (!cartItems || cartItems.length === 0) {
-      setTransformedItems([]);
-      setLoading(false);
-      return;
-    }
-
-    try {
-      setLoading(true);
-      const transformed = await transformCartForCheckout(cartItems, userId);
-      setTransformedItems(transformed);
-    } catch (error) {
-      console.error('Error transforming cart data:', error);
-      setTransformedItems([]);
-    } finally {
-      setLoading(false);
-    }
-  }, [cartItems, userId]);
-
   useEffect(() => {
     if (userId) {
       if (productId) fetchSingleProduct();
       else if (comboId) fetchSingleCombo();
       else transformCartData();
     }
-  }, [userId, productId, comboId, fetchSingleProduct, fetchSingleCombo, transformCartData]);
+  }, [userId, cartItems]);
 
   // Recalculate totals when items or coupon change
   useEffect(() => {
@@ -303,7 +188,121 @@ useEffect(() => {
 }, [transformedItems, coupon]);
 
 
+  const fetchSingleProduct = async () => {
+    try {
+      const { data } = await supabase
+        .from('products')
+        .select('*')
+        .eq('id', productId)
+        .single();
 
+      if (data) {
+        const transformedProduct = {
+          id: `direct-${data.id}`,
+          type: 'product',
+          product_id: data.id,
+          product_code: data.product_code,
+          name: data.name,
+          description: data.description,
+          main_image_url: data.main_image_url,
+          images: data.images,
+          variant: null,
+          variant_display_text: 'Default',
+          base_price: data.price,
+          quantity: qtyParam,
+          total_price: data.price * qtyParam,
+          is_microfiber: data.is_microfiber,
+          key_features: data.key_features,
+          taglines: data.taglines,
+          category_name: data.category_name,
+        };
+
+        setTransformedItems([transformedProduct]);
+      }
+    } catch (error) {
+      console.error('Error fetching single product:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchSingleCombo = async () => {
+  try {
+    const { data: combo } = await supabase
+      .from('combos')
+      .select('*')
+      .eq('id', comboId)
+      .single();
+
+    if (!combo) return;
+
+    setCombo(combo);
+
+    const { data: comboProducts } = await supabase
+      .from('combo_products')
+      .select(`
+        *,
+        product:products(*),
+        variant:product_variants(variant_code)
+      `)
+      .eq('combo_id', combo.id);
+
+    if (!comboProducts) {
+      console.error('No combo products found');
+      return;
+    }
+
+    const transformedCombo = {
+      id: `direct-${combo.id}`,
+      type: 'combo',
+      combo_id: combo.id,
+      name: combo.name,
+      description: combo.description,
+      main_image_url: combo.main_image_url,
+      images: combo.images,
+      price: combo.price,
+      original_price: combo.original_price,
+      discount_percentage: combo.discount_percent,
+      quantity: 1,
+      total_price: combo.price,
+      included_products: comboProducts.map((cp) => ({
+        product_id: cp.product_id,
+        product_name: cp.product?.name,
+        product_code: cp.product?.product_code,
+        variant_id: cp.variant_id,
+        variant_code: cp.variant?.variant_code || '', // ✅ directly fetched
+        quantity: cp.quantity,
+      })),
+      included_variants: [],
+    };
+
+    setTransformedItems([transformedCombo]);
+  } catch (error) {
+    console.error('Error in fetchSingleCombo:', error);
+  } finally {
+    setLoading(false);
+  }
+};
+
+
+  const transformCartData = async () => {
+    if (!cartItems || cartItems.length === 0) {
+      setTransformedItems([]);
+      setLoading(false);
+      return;
+    }
+
+    try {
+      setLoading(true);
+      const transformed = await transformCartForCheckout(cartItems, userId);
+      setTransformedItems(transformed);
+    } catch (error) {
+      console.error('Error transforming cart data:', error);
+      setTransformedItems([]);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const updateItemQuantity = (itemId, newQuantity) => {
     if (newQuantity < 1) return;
@@ -371,47 +370,31 @@ useEffect(() => {
         '0'
       )}-${Math.floor(1000 + Math.random() * 9000)}`;
       // Prepare order data (for later use)
-      const orderData = {
-        order_number: orderNumber,
-        user_id: userId,
-        shipping_address_id: selectedShippingAddressId,
-        billing_address_id: billingAddressId,
-        user_info: {
-          email: user.email,
-          shipping_address: shippingAddress,
-          billing_address: billingAddress,
-        },
-        // Ensure every item has main_image_url
-        items: transformedItems.map(item => ({
-          ...item,
-          main_image_url: item.main_image_url || null
-        })),
-        subtotal: orderTotals.subtotal,
-        discount_amount: orderTotals.discount || 0,
-        total: orderTotals.grandTotal + deliveryCharge,
-        coupon_id: coupon?.id || null,
-        status: 'pending',
-        payment_status: 'pending',
-        created_at: new Date().toISOString(),
-      };
-      // 1. Insert order in DB with status 'pending' and get orderId
-      const { data: createdOrder, error: createOrderError } = await supabase
-        .from('orders')
-        .insert([
-          {
-            ...orderData,
-            status: 'pending',
-            payment_status: 'pending',
-            created_at: new Date().toISOString(),
-          },
-        ])
-        .select()
-        .single();
-      if (createOrderError || !createdOrder?.id) {
-        throw new Error('Failed to create order in database. Please try again.');
-      }
-      const orderId = createdOrder.id;
-      // 2. Create Razorpay Order (pass orderId in notes)
+     const orderData = {
+  order_number: orderNumber,
+  user_id: userId,
+  shipping_address_id: selectedShippingAddressId,
+  billing_address_id: billingAddressId,
+  user_info: {
+    email: user.email,
+    shipping_address: shippingAddress,
+    billing_address: billingAddress,
+  },
+  items: transformedItems.map(item => ({
+    ...item,
+    main_image_url: item.main_image_url || null
+  })),
+  subtotal: orderTotals.subtotal,
+  discount_amount: orderTotals.discount || 0,
+  total: orderTotals.grandTotal + deliveryCharge,
+  delivery_charge: deliveryCharge, // ✅ ADD THIS LINE
+  coupon_id: coupon?.id || null,
+  status: 'pending',
+  payment_status: 'pending',
+  created_at: new Date().toISOString(),
+};
+
+      // Create Razorpay Order
       const razorpayOrderRes = await fetch('/api/razorpay/create-order', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -419,14 +402,18 @@ useEffect(() => {
           amount: orderTotals.grandTotal + deliveryCharge,
           currency: 'INR',
           receipt: orderNumber,
-          order_id: orderId, // pass DB orderId
         }),
       });
+
+      // Debug: log the full response
       const razorpayOrderData = await razorpayOrderRes.json();
+      console.log('Razorpay order API response:', razorpayOrderData);
+
       if (!razorpayOrderData?.success || !razorpayOrderData?.id) {
+        // Show backend error message if available
         throw new Error(
           razorpayOrderData?.error?.message ||
-            'Failed to create payment order. Please try again.'
+          'Failed to create payment order. Please try again.'
         );
       }
       // Initialize Razorpay checkout
@@ -464,19 +451,7 @@ useEffect(() => {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                  user_id: userId,
-                  user_info: {
-                    email: user.email,
-                    shipping_address: shippingAddress,
-                    billing_address: billingAddress,
-                  },
-                  shipping_address_id: selectedShippingAddressId,
-                  billing_address_id: billingAddressId,
-                  items: orderData.items,
-                  subtotal: orderTotals.subtotal,
-                  total: orderTotals.grandTotal + deliveryCharge,
-                  coupon_id: coupon?.id || null,
-                  discount_amount: orderTotals.discount || 0,
+                  ...orderData,
                   payment_status: 'paid',
                   razorpay_order_id: razorpayOrderData.id,
                   razorpay_payment_id: response.razorpay_payment_id,
@@ -485,23 +460,13 @@ useEffect(() => {
               });
               const completeOrderData = await completeOrderRes.json();
               if (completeOrderData.success) {
-                console.log('Navigating to confirmation:', completeOrderData.order_id);
+                // Cleanup cart and coupon
+                await supabase.from('cart_items').delete().eq('user_id', userId);
+                if (coupon) clearCoupon();
+                // Redirect to order confirmation
                 router.push(`/order-confirmation/${completeOrderData.order_id}?success=true`);
-                // Fallback: force redirect if router.push fails, and clear cart after navigation
-                setTimeout(async () => {
-                  await supabase.from('cart_items').delete().eq('user_id', userId);
-                  if (coupon) clearCoupon();
-                  if (window.location.pathname.indexOf(`/order-confirmation/${completeOrderData.order_id}`) === -1) {
-                    window.location.href = `/order-confirmation/${completeOrderData.order_id}?success=true`;
-                  }
-                }, 1000);
-                setLoading(false);
-                setPaymentProcessing(false);
               } else {
                 setPaymentError('Order creation failed after payment. Please contact support.');
-                console.error('Order creation failed:', completeOrderData);
-                setLoading(false);
-                setPaymentProcessing(false);
               }
             } else {
               setPaymentError('Payment verification failed. Please contact support.');

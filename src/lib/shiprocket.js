@@ -1,88 +1,83 @@
-// src/lib/shiprocket.js
 import axios from 'axios';
 
-const SHIPROCKET_EMAIL = "yogesh.indietribe@gmail.com"; // ✅ Email you used to login to Shiprocket panel
-const SHIPROCKET_PASSWORD = "3F*PBk^Si&!QIPym";     // ✅ Password for that email
+const SHIPROCKET_EMAIL = process.env.SHIPROCKET_EMAIL; // 🔒 Use environment variables!
+const SHIPROCKET_PASSWORD = process.env.SHIPROCKET_PASSWORD;
 
 let token = null;
 
-export async function createShiprocketOrder(orderData) {
-  if (!token) {
-    try {
-      const response = await axios.post(
-        "https://apiv2.shiprocket.in/v1/external/auth/login",
-        {
-          email: SHIPROCKET_EMAIL,
-          password: SHIPROCKET_PASSWORD,
-        },
-        {
-          headers: {
-            "Content-Type": "application/json",
-          },
-        }
-      );
-
-      token = response.data.token;
-    } catch (error) {
-      console.error("🚨 Failed to authenticate with Shiprocket:", error.response?.data || error.message);
-      throw new Error("Shiprocket login failed.");
-    }
-  }
+async function getShiprocketToken() {
+  if (token) return token;
 
   try {
+    const res = await axios.post(
+      'https://apiv2.shiprocket.in/v1/external/auth/login',
+      { email: SHIPROCKET_EMAIL, password: SHIPROCKET_PASSWORD },
+      { headers: { 'Content-Type': 'application/json' } }
+    );
+    token = res.data.token;
+    return token;
+  } catch (err) {
+    console.error('🚨 Shiprocket login failed:', err.response?.data || err.message);
+    throw new Error('Shiprocket login failed.');
+  }
+}
+
+export async function createShiprocketOrder(orderData) {
+  try {
+    const authToken = await getShiprocketToken();
     const response = await axios.post(
-      "https://apiv2.shiprocket.in/v1/external/orders/create/adhoc",
+      'https://apiv2.shiprocket.in/v1/external/orders/create/adhoc',
       orderData,
       {
         headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json",
+          Authorization: `Bearer ${authToken}`,
+          'Content-Type': 'application/json',
         },
       }
     );
     return response.data;
   } catch (error) {
-    console.error("❌ Shiprocket order creation failed:", error.response?.data || error.message);
-    throw new Error("Failed to create Shiprocket order.");
+    console.error('❌ Shiprocket order creation failed:', error.response?.data || error.message);
+    throw new Error('Failed to create Shiprocket order.');
   }
 }
 
 export function mapOrderToShiprocket(order) {
   const shipping = order.user_info?.shipping_address || {};
 
-  function getOrderItems(items) {
-    return items.flatMap((item) => {
-      if (item.type === 'kit' && Array.isArray(item.kit_products)) {
-        return item.kit_products.map((kp) => ({
-          name: `${item.name} - ${kp.product?.name || kp.product_name || ''}`,
-          sku: kp.product?.product_code || kp.product_code || 'SKU123',
-          units: kp.quantity * (item.quantity || 1),
-          selling_price: kp.variant?.price || 0,
-        }));
-      }
+  const orderItems = (order.items || []).flatMap((item) => {
+    const baseName = item.name || 'Unknown Item';
+    const quantity = item.quantity || 1;
 
-      if (item.type === 'combo' && Array.isArray(item.combo_products)) {
-        return item.combo_products.map((cp) => ({
-          name: `${item.name} - ${cp.product?.name || cp.product_name || ''}`,
-          sku: cp.product?.product_code || cp.product_code || 'SKU123',
-          units: cp.quantity * (item.quantity || 1),
-          selling_price: cp.variant?.price || 0,
-        }));
-      }
+    if (item.type === 'kit' && Array.isArray(item.kit_products)) {
+      return item.kit_products.map((kp) => ({
+        name: `${baseName} - ${kp.product?.name || kp.product_name || ''}`,
+        sku: kp.product?.product_code || kp.product_code || 'SKU123',
+        units: kp.quantity * quantity,
+        selling_price: kp.variant?.price || 0,
+      }));
+    }
 
-      return [{
-        name: item.name,
-        sku: item.product?.product_code || item.variant_code || 'SKU123',
-        units: item.quantity,
-        selling_price: item.price,
-      }];
-    });
-  }
+    if (item.type === 'combo' && Array.isArray(item.combo_products)) {
+      return item.combo_products.map((cp) => ({
+        name: `${baseName} - ${cp.product?.name || cp.product_name || ''}`,
+        sku: cp.product?.product_code || cp.product_code || 'SKU123',
+        units: cp.quantity * quantity,
+        selling_price: cp.variant?.price || 0,
+      }));
+    }
 
-  const orderItems = getOrderItems(order.items || []);
+    // Default single product case
+    return [{
+      name: baseName,
+      sku: item.variant_code || item.product?.product_code || 'SKU123',
+      units: quantity,
+      selling_price: item.price,
+    }];
+  });
+
   const deliveryCharge = Number(order.delivery_charge || 0);
-
-  const grandSubtotal = orderItems.reduce((sum, item) => sum + item.selling_price * item.units, 0);
+  const grandSubtotal = orderItems.reduce((sum, i) => sum + i.selling_price * i.units, 0);
   const grandTotal = grandSubtotal + deliveryCharge;
 
   return {
@@ -94,7 +89,7 @@ export function mapOrderToShiprocket(order) {
     billing_last_name: '',
     billing_address: shipping.address || '',
     billing_city: shipping.city || '',
-    billing_pincode: shipping.pincode || '',
+    billing_pincode: shipping.postal_code || shipping.pincode || '',
     billing_state: shipping.state || '',
     billing_country: 'India',
     billing_email: order.user_info?.email || '',

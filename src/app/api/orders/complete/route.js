@@ -79,6 +79,32 @@ export async function POST(req) {
       return NextResponse.json({ success: false, error: 'Failed to create order' }, { status: 500 });
     }
 
+  // ✅ Remove used coupon from user's auth profile
+if (coupon_id && user_id) {
+  const { data: user, error: userError } = await supabase
+    .from('auth_users')
+    .select('coupons')
+    .eq('id', user_id)
+    .single();
+
+  if (userError || !user) {
+    console.error('❌ Failed to fetch user for coupon removal:', userError);
+  } else {
+    const updatedCoupons = (user.coupons || []).filter((id) => id !== coupon_id);
+    const { error: updateError } = await supabase
+      .from('auth_users')
+      .update({ coupons: updatedCoupons })
+      .eq('id', user_id);
+
+    if (updateError) {
+      console.error('❌ Failed to update user coupons:', updateError);
+    } else {
+      console.log(`✅ Used coupon ${coupon_id} removed from user ${user_id}`);
+    }
+  }
+}
+
+
     const { data: address, error: addressError } = await supabase
       .from('addresses')
       .select('*')

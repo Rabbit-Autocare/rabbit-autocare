@@ -5,7 +5,7 @@ const SHIPROCKET_PASSWORD = process.env.SHIPROCKET_PASSWORD;
 
 let token = null;
 
-// 🔐 Get Shiprocket auth token (reused if already fetched)
+// 🔐 Get Shiprocket token
 async function getShiprocketToken() {
   if (token) return token;
 
@@ -23,10 +23,10 @@ async function getShiprocketToken() {
   }
 }
 
-// 🚚 Create Shiprocket order with full calculated invoice fields
+// 🚚 Create Shiprocket order
 export async function createShiprocketOrder(orderData) {
+  const authToken = await getShiprocketToken();
   try {
-    const authToken = await getShiprocketToken();
     const response = await axios.post(
       'https://apiv2.shiprocket.in/v1/external/orders/create/adhoc',
       orderData,
@@ -44,86 +44,70 @@ export async function createShiprocketOrder(orderData) {
   }
 }
 
-// 🧠 Map order from your DB to Shiprocket format
+// 🧠 Map order to Shiprocket format
 export function mapOrderToShiprocket(order) {
   const shipping = order.user_info?.shipping_address || {};
   const gstRate = 18;
   const totalCouponDiscount = order.discount_amount || 0;
 
-  // Step 1: Calculate total units (for per-unit coupon discount split)
-  const totalQuantity = order.items.reduce((sum, item) => sum + item.quantity, 0);
-  const couponPerUnit = totalQuantity > 0 ? +(totalCouponDiscount / totalQuantity).toFixed(2) : 0;
+  const totalQty = order.items.reduce((sum, item) => sum + item.quantity, 0);
+  const couponPerUnit = totalQty > 0 ? +(totalCouponDiscount / totalQty).toFixed(2) : 0;
 
-  // Step 2: Build Shiprocket order_items array
-  const orderItems = (order.items || []).map((item) => {
+  const orderItems = [];
+
+  for (const item of order.items || []) {
     const quantity = item.quantity || 1;
 
     if (item.type === 'combo' || item.type === 'kit') {
-  const quantity = item.quantity || 1;
-  const basePrice = Number(item.original_price || item.price || 0);
-  const finalPrice = Number(item.price || basePrice);
-  const unitDiscount = +(basePrice - finalPrice).toFixed(2);
-  const hsn = '34053000';
+      const basePrice = Number(item.original_price || item.price || 0);
+      const finalPrice = Number(item.price || basePrice);
+      const unitDiscount = +(basePrice - finalPrice).toFixed(2);
+      const hsn = '34053000';
 
-  // ✅ Build full breakdown of internal products
-  const internalDetails = (item.products || []).map((p) => {
-    const name = p.name || 'Unnamed';
-    const size = p.size || p.variant_name || 'Default';
-    const sku = p.sku || 'N/A';
-    const hsnCode = p.hsn_code || '34053000';
-    const qty = p.quantity || 1;
-    return `• ${name} (${size}) | SKU: ${sku}, HSN: ${hsnCode}, Qty: ${qty}`;
-  }).join('\n');
+      // 🧾 Combo internal breakdown
+      const internal = (item.products || [])
+        .map((p) => {
+          const variant = p.variant_name || 'Default';
+          return `• ${p.name} (${variant}), Qty: ${p.quantity}, SKU: ${p.sku || 'N/A'}`;
+        })
+        .join('\n');
 
-  // ✅ Prevent discount from exceeding price (which breaks GST)
-  const validDiscount = unitDiscount > 0 && unitDiscount < finalPrice ? unitDiscount : 0;
+      const validDiscount = unitDiscount > 0 && unitDiscount < finalPrice ? unitDiscount : 0;
 
-  return {
-    name: `${item.name}\nIncludes:\n${internalDetails}`,
-    sku: item.sku || `COMBO-${item.id}`,
-    units: quantity,
-    selling_price: finalPrice,
-    discount: validDiscount,
-    hsn,
-    tax: 18
-  };
-}
+      orderItems.push({
+        name: `${item.name}\nIncludes:\n${internal}`,
+        sku: item.sku || `KIT-${item.id}`,
+        units: quantity,
+        selling_price: finalPrice,
+        discount: validDiscount,
+        hsn,
+        tax: gstRate,
+      });
+    } else {
+      // 🧾 Regular product
+      const basePrice = item.base_price || item.price || 0;
+      const finalPrice = item.price || basePrice;
+      const baseDiscount = basePrice - finalPrice;
+      const finalUnitDiscount = +(baseDiscount + couponPerUnit).toFixed(2);
+      const hsn = item.hsn_code || '34053000';
 
+      orderItems.push({
+        name: item.name || 'Unnamed',
+        sku: item.variant_code || item.product_code || 'SKU123',
+        units: quantity,
+        selling_price: finalPrice,
+        discount: finalUnitDiscount > 0 ? finalUnitDiscount : 0,
+        hsn,
+        tax: gstRate,
+      });
+    }
+  }
 
-    // ✅ Handle Regular Product
-    const basePrice = item.base_price || item.price || 0;
-    const finalPrice = item.price || basePrice;
-    const baseDiscount = basePrice - finalPrice;
-    const finalUnitDiscount = +(baseDiscount + couponPerUnit).toFixed(2);
-    const hsn = item.hsn_code || '34053000';
-
-    return {
-      name: item.name || 'Unknown Product',
-      sku: item.variant_code || item.product_code || 'SKU123',
-      units: quantity,
-      selling_price: finalPrice,
-      discount: finalUnitDiscount > 0 ? finalUnitDiscount : 0,
-      hsn,
-      tax: gstRate
-    };
-  });
-
-  // Step 3: Calculate sub_total (after discount), total_discount, grandTotal
   const deliveryCharge = Number(order.delivery_charge || 0);
-
-  const subTotal = orderItems.reduce(
-    (sum, item) => sum + ((item.selling_price - item.discount) * item.units),
-    0
-  );
-
-  const totalDiscount = orderItems.reduce(
-    (sum, item) => sum + (item.discount * item.units),
-    0
-  );
-
+  const subTotal = orderItems.reduce((sum, i) => sum + ((i.selling_price - i.discount) * i.units), 0);
+  const totalDiscount = orderItems.reduce((sum, i) => sum + (i.discount * i.units), 0);
   const grandTotal = +(subTotal + deliveryCharge).toFixed(2);
 
-  // ✅ Final return object
   return {
     order_id: order.order_number,
     order_date: new Date(order.created_at).toISOString().split('T')[0],
@@ -143,11 +127,9 @@ export function mapOrderToShiprocket(order) {
     order_items: orderItems,
     payment_method: 'Prepaid',
 
-    // ✅ Required for invoice calculations
     sub_total: +subTotal.toFixed(2),
     total_discount: +totalDiscount.toFixed(2),
     total: grandTotal,
-
     shipping_charges: deliveryCharge,
 
     length: 10,
@@ -157,7 +139,6 @@ export function mapOrderToShiprocket(order) {
 
     invoice_number: order.order_number,
     invoice_date: new Date(order.created_at).toISOString().split('T')[0],
-
     comment: `Final: ₹${grandTotal} | Discount: ₹${totalDiscount}`
   };
 }

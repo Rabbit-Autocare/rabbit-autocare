@@ -320,194 +320,196 @@ useEffect(() => {
     );
   };
 
-  const handlePlaceOrder = async () => {
-    if (
-      !selectedShippingAddressId ||
-      (!useSameAddress && !selectedBillingAddressId) ||
-      transformedItems.length === 0
-    ) {
-      alert(
-        'Please select both shipping and billing addresses and ensure you have items in your cart.'
+ const handlePlaceOrder = async () => {
+  if (
+    !selectedShippingAddressId ||
+    (!useSameAddress && !selectedBillingAddressId) ||
+    transformedItems.length === 0
+  ) {
+    alert(
+      'Please select both shipping and billing addresses and ensure you have items in your cart.'
+    );
+    return;
+  }
+
+  setLoading(true);
+  setPaymentProcessing(true);
+  setPaymentError(null);
+
+  try {
+    const { data: shippingAddress, error: shippingError } = await supabase
+      .from('addresses')
+      .select('*')
+      .eq('id', selectedShippingAddressId)
+      .single();
+
+    if (shippingError)
+      throw new Error(`Failed to fetch shipping address: ${shippingError.message}`);
+
+    const billingAddressId = useSameAddress
+      ? selectedShippingAddressId
+      : selectedBillingAddressId;
+
+    const { data: billingAddress, error: billingError } = await supabase
+      .from('addresses')
+      .select('*')
+      .eq('id', billingAddressId)
+      .single();
+
+    if (billingError)
+      throw new Error(`Failed to fetch billing address: ${billingError.message}`);
+
+    if (!user) throw new Error('User not authenticated');
+
+    const date = new Date();
+    const orderNumber = `${date.getFullYear()}${String(date.getMonth() + 1).padStart(2, '0')}${String(
+      date.getDate()
+    ).padStart(2, '0')}-${Math.floor(1000 + Math.random() * 9000)}`;
+
+    // ✅ Calculate grand total manually
+    const calculatedSubtotal = transformedItems.reduce((sum, item) => {
+      const unit = item.price || 0;
+      const qty = item.quantity || 1;
+      const total = item.total_price ?? unit * qty;
+      return sum + total;
+    }, 0);
+
+    const finalAmount = calculatedSubtotal - (orderTotals.discount || 0) + (deliveryCharge || 0);
+
+    // Debug (optional)
+    console.log("Final payable amount:", finalAmount);
+
+    const orderData = {
+      order_number: orderNumber,
+      user_id: userId,
+      shipping_address_id: selectedShippingAddressId,
+      billing_address_id: billingAddressId,
+      user_info: {
+        email: user.email,
+        shipping_address: shippingAddress,
+        billing_address: billingAddress,
+      },
+      items: transformedItems.map((item) => ({
+        ...item,
+        main_image_url: item.main_image_url || null,
+      })),
+      subtotal: calculatedSubtotal,
+      discount_amount: orderTotals.discount || 0,
+      total: finalAmount,
+      delivery_charge: deliveryCharge,
+      coupon_id: coupon?.id || null,
+      status: 'pending',
+      payment_status: 'pending',
+      created_at: new Date().toISOString(),
+    };
+
+    const razorpayOrderRes = await fetch('/api/razorpay/create-order', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        amount: finalAmount,
+        currency: 'INR',
+        receipt: orderNumber,
+      }),
+    });
+
+    const razorpayOrderData = await razorpayOrderRes.json();
+    console.log('Razorpay order API response:', razorpayOrderData);
+
+    if (!razorpayOrderData?.success || !razorpayOrderData?.id) {
+      throw new Error(
+        razorpayOrderData?.error?.message ||
+          'Failed to create payment order. Please try again.'
       );
-      return;
     }
 
-    setLoading(true);
-    setPaymentProcessing(true);
-    setPaymentError(null);
+    const options = {
+      key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
+      amount: razorpayOrderData.amount,
+      currency: razorpayOrderData.currency,
+      name: 'Rabbit Auto Care',
+      description: `Order #${orderNumber}`,
+      order_id: razorpayOrderData.id,
+      prefill: {
+        name: user?.full_name || '',
+        email: user?.email || '',
+        contact: shippingAddress?.phone || '',
+      },
+      theme: { color: '#601E8D' },
+      handler: async function (response) {
+        try {
+          const verificationRes = await fetch('/api/razorpay/verify', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ ...response }),
+          });
 
-    try {
-      // Get shipping address details
-      const { data: shippingAddress, error: shippingError } = await supabase
-        .from('addresses')
-        .select('*')
-        .eq('id', selectedShippingAddressId)
-        .single();
-      if (shippingError)
-        throw new Error(
-          `Failed to fetch shipping address: ${shippingError.message}`
-        );
-      // Get billing address details if different from shipping
-      const billingAddressId = useSameAddress
-        ? selectedShippingAddressId
-        : selectedBillingAddressId;
-      const { data: billingAddress, error: billingError } = await supabase
-        .from('addresses')
-        .select('*')
-        .eq('id', billingAddressId)
-        .single();
-      if (billingError)
-        throw new Error(
-          `Failed to fetch billing address: ${billingError.message}`
-        );
-      if (!user) throw new Error('User not authenticated');
-      // Generate order number (YYYYMMDD-XXXX format)
-      const date = new Date();
-      const orderNumber = `${date.getFullYear()}${String(
-        date.getMonth() + 1
-      ).padStart(2, '0')}${String(date.getDate()).padStart(
-        2,
-        '0'
-      )}-${Math.floor(1000 + Math.random() * 9000)}`;
-      // Prepare order data (for later use)
-     const orderData = {
-  order_number: orderNumber,
-  user_id: userId,
-  shipping_address_id: selectedShippingAddressId,
-  billing_address_id: billingAddressId,
-  user_info: {
-    email: user.email,
-    shipping_address: shippingAddress,
-    billing_address: billingAddress,
-  },
-  items: transformedItems.map(item => ({
-    ...item,
-    main_image_url: item.main_image_url || null
-  })),
-  subtotal: orderTotals.subtotal,
-  discount_amount: orderTotals.discount || 0,
-  total: orderTotals.grandTotal + deliveryCharge,
-  delivery_charge: deliveryCharge, // ✅ ADD THIS LINE
-  coupon_id: coupon?.id || null,
-  status: 'pending',
-  payment_status: 'pending',
-  created_at: new Date().toISOString(),
-};
+          const verificationData = await verificationRes.json();
 
-      // Create Razorpay Order
-      const razorpayOrderRes = await fetch('/api/razorpay/create-order', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          amount: orderTotals.grandTotal + deliveryCharge,
-          currency: 'INR',
-          receipt: orderNumber,
-        }),
-      });
-
-      // Debug: log the full response
-      const razorpayOrderData = await razorpayOrderRes.json();
-      console.log('Razorpay order API response:', razorpayOrderData);
-
-      if (!razorpayOrderData?.success || !razorpayOrderData?.id) {
-        // Show backend error message if available
-        throw new Error(
-          razorpayOrderData?.error?.message ||
-          'Failed to create payment order. Please try again.'
-        );
-      }
-      // Initialize Razorpay checkout
-      const options = {
-        key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
-        amount: razorpayOrderData.amount,
-        currency: razorpayOrderData.currency,
-        name: 'Rabbit Auto Care',
-        description: `Order #${orderNumber}`,
-        order_id: razorpayOrderData.id,
-        prefill: {
-          name: user?.full_name || '',
-          email: user?.email || '',
-          contact: shippingAddress?.phone || '',
-        },
-        theme: {
-          color: '#601E8D',
-        },
-        handler: async function (response) {
-          try {
-            setPaymentProcessing(true);
-            // Verify payment with backend
-            const verificationRes = await fetch('/api/razorpay/verify', {
+          if (verificationData.success) {
+            const completeOrderRes = await fetch('/api/orders/complete', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({
-                ...response,
-                // No order_id here, as order is not yet created
+                ...orderData,
+                payment_status: 'paid',
+                razorpay_order_id: razorpayOrderData.id,
+                razorpay_payment_id: response.razorpay_payment_id,
+                razorpay_signature: response.razorpay_signature,
               }),
             });
-            const verificationData = await verificationRes.json();
-            if (verificationData.success) {
-              // Now create the order in DB and process everything
-              const completeOrderRes = await fetch('/api/orders/complete', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                  ...orderData,
-                  payment_status: 'paid',
-                  razorpay_order_id: razorpayOrderData.id,
-                  razorpay_payment_id: response.razorpay_payment_id,
-                  razorpay_signature: response.razorpay_signature,
-                }),
-              });
-              const completeOrderData = await completeOrderRes.json();
-              if (completeOrderData.success) {
-                // Cleanup cart and coupon
-                await supabase.from('cart_items').delete().eq('user_id', userId);
-                if (coupon) clearCoupon();
-                // Redirect to order confirmation
-                router.push(`/order-confirmation/${completeOrderData.order_id}?success=true`);
-              } else {
-                setPaymentError('Order creation failed after payment. Please contact support.');
-              }
+
+            const completeOrderData = await completeOrderRes.json();
+
+            if (completeOrderData.success) {
+              await supabase.from('cart_items').delete().eq('user_id', userId);
+              if (coupon) clearCoupon();
+              router.push(`/order-confirmation/${completeOrderData.order_id}?success=true`);
             } else {
-              setPaymentError('Payment verification failed. Please contact support.');
+              setPaymentError('Order creation failed after payment. Please contact support.');
             }
-          } catch (handlerError) {
-            console.error('Payment handler error:', handlerError);
-            setPaymentError('Failed to process payment. Please try again or contact support.');
-          } finally {
-            setPaymentProcessing(false);
-            setLoading(false);
+          } else {
+            setPaymentError('Payment verification failed. Please contact support.');
           }
+        } catch (handlerError) {
+          console.error('Payment handler error:', handlerError);
+          setPaymentError('Failed to process payment. Please try again or contact support.');
+        } finally {
+          setPaymentProcessing(false);
+          setLoading(false);
+        }
+      },
+      modal: {
+        ondismiss: function () {
+          setPaymentProcessing(false);
+          setLoading(false);
+          setPaymentError('Payment was cancelled.');
         },
-        modal: {
-          ondismiss: function () {
-            setPaymentProcessing(false);
-            setLoading(false);
-            setPaymentError('Payment was cancelled.');
-          },
-        },
-      };
-      const loaded = await loadRazorpayScript();
-      if (!loaded) {
-        throw new Error('Failed to load Razorpay SDK. Please try again later.');
-      }
-      const rzp = new window.Razorpay(options);
-      rzp.on('payment.failed', function (response) {
-        setPaymentProcessing(false);
-        setLoading(false);
-        setPaymentError(`Payment failed: ${response.error.description}`);
-      });
-      rzp.open();
-    } catch (error) {
-      console.error('Order creation error:', error);
-      setPaymentError(
-        error.message ||
-          'There was an error creating your order. Please try again.'
-      );
-      setLoading(false);
-      setPaymentProcessing(false);
+      },
+    };
+
+    const loaded = await loadRazorpayScript();
+    if (!loaded) {
+      throw new Error('Failed to load Razorpay SDK. Please try again later.');
     }
-  };
+
+    const rzp = new window.Razorpay(options);
+    rzp.on('payment.failed', function (response) {
+      setPaymentProcessing(false);
+      setLoading(false);
+      setPaymentError(`Payment failed: ${response.error.description}`);
+    });
+    rzp.open();
+  } catch (error) {
+    console.error('Order creation error:', error);
+    setPaymentError(
+      error.message || 'There was an error creating your order. Please try again.'
+    );
+    setLoading(false);
+    setPaymentProcessing(false);
+  }
+};
+
 
   if (cartLoading || loading) {
     return (

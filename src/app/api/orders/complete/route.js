@@ -4,6 +4,8 @@ import { sendOrderConfirmation, sendAdminNotification } from '@/lib/service/emai
 import { createShiprocketOrder, mapOrderToShiprocket } from '@/lib/shiprocket';
 
 const supabase = createSupabaseBrowserClient();
+const shiprocketResult = await createShiprocketOrder(shiprocketPayload);
+
 
 export async function POST(req) {
   try {
@@ -103,7 +105,13 @@ if (coupon_id && user_id) {
     }
   }
 }
-
+// Save awb_code to the order
+if (shiprocketResult?.awb_code) {
+  await supabase
+    .from('orders')
+    .update({ awb_code: shiprocketResult.awb_code })
+    .eq('id', order.id);
+}
 
     const { data: address, error: addressError } = await supabase
       .from('addresses')

@@ -5,7 +5,7 @@ import { createSupabaseBrowserClient } from "@/lib/supabase/browser-client";
 import AddressForm from "./AddressForm";
 import { FaEdit, FaTrash } from "react-icons/fa";
 import { MdOutlineHome, MdOutlineWork, MdOutlineLocationOn } from "react-icons/md";
-import toast from "react-hot-toast";
+import { useToast } from '@/components/ui/CustomToast.jsx';
 import { motion, AnimatePresence } from "framer-motion";
 
 export default function AddressSection({
@@ -17,6 +17,7 @@ export default function AddressSection({
   const [addresses, setAddresses] = useState([]);
   const [editingAddress, setEditingAddress] = useState(null);
   const [showForm, setShowForm] = useState(false);
+  const showToast = useToast();
 
   useEffect(() => {
     const fetchAddresses = async () => {
@@ -49,7 +50,7 @@ export default function AddressSection({
     setEditingAddress(null);
     setShowForm(false);
     if (!selectedAddressId) setSelectedAddressId(newAddress.id);
-    toast.success("Address saved successfully!");
+    showToast("Address saved successfully!", { type: 'success' });
   };
 
   const handleDelete = async (id) => {
@@ -60,9 +61,9 @@ export default function AddressSection({
       if (selectedAddressId === id) {
         setSelectedAddressId(filtered[0]?.id || null);
       }
-      toast.success("Address deleted!");
+      showToast("Address deleted!", { type: 'success' });
     } else {
-      toast.error("Failed to delete address");
+      showToast("Failed to delete address", { type: 'error' });
     }
   };
 

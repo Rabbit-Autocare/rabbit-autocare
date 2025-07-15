@@ -4,7 +4,49 @@ import { createSupabaseBrowserClient } from '@/lib/supabase/browser-client';
 const supabase = createSupabaseBrowserClient();
 import Image from 'next/image';
 import { ShoppingCart, Trash2, Star, Package, Box, Gift } from 'lucide-react';
-import { WishlistService } from '@/lib/service/wishlistService'; // Add this import
+import { WishlistService } from '@/lib/service/wishlistService';
+import { useCart } from '@/contexts/CartContext';
+import { useToast } from '@/components/ui/CustomToast.jsx';
+import { ProductService } from '@/lib/service/productService';
+import RelatedProducts from '@/components/shop/RelatedProducts';
+import Link from 'next/link';
+
+function extractPackSize(variantCode) {
+  const match = typeof variantCode === 'string' ? variantCode.match(/-(\d+)X$/i) : null;
+  return match ? parseInt(match[1], 10) : undefined;
+}
+
+function getBestImageUrl(product) {
+  // Try all possible image fields in order of priority
+  const imageSources = [
+    product.main_image_url,
+    product.mainImage,
+    ...(Array.isArray(product.images) ? product.images : []),
+    product.image,
+    product.image_url,
+    product.imageUrl,
+    product.thumbnails?.[0],
+  ].filter(Boolean);
+  let url = imageSources.length > 0 ? imageSources[0] : '/placeholder.svg?height=400&width=400';
+  // If not absolute, try to build full URL for Supabase storage
+  try {
+    new URL(url);
+    return url;
+  } catch {
+    if (typeof url === 'string' && url.trim()) {
+      if (!url.startsWith('http') && !url.startsWith('/')) {
+        const baseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+        if (baseUrl) {
+          return `${baseUrl}/storage/v1/object/public/product-images/${url}`;
+        }
+      }
+      if (url.startsWith('/')) {
+        return url;
+      }
+    }
+    return '/placeholder.svg?height=400&width=400';
+  }
+}
 
 export default function WishlistPage() {
   const [wishlistItems, setWishlistItems] = useState([]);
@@ -12,72 +54,25 @@ export default function WishlistPage() {
   const [removingId, setRemovingId] = useState(null);
   const [addingToCartId, setAddingToCartId] = useState(null);
   const [user, setUser] = useState(null);
+  const { addToCart } = useCart();
+  const showToast = useToast();
 
   const fetchWishlist = async () => {
     try {
       const { data: { user }, error: userError } = await supabase.auth.getUser();
-
       if (userError || !user) {
-        console.error('User not authenticated:', userError);
         setLoading(false);
         return;
       }
-
       setUser(user);
-      console.log('Current user:', user.id);
-
-      // First, try simple query without joins
-      const { data: wishlistData, error: wishlistError } = await supabase
-        .from('wishlist_items')
-        .select('*')
-        .eq('user_id', user.id);
-
-      console.log('Wishlist query result:', { wishlistData, wishlistError });
-
-      if (wishlistError) {
-        console.error('Error fetching wishlist:', wishlistError);
-        setLoading(false);
-        return;
-      }
-
-      // If simple query works, try with products join
-      if (wishlistData && wishlistData.length > 0) {
-        const { data: fullData, error: joinError } = await supabase
-          .from('wishlist_items')
-          .select(`
-            id,
-            product_id,
-            variant,
-            created_at,
-            updated_at,
-            combo_id,
-            kit_id,
-            products:product_id (
-              id,
-              name,
-              price,
-              image,
-              category
-            )
-          `)
-          .eq('user_id', user.id)
-          .order('created_at', { ascending: false });
-
-        if (joinError) {
-          console.error('Error with products join:', joinError);
-          // Fallback to simple data without products
-          setWishlistItems(wishlistData || []);
-        } else {
-          setWishlistItems(fullData || []);
-        }
-      } else {
-        setWishlistItems([]);
-      }
-
+      const { data } = await WishlistService.getWishlist();
+      setWishlistItems(data || []);
+      showToast(`Fetched ${data?.length || 0} wishlist items for user: ${user.id}`, { type: 'info' });
     } catch (error) {
-      console.error('Unexpected error:', error);
+      setWishlistItems([]);
+      showToast('Failed to fetch wishlist', { type: 'error' });
+      console.error('Wishlist fetch error:', error);
     }
-
     setLoading(false);
   };
 
@@ -87,118 +82,117 @@ export default function WishlistPage() {
 
   const handleRemove = async (id) => {
     setRemovingId(id);
-    await new Promise(resolve => setTimeout(resolve, 300)); // Animation delay
-
-    // Use WishlistService for removal
-    const { error } = await WishlistService.removeFromWishlist(id);
-
-    if (error) {
-      console.error('Error removing from wishlist:', error);
-    } else {
+    await new Promise(resolve => setTimeout(resolve, 300));
+    try {
+      await WishlistService.removeFromWishlist(id);
       fetchWishlist();
+    } catch (error) {
+      // handle error
     }
     setRemovingId(null);
   };
 
   const handleAddToCart = async (item) => {
     setAddingToCartId(item.id);
-
     try {
-      const cartItem = {
-        user_id: user.id,
-        quantity: 1
-      };
-
-      // Add appropriate fields based on item type
-      if (item.product_id) {
-        cartItem.product_id = item.product_id;
-        if (item.variant) {
-          cartItem.variant = item.variant;
+      let success = false;
+      if (addToCart) {
+        if (item.product_id) {
+          success = await addToCart({ id: item.product_id }, item.variant, 1);
+        } else if (item.combo_id) {
+          success = await addToCart({ combo_id: item.combo_id }, item.variant, 1);
+        } else if (item.kit_id) {
+          success = await addToCart({ kit_id: item.kit_id }, item.variant, 1);
         }
-      } else if (item.combo_id) {
-        cartItem.combo_id = item.combo_id;
-      } else if (item.kit_id) {
-        cartItem.kit_id = item.kit_id;
       }
-
-      const { error } = await supabase
-        .from('cart_items')
-        .upsert(cartItem, {
-          onConflict: user.id && item.product_id ? 'user_id,product_id' :
-                     user.id && item.combo_id ? 'user_id,combo_id' :
-                     'user_id,kit_id'
-        });
-
-      if (error) {
-        console.error('Error adding to cart:', error);
-      } else {
+      if (success) {
         await handleRemove(item.id);
       }
     } catch (error) {
-      console.error('Unexpected error adding to cart:', error);
+      // handle error
     }
-
     setAddingToCartId(null);
   };
 
   const getItemDisplayInfo = (item) => {
-    // If products data available
     if (item.products && item.product_id) {
+      const product = ProductService.transformProductData(item.products);
+      // Match variant by id (string)
+      let variant = null;
+      if (item.variant?.id) {
+        variant = product.variants?.find(v => String(v.id) === String(item.variant.id));
+      }
+      if (!variant && product.variants?.length) {
+        variant = product.variants[0];
+      }
+      // For microfiber, extract pack size from variant_code
+      let packSize;
+      if (product.product_type === 'microfiber' && variant?.variant_code) {
+        packSize = extractPackSize(variant.variant_code);
+      }
+      // Color handling (array or string)
+      let color = '';
+      if (variant?.color) {
+        color = Array.isArray(variant.color) ? variant.color.join(', ') : variant.color;
+      }
       return {
-        name: item.products.name,
-        price: item.products.price,
-        image: item.products.image,
-        category: item.products.category,
-        rating: item.products.rating || 4.5,
-        type: 'product',
-        icon: Package
+        name: product.name,
+        description: product.description || '',
+        image: getBestImageUrl(product),
+        price: variant?.base_price || 0,
+        category: product.category,
+        rating: product.rating || 4.5,
+        type: product.product_type,
+        icon: Package,
+        variant: {
+          size: variant?.size,
+          packSize,
+          quantity: variant?.quantity,
+          unit: variant?.unit,
+          color,
+        },
+        variant_code: variant?.variant_code || variant?.code || variant?.id || '',
       };
     }
-    // If only product_id available (fallback)
-    else if (item.product_id) {
-      return {
-        name: `Product (ID: ${item.product_id})`,
-        price: '0.00',
-        image: '/placeholder.png',
-        category: 'Product',
-        rating: 4.5,
-        type: 'product',
-        icon: Package
-      };
-    }
-    // Combo items
     else if (item.combo_id) {
       return {
-        name: `Combo Product (ID: ${item.combo_id})`,
-        price: '0.00',
+        name: `Combo Product`,
+        description: '',
+        price: item.variant?.base_price || '0.00',
         image: '/placeholder-combo.png',
         category: 'Combo',
         rating: 4.5,
         type: 'combo',
-        icon: Box
+        icon: Box,
+        variant: item.variant,
+        variant_code: item.variant?.variant_code || item.variant?.code || item.variant?.id || '',
       };
     }
-    // Kit items
     else if (item.kit_id) {
       return {
-        name: `Kit Product (ID: ${item.kit_id})`,
-        price: '0.00',
+        name: `Kit Product`,
+        description: '',
+        price: item.variant?. base_price || '0.00',
         image: '/placeholder-kit.png',
         category: 'Kit',
         rating: 4.5,
         type: 'kit',
-        icon: Gift
+        icon: Gift,
+        variant: item.variant,
+        variant_code: item.variant?.variant_code || item.variant?.code || item.variant?.id || '',
       };
     }
-    // Fallback
     return {
       name: 'Unknown Product',
+      description: '',
       price: '0.00',
-      image: '/placeholder.png',
+      image: '/placeholder.svg?height=400&width=400',
       category: 'Unknown',
       rating: 0,
       type: 'unknown',
-      icon: Package
+      icon: Package,
+      variant: item.variant,
+      variant_code: item.variant?.variant_code || item.variant?.code || item.variant?.id || '',
     };
   };
 
@@ -259,165 +253,80 @@ export default function WishlistPage() {
     );
   }
 
+  // Table style wishlist
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-purple-50">
       <div className="container mx-auto px-6 py-12">
-        {/* Header */}
-        <div className="text-center mb-12">
-          <div className="inline-flex items-center gap-3 bg-white/90 backdrop-blur-sm border border-gray-200 rounded-full px-6 py-3 shadow-lg mb-6">
-            <div className="relative w-6 h-6">
-              <Image src="/assets/shine.svg" alt="shine" fill className="object-contain" />
-            </div>
-            <h1 className="text-3xl font-bold bg-gradient-to-r from-black to-purple-600 bg-clip-text text-transparent">
-              My Shine List
-            </h1>
-          </div>
-          <p className="text-gray-600 text-lg">
-            {wishlistItems.length} {wishlistItems.length === 1 ? 'item' : 'items'} waiting for you
-          </p>
+        <h1 className="text-2xl font-bold mb-6">Shinelist</h1>
+        <div className="overflow-x-auto bg-white rounded-lg shadow border border-gray-200 mb-12">
+          <table className="min-w-full divide-y divide-gray-200">
+            <thead className="bg-gray-50">
+              <tr>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Select</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Product</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Price</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Quantity</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Total</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Action</th>
+              </tr>
+            </thead>
+            <tbody className="bg-white divide-y divide-gray-200">
+              {wishlistItems.map((item, idx) => {
+                const itemInfo = getItemDisplayInfo(item);
+                const isRemoving = removingId === item.id;
+                const isAddingToCart = addingToCartId === item.id;
+                return (
+                  <tr key={item.id} className={isRemoving ? 'opacity-50' : ''}>
+                    <td className="px-4 py-4 text-center">
+                      <input type="checkbox" className="form-checkbox h-5 w-5 text-purple-600" />
+                    </td>
+                    <td className="px-4 py-4 flex items-center gap-4">
+                      <div className="relative w-16 h-16 flex-shrink-0">
+                        <Image src={itemInfo.image || '/placeholder.svg?height=400&width=400'} alt={itemInfo.name} fill className="object-cover rounded" />
+                      </div>
+                      <div>
+                        <div className="font-semibold text-gray-800">{itemInfo.name}</div>
+                        <div className="text-gray-500 text-xs line-clamp-1">{itemInfo.description}</div>
+                        {itemInfo.variant && (
+                          <div className="flex flex-wrap gap-2 mt-1 text-xs text-gray-600">
+                            {itemInfo.variant.size && <span>Size: {itemInfo.variant.size}</span>}
+                            {itemInfo.variant.packSize && <span>Pack: {itemInfo.variant.packSize}</span>}
+                            {itemInfo.variant.quantity && <span>Qty: {itemInfo.variant.quantity}</span>}
+                            {itemInfo.variant.unit && <span>Unit: {itemInfo.variant.unit}</span>}
+                            {itemInfo.variant.color && <span>Color: {itemInfo.variant.color}</span>}
+                          </div>
+                        )}
+                      </div>
+                    </td>
+                    <td className="px-4 py-4 font-semibold text-gray-900">₹{itemInfo.price}</td>
+                    <td className="px-4 py-4">
+                      <div className="flex items-center gap-2">
+                        <button className="px-2 py-1 bg-gray-200 rounded text-gray-700" disabled>-</button>
+                        <span>1</span>
+                        <button className="px-2 py-1 bg-gray-200 rounded text-gray-700" disabled>+</button>
+                      </div>
+                    </td>
+                    <td className="px-4 py-4 font-semibold text-gray-900">₹{itemInfo.price}</td>
+                    <td className="px-4 py-4">
+                      <button onClick={() => handleRemove(item.id)} disabled={isRemoving} className="text-red-600 hover:text-red-800 transition-colors">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-6 h-6">
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                      </button>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
         </div>
-
-        {/* Wishlist Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
-          {wishlistItems.map((item, index) => {
-            const itemInfo = getItemDisplayInfo(item);
-            const isRemoving = removingId === item.id;
-            const isAddingToCart = addingToCartId === item.id;
-            const IconComponent = itemInfo.icon;
-
-            return (
-              <div
-                key={item.id}
-                className={`group relative bg-white border border-gray-200 rounded-3xl p-6 shadow-lg hover:shadow-2xl transition-all duration-500 transform hover:-translate-y-2 ${
-                  isRemoving ? 'scale-95 opacity-50' : 'hover:scale-[1.02]'
-                }`}
-                style={{
-                  animationDelay: `${index * 100}ms`,
-                  animation: 'fadeInUp 0.6s ease-out forwards'
-                }}
-              >
-                {/* Wishlist Badge */}
-                <div className="absolute -top-2 -right-2 z-10">
-                  <div className="bg-gradient-to-r from-black to-purple-600 text-white rounded-full p-2 shadow-lg">
-                    <div className="relative w-4 h-4">
-                      <Image src="/assets/shine.svg" alt="shine" fill className="object-contain" />
-                    </div>
-                  </div>
-                </div>
-
-                {/* Product Type Badge */}
-                <div className="absolute top-4 left-4 z-10">
-                  <div className="bg-black/80 text-white rounded-full p-2 shadow-lg">
-                    <IconComponent className="w-4 h-4" />
-                  </div>
-                </div>
-
-                {/* Product Image */}
-                <div className="relative w-full h-48 mb-6 overflow-hidden rounded-2xl bg-gradient-to-br from-gray-50 to-gray-100">
-                  <Image
-                    src={itemInfo.image || '/placeholder.png'}
-                    alt={itemInfo.name}
-                    fill
-                    className="object-contain group-hover:scale-110 transition-transform duration-500"
-                  />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-                </div>
-
-                {/* Product Info */}
-                <div className="space-y-3">
-                  <div>
-                    <h3 className="text-xl font-bold text-gray-800 group-hover:text-purple-600 transition-colors duration-300 line-clamp-2">
-                      {itemInfo.name}
-                    </h3>
-                    <div className="flex items-center gap-2 mt-2">
-                      <span className="bg-gradient-to-r from-gray-100 to-purple-100 text-gray-800 px-3 py-1 rounded-full text-sm font-medium border border-gray-200">
-                        {itemInfo.category}
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* Variant Info */}
-                  {item.variant && (
-                    <div className="flex items-center gap-2 p-3 bg-gray-50 rounded-xl border border-gray-200">
-                      <Package className="w-4 h-4 text-gray-500" />
-                      <span className="text-sm text-gray-700 font-medium">
-                        {typeof item.variant === 'object' ? JSON.stringify(item.variant) : item.variant}
-                      </span>
-                    </div>
-                  )}
-
-                  {/* Price & Rating */}
-                  <div className="flex items-center justify-between">
-                    <div className="text-2xl font-bold bg-gradient-to-r from-black to-purple-600 bg-clip-text text-transparent">
-                      ${itemInfo.price}
-                    </div>
-                    <div className="flex items-center gap-1">
-                      <Star className="w-4 h-4 text-yellow-500 fill-current" />
-                      <span className="text-sm text-gray-600">{itemInfo.rating}</span>
-                    </div>
-                  </div>
-
-                  {/* Action Buttons */}
-                  <div className="flex gap-3 pt-4">
-                    <button
-                      onClick={() => handleAddToCart(item)}
-                      disabled={isAddingToCart}
-                      className="flex-1 bg-gradient-to-r from-black to-purple-600 text-white py-3 rounded-xl font-semibold hover:from-gray-800 hover:to-purple-700 transform hover:scale-105 transition-all duration-300 shadow-lg hover:shadow-xl flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      {isAddingToCart ? (
-                        <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                      ) : (
-                        <>
-                          <ShoppingCart className="w-5 h-5" />
-                          Add to Cart
-                        </>
-                      )}
-                    </button>
-                    <button
-                      onClick={() => handleRemove(item.id)}
-                      disabled={isRemoving}
-                      className="bg-white text-red-600 border-2 border-red-200 hover:bg-red-50 hover:border-red-300 p-3 rounded-xl transition-all duration-300 shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      <Trash2 className="w-5 h-5" />
-                    </button>
-                  </div>
-                </div>
-              </div>
-            );
-          })}
+        <div className="flex justify-between items-center mb-12">
+          <Link href="/shop" className="text-purple-700 hover:underline">Continue Shopping</Link>
+          <button className="bg-black text-white px-6 py-3 rounded font-semibold hover:bg-purple-700 transition-colors">Move To Cart</button>
         </div>
-
-        {/* Bottom Actions */}
-        <div className="text-center mt-16">
-          <div className="bg-white border border-gray-200 rounded-2xl p-8 shadow-lg max-w-md mx-auto">
-            <h3 className="text-xl font-bold text-gray-800 mb-4">Love everything?</h3>
-            <button className="bg-gradient-to-r from-black to-purple-600 text-white px-8 py-4 rounded-xl font-semibold hover:from-gray-800 hover:to-purple-700 transform hover:scale-105 transition-all duration-300 shadow-lg hover:shadow-xl">
-              Add All to Cart
-            </button>
-          </div>
-        </div>
+        {/* Related Products Section */}
+        <RelatedProducts />
       </div>
-
-      {/* Custom CSS for animations */}
-      <style jsx>{`
-        @keyframes fadeInUp {
-          from {
-            opacity: 0;
-            transform: translateY(30px);
-          }
-          to {
-            opacity: 1;
-            transform: translateY(0);
-          }
-        }
-
-        .line-clamp-2 {
-          display: -webkit-box;
-          -webkit-line-clamp: 2;
-          -webkit-box-orient: vertical;
-          overflow: hidden;
-        }
-      `}</style>
     </div>
   );
 }

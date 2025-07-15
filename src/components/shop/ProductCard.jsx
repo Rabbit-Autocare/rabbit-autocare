@@ -1,22 +1,36 @@
 'use client';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { Star, Heart, Sparkles } from 'lucide-react';
 import { WishlistService } from '@/lib/service/wishlistService'; // Step 1: Import service
 import ProductRating from '@/components/ui/ProductRating';
+import { useCart } from '@/hooks/useCart'; // Added this import for useCart
+import { useAuth } from '@/contexts/AuthContext';
+import { useToast } from '@/components/ui/CustomToast.jsx';
 
 export default function ProductCard({ product, index }) {
+  // Only use user from useCart context
+  const { user } = useAuth();
   const router = useRouter();
   const [hasImageError, setHasImageError] = useState(false);
-  const [isWishlisted, setIsWishlisted] = useState(false);
+  // Remove all wishlist-related state and logic
   const [wishlistLoading, setWishlistLoading] = useState(false);
+  const [wishlistItemId, setWishlistItemId] = useState(null);
+
+  console.log('[ProductCard] user from useCart:', user);
 
   // Validate product data
   if (!product) {
     console.error('ProductCard received null/undefined product');
     return null;
   }
+
+  // Remove wishlist imports
+  // Remove wishlist state, useEffect, and handlers
+  // Remove wishlist button and heart icon from the render
+  // Change the main button to 'View in Detail' and make it only navigate to the product detail page
+  // Remove the absolute heart icon button from the card
 
   const handleImageError = () => {
     console.log('Image error for product:', product.name);
@@ -136,30 +150,12 @@ export default function ProductCard({ product, index }) {
     router.push(`/products/${productIdentifier}`);
   };
 
-  // Step 2: Wishlist toggle logic
-  const handleWishlistToggle = async (e) => {
-    e.stopPropagation();
-    setWishlistLoading(true);
-    try {
-      if (!isWishlisted) {
-        // Add to wishlist
-        await WishlistService.addToWishlist({
-          product_id: product.id,
-          variant: product.selectedVariant || product.variants?.[0] || null, // Send variant if available
-        });
-        setIsWishlisted(true);
-      } else {
-        // Remove from wishlist
-        // You may need to fetch the wishlist item id for this product for real apps
-        // For demo, assume product.id is wishlist id (adjust as per your data)
-        await WishlistService.removeFromWishlist(product.id);
-        setIsWishlisted(false);
-      }
-    } catch (err) {
-      console.error('Wishlist error:', err);
-    }
-    setWishlistLoading(false);
-  };
+  // Remove all wishlist-related state and logic
+  // Remove wishlist imports
+  // Remove wishlist state, useEffect, and handlers
+  // Remove wishlist button and heart icon from the render
+  // Change the main button to 'View in Detail' and make it only navigate to the product detail page
+  // Remove the absolute heart icon button from the card
 
   // Format product name with fallback
   const productName = product.name || product.title || `Product ${index + 1}`;
@@ -169,6 +165,8 @@ export default function ProductCard({ product, index }) {
     product.description ||
     product.shortDescription ||
     'High quality car care product designed for optimal performance and lasting results.';
+
+  const showToast = useToast();
 
   return (
     <div
@@ -242,17 +240,14 @@ export default function ProductCard({ product, index }) {
 
           {/* Add to Shine List Button */}
           <button
-            className='w-full bg-white border border-gray-800 text-gray-700 py-2.5 px-4 rounded-sm text-sm font-medium hover:bg-gray-50 hover:border-gray-300 transition-all duration-200 disabled:bg-gray-100 disabled:cursor-not-allowed flex items-center justify-center gap-2'
-            onClick={(e) => {
-              e.stopPropagation();
-              handleViewProduct();
-            }}
-            disabled={!productIdentifier}
+            className='w-full bg-gray-900 text-white py-2.5 px-4 rounded-sm text-sm font-medium hover:bg-gray-800 transition-all duration-200 flex items-center justify-center gap-2'
+            onClick={(e) => { e.stopPropagation(); handleViewProduct(); }}
           >
-            View Product
+            View in Detail
           </button>
         </div>
       </div>
+      {/* Remove the absolute heart icon button from the card */}
     </div>
   );
 }

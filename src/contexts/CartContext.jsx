@@ -107,6 +107,9 @@ export function CartProvider({ children, initialCartItems = [] }) {
   const [combosLoading, setCombosLoading] = useState(true);
   const [couponsLoading, setCouponsLoading] = useState(true);
 
+  // Add error state
+  const [error, setError] = useState(null);
+
   const openCart = () => setIsCartOpen(true);
   const closeCart = () => setIsCartOpen(false);
 
@@ -182,61 +185,43 @@ export function CartProvider({ children, initialCartItems = [] }) {
 
   // Initialize or update cart
   const refreshCart = useCallback(async () => {
-    console.log('[CartProvider] refreshCart called, sessionChecked:', sessionChecked, 'user:', !!user);
-
-    // Wait until the AuthContext has finished its initial session check
+    // Wait for AuthContext to finish session check
     if (!sessionChecked) {
       setLoading(true);
       return;
     }
 
-    // If no user, clear cart but don't set loading if we have initial data
+    // If no user, clear cart and stop loading
     if (!user) {
       updateCalculatedState([], null);
       setLoading(false);
+      setError(null);
       return;
     }
 
-    // If we have initial cart items and this is the first load, use them
-    if (initialCartItems.length > 0 && cartState.cartItems.length === 0) {
-      console.log('[CartProvider] Using initial cart items');
-      updateCalculatedState(initialCartItems, coupon);
-      setLoading(false);
-      return;
-    }
-
-    // Only fetch from server if we don't have initial data or need to refresh
     setLoading(true);
     try {
-      console.log('[CartProvider] Fetching cart from CartService...');
       const data = await CartService.getCartItems(user.id);
       if (data.error) {
-        console.error('[CartProvider] Error fetching cart:', data.error);
+        setError(data.error); // Set error state
         updateCalculatedState([], coupon);
       } else {
+        setError(null);
         updateCalculatedState(data.cartItems || [], coupon);
-        // console.log('[CartProvider] Cart items after refresh:', data.cartItems);
-        // If cart is empty after refresh, force loading false
-        if (!data.cartItems || data.cartItems.length === 0) {
-          setLoading(false);
-          console.log('[CartProvider] Cart is empty after refresh, forced loading to false.');
-        }
       }
     } catch (error) {
-      console.error('[CartProvider] Error initializing cart:', error);
+      setError(error.message || 'Unknown error');
       updateCalculatedState([], coupon);
     } finally {
       setLoading(false);
-      // console.log('[CartProvider] Cart loading complete.');
     }
-  }, [
-    user,
-    sessionChecked,
-    coupon,
-    updateCalculatedState,
-    initialCartItems,
-    cartState.cartItems.length,
-  ]);
+  }, [sessionChecked, user, coupon, updateCalculatedState]);
+
+  // Expose a retry function
+  const retryCartFetch = () => {
+    setError(null);
+    refreshCart();
+  };
 
   // Fetch combos and coupons when user changes
   useEffect(() => {
@@ -410,6 +395,9 @@ export function CartProvider({ children, initialCartItems = [] }) {
     availableCoupons,
     combosLoading,
     couponsLoading,
+    refreshCart,
+    error, // Expose error state
+    retryCartFetch, // Expose retry function
   };
 
   if (!sessionChecked) {

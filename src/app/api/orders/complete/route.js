@@ -4,7 +4,6 @@ import { sendOrderConfirmation, sendAdminNotification } from '@/lib/service/emai
 import { createShiprocketOrder, mapOrderToShiprocket } from '@/lib/shiprocket';
 
 const supabase = createSupabaseBrowserClient();
-const shiprocketResult = await createShiprocketOrder(shiprocketPayload);
 
 
 export async function POST(req) {
@@ -105,13 +104,6 @@ if (coupon_id && user_id) {
     }
   }
 }
-// Save awb_code to the order
-if (shiprocketResult?.awb_code) {
-  await supabase
-    .from('orders')
-    .update({ awb_code: shiprocketResult.awb_code })
-    .eq('id', order.id);
-}
 
     const { data: address, error: addressError } = await supabase
       .from('addresses')
@@ -148,6 +140,13 @@ if (shiprocketResult?.awb_code) {
       console.log('📦 Shiprocket Payload:', shiprocketPayload);
       const shiprocketResult = await createShiprocketOrder(shiprocketPayload);
       console.log('✅ Shiprocket Order Created:', shiprocketResult);
+      // Save awb_code to the order if available
+      if (shiprocketResult?.awb_code) {
+        await supabase
+          .from('orders')
+          .update({ awb_code: shiprocketResult.awb_code })
+          .eq('id', order.id);
+      }
     } catch (shiprocketError) {
       console.error('❌ Shiprocket Order Error:', shiprocketError?.response?.data || shiprocketError.message);
     }

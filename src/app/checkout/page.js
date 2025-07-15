@@ -65,7 +65,7 @@ const loadRazorpayScript = () => {
 export default function CheckoutPage() {
   const searchParams = useSearchParams();
   const router = useRouter();
-  const { cartItems, coupon, loading: cartLoading, clearCoupon } = useCart();
+  const { cartItems, coupon, loading: cartLoading, clearCoupon, error: cartError, retryCartFetch } = useCart();
   const { user } = useAuth();
 
   const id = searchParams.get('id');
@@ -438,6 +438,7 @@ useEffect(() => {
       theme: { color: '#601E8D' },
       handler: async function (response) {
         try {
+          console.log('[Razorpay handler] Payment response:', response);
           const verificationRes = await fetch('/api/razorpay/verify', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -445,8 +446,10 @@ useEffect(() => {
           });
 
           const verificationData = await verificationRes.json();
+          console.log('[Razorpay handler] Verification data:', verificationData);
 
           if (verificationData.success) {
+            console.log('[Razorpay handler] Sending order completion request...');
             const completeOrderRes = await fetch('/api/orders/complete', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
@@ -458,25 +461,38 @@ useEffect(() => {
                 razorpay_signature: response.razorpay_signature,
               }),
             });
-
-            const completeOrderData = await completeOrderRes.json();
+            let completeOrderData;
+            try {
+              completeOrderData = await completeOrderRes.json();
+              console.log('[Razorpay handler] Complete order data:', completeOrderData);
+            } catch (jsonErr) {
+              console.error('[Razorpay handler] Error parsing complete order response:', jsonErr);
+              setPaymentError('Order creation failed: Invalid server response.');
+              return;
+            }
 
             if (completeOrderData.success) {
               await supabase.from('cart_items').delete().eq('user_id', userId);
               if (coupon) clearCoupon();
-              router.push(`/order-confirmation/${completeOrderData.order_id}?success=true`);
+              const redirectUrl = `/order-confirmation/${completeOrderData.order_id}?success=true`;
+              localStorage.setItem('rbbit_redirect', redirectUrl);
+              window.location.replace(redirectUrl);
+              return;
             } else {
               setPaymentError('Order creation failed after payment. Please contact support.');
+              console.error('[Razorpay handler] Order creation failed:', completeOrderData);
             }
           } else {
             setPaymentError('Payment verification failed. Please contact support.');
+            console.error('[Razorpay handler] Payment verification failed:', verificationData);
           }
         } catch (handlerError) {
-          console.error('Payment handler error:', handlerError);
+          console.error('[Razorpay handler] Payment handler error:', handlerError);
           setPaymentError('Failed to process payment. Please try again or contact support.');
         } finally {
           setPaymentProcessing(false);
           setLoading(false);
+          console.log('[Razorpay handler] Payment handler finished.');
         }
       },
       modal: {
@@ -510,6 +526,31 @@ useEffect(() => {
   }
 };
 
+  // Add robust redirect fallback using localStorage
+  useEffect(() => {
+    const redirectUrl = localStorage.getItem('rbbit_redirect');
+    if (redirectUrl) {
+      localStorage.removeItem('rbbit_redirect');
+      window.location.replace(redirectUrl);
+    }
+  }, []);
+
+  if (cartError) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center bg-white">
+        <div className="max-w-md w-full bg-red-50 border border-red-200 rounded p-8 text-center">
+          <h2 className="text-2xl font-bold text-red-700 mb-4">Cart Error</h2>
+          <p className="text-red-600 mb-6">There was a problem loading your cart: {cartError}</p>
+          <button
+            onClick={retryCartFetch}
+            className="bg-[#601E8D] hover:bg-[#4a1770] text-white px-6 py-2 rounded font-semibold shadow-sm transition-all duration-200"
+          >
+            Retry
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   if (cartLoading || loading) {
     return (

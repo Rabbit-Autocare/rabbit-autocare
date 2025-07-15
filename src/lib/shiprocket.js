@@ -88,7 +88,10 @@ export function mapOrderToShiprocket(order) {
       const basePrice = item.base_price || item.price || 0;
       const finalPrice = item.price || basePrice;
       const baseDiscount = basePrice - finalPrice;
-      const finalUnitDiscount = +(baseDiscount + couponPerUnit).toFixed(2);
+      // Calculate total discount for this item (base + coupon)
+      const totalDiscountForItem = (baseDiscount * quantity) + (couponPerUnit * quantity);
+      // Calculate per-unit discount
+      const finalUnitDiscount = quantity > 0 ? +(totalDiscountForItem / quantity).toFixed(2) : 0;
       const hsn = item.hsn_code || '34053000';
 
       orderItems.push({

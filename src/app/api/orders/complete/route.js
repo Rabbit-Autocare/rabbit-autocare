@@ -4,8 +4,6 @@ import { sendOrderConfirmation, sendAdminNotification } from '@/lib/service/emai
 import { createShiprocketOrder, mapOrderToShiprocket } from '@/lib/shiprocket';
 
 const supabase = createSupabaseBrowserClient();
-const shiprocketResult = await createShiprocketOrder(shiprocketPayload);
-
 
 export async function POST(req) {
   try {
@@ -34,7 +32,7 @@ export async function POST(req) {
       );
     }
 
-    // ✅ Calculate GST Breakdown
+    // ✅ GST Breakdown
     let totalTaxableValue = 0;
     for (const item of items) {
       const taxable = item.total_price / 1.18;
@@ -81,38 +79,30 @@ export async function POST(req) {
       return NextResponse.json({ success: false, error: 'Failed to create order' }, { status: 500 });
     }
 
-  // ✅ Remove used coupon from user's auth profile
-if (coupon_id && user_id) {
-  const { data: user, error: userError } = await supabase
-    .from('auth_users')
-    .select('coupons')
-    .eq('id', user_id)
-    .single();
+    // ✅ Remove Used Coupon from User
+    if (coupon_id && user_id) {
+      const { data: user, error: userError } = await supabase
+        .from('auth_users')
+        .select('coupons')
+        .eq('id', user_id)
+        .single();
 
-  if (userError || !user) {
-    console.error('❌ Failed to fetch user for coupon removal:', userError);
-  } else {
-    const updatedCoupons = (user.coupons || []).filter((id) => id !== coupon_id);
-    const { error: updateError } = await supabase
-      .from('auth_users')
-      .update({ coupons: updatedCoupons })
-      .eq('id', user_id);
+      if (!userError && user) {
+        const updatedCoupons = (user.coupons || []).filter((id) => id !== coupon_id);
+        const { error: updateError } = await supabase
+          .from('auth_users')
+          .update({ coupons: updatedCoupons })
+          .eq('id', user_id);
 
-    if (updateError) {
-      console.error('❌ Failed to update user coupons:', updateError);
-    } else {
-      console.log(`✅ Used coupon ${coupon_id} removed from user ${user_id}`);
+        if (updateError) {
+          console.error('❌ Failed to update user coupons:', updateError);
+        } else {
+          console.log(`✅ Used coupon ${coupon_id} removed from user ${user_id}`);
+        }
+      }
     }
-  }
-}
-// Save awb_code to the order
-if (shiprocketResult?.awb_code) {
-  await supabase
-    .from('orders')
-    .update({ awb_code: shiprocketResult.awb_code })
-    .eq('id', order.id);
-}
 
+    // ✅ Fetch Address
     const { data: address, error: addressError } = await supabase
       .from('addresses')
       .select('*')
@@ -134,22 +124,32 @@ if (shiprocketResult?.awb_code) {
       postal_code: address.postal_code,
     };
 
-    await processOrderItems(order);
-
-    try {
-      await sendOrderConfirmation(order.user_info?.email, order);
-      await sendAdminNotification(order);
-    } catch (emailError) {
-      console.error('❌ Email sending error:', emailError);
-    }
-
+    // ✅ Create Shiprocket Order
     try {
       const shiprocketPayload = mapOrderToShiprocket(order);
       console.log('📦 Shiprocket Payload:', shiprocketPayload);
       const shiprocketResult = await createShiprocketOrder(shiprocketPayload);
       console.log('✅ Shiprocket Order Created:', shiprocketResult);
+
+      if (shiprocketResult?.awb_code) {
+        await supabase
+          .from('orders')
+          .update({ awb_code: shiprocketResult.awb_code })
+          .eq('id', order.id);
+      }
     } catch (shiprocketError) {
       console.error('❌ Shiprocket Order Error:', shiprocketError?.response?.data || shiprocketError.message);
+    }
+
+    // ✅ Record Sales + Decrement Stock
+    await processOrderItems(order);
+
+    // ✅ Email Notifications
+    try {
+      await sendOrderConfirmation(order.user_info?.email, order);
+      await sendAdminNotification(order);
+    } catch (emailError) {
+      console.error('❌ Email sending error:', emailError);
     }
 
     return NextResponse.json({
@@ -181,16 +181,11 @@ async function processOrderItems(order) {
 
       if (item.type === 'product') {
         if (item.variant?.id) {
-          const { error: stockError } = await supabase.rpc(
-            'decrement_stock_by_quantity',
-            {
-              variant_id: item.variant.id,
-              p_quantity: item.quantity,
-            }
-          );
-          if (stockError) {
-            console.error(`Stock adjustment failed for variant ${item.variant.id}:`, stockError);
-          }
+          const { error: stockError } = await supabase.rpc('decrement_stock_by_quantity', {
+            variant_id: item.variant.id,
+            p_quantity: item.quantity,
+          });
+          if (stockError) console.error(`Stock adjustment failed for variant ${item.variant.id}:`, stockError);
         }
 
         await supabase.from('sales_records').insert({
@@ -224,16 +219,11 @@ async function processOrderItems(order) {
         }
 
         for (const related of relatedItems) {
-          const { error: stockError } = await supabase.rpc(
-            'decrement_stock_by_quantity',
-            {
-              variant_id: related.variant_id,
-              p_quantity: related.quantity * item.quantity,
-            }
-          );
-          if (stockError) {
-            console.error(`Stock adjustment failed for variant ${related.variant_id}:`, stockError);
-          }
+          const { error: stockError } = await supabase.rpc('decrement_stock_by_quantity', {
+            variant_id: related.variant_id,
+            p_quantity: related.quantity * item.quantity,
+          });
+          if (stockError) console.error(`Stock adjustment failed for variant ${related.variant_id}:`, stockError);
         }
 
         await supabase.from('sales_records').insert({

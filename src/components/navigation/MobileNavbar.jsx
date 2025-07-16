@@ -3,13 +3,14 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { useTheme } from '@/contexts/ThemeContext';
+// import { useTheme } from '@/contexts/ThemeContext';
 import { useCart } from '@/hooks/useCart';
 import { Menu, X } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { createSupabaseBrowserClient } from '@/lib/supabase/browser-client';
 import CouponCard from '@/components/ui/CouponCard';
 import { ClientUserService } from '@/lib/service/client-userService';
+import { SEARCH_MAP } from "@/utils/searchKeywords";
 
 const categoryImageMap = {
   'car-interior': '/assets/images/carinterior.png',
@@ -21,8 +22,8 @@ const categoryImageMap = {
 const navLinks = [
   { name: 'HOME', href: '/' },
   { name: 'PRODUCTS', href: '/shop/all' },
-  { name: 'BLOGS', href: '/blog' },
-  { name: 'ABOUT US', href: '/about' },
+  // { name: 'BLOGS', href: '/blog' },
+  { name: 'ABOUT RABBIT AUTOCARE', href: '/about' },
   { name: 'GET IN TOUCH', href: '/contact' },
 ];
 
@@ -69,7 +70,7 @@ export default function MobileNavbar({
   const [showCoupons, setShowCoupons] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [isLoggedIn, setIsLoggedIn] = useState(false);
-  const { theme, toggleTheme } = useTheme();
+  // const { theme, toggleTheme } = useTheme();
   const { openCart, cartCount } = useCart();
   const [userCoupons, setUserCoupons] = useState([]);
   const [availableCoupons, setAvailableCoupons] = useState([]);
@@ -158,10 +159,14 @@ export default function MobileNavbar({
 
   const handleSearch = (e) => {
     e.preventDefault();
-    if (searchQuery.trim()) {
-      window.location.href = `/search?q=${encodeURIComponent(
-        searchQuery.trim()
-      )}`;
+    const query = searchQuery.trim().toLowerCase();
+    const match = SEARCH_MAP.find(item =>
+      item.keywords.some(keyword => query.includes(keyword))
+    );
+    if (match) {
+      window.location.href = match.route;
+    } else {
+      window.location.href = `/search?q=${encodeURIComponent(query)}`;
     }
   };
 
@@ -236,67 +241,18 @@ export default function MobileNavbar({
                 </button>
               </Link>
             )}
-
-            {/* Coupons Icon */}
-            <button
-              className='p-1 hover:bg-gray-100 rounded-md transition-colors'
-              onClick={() => setShowCoupons(!showCoupons)}
-              aria-label='Toggle coupons'
-            >
-              <svg
-                width='18'
-                height='18'
-                viewBox='0 0 25 26'
-                fill='none'
-                xmlns='http://www.w3.org/2000/svg'
-              >
-                <path
-                  d='M2.08301 9.87498C2.91181 9.87498 3.70667 10.2042 4.29272 10.7903C4.87877 11.3763 5.20801 12.1712 5.20801 13C5.20801 13.8288 4.87877 14.6236 4.29272 15.2097C3.70667 15.7957 2.91181 16.125 2.08301 16.125V18.2083C2.08301 18.7608 2.3025 19.2908 2.6932 19.6815C3.0839 20.0722 3.61381 20.2916 4.16634 20.2916H20.833C21.3855 20.2916 21.9154 20.0722 22.3061 19.6815C22.6968 19.2908 22.9163 18.7608 22.9163 18.2083V16.125C22.0875 16.125 21.2927 15.7957 20.7066 15.2097C20.1206 14.6236 19.7913 13.8288 19.7913 13C19.7913 12.1712 20.1206 11.3763 20.7066 10.7903C21.2927 10.2042 22.0875 9.87498 22.9163 9.87498V7.79165C22.9163 7.23911 22.6968 6.70921 22.3061 6.31851C21.9154 5.92781 21.3855 5.70831 20.833 5.70831H4.16634C3.61381 5.70831 3.0839 5.92781 2.6932 6.31851C2.3025 6.70921 2.08301 7.23911 2.08301 7.79165V9.87498Z'
-                  stroke='#6B7280'
-                  strokeWidth='1.2'
-                  strokeLinecap='round'
-                  strokeLinejoin='round'
-                />
-                <path
-                  d='M9.375 9.875H9.38542'
-                  stroke='#6B7280'
-                  strokeWidth='1.2'
-                  strokeLinecap='round'
-                  strokeLinejoin='round'
-                />
-                <path
-                  d='M15.625 9.875L9.375 16.125'
-                  stroke='#6B7280'
-                  strokeWidth='1.2'
-                  strokeLinecap='round'
-                  strokeLinejoin='round'
-                />
-                <path
-                  d='M15.625 16.125H15.6354'
-                  stroke='#6B7280'
-                  strokeWidth='1.2'
-                  strokeLinecap='round'
-                  strokeLinejoin='round'
-                />
-              </svg>
-              <span className='sr-only'>Coupons</span>
-            </button>
-
             {/* Wishlist Icon */}
-            <Link href='/wishlist'>
-              <button className='p-1 hover:bg-gray-100 rounded-md transition-colors'>
-                <div className='relative w-[18px] h-[18px]'>
-                  <Image
-                    src='/assets/shine.svg'
-                    alt='shine list'
-                    fill
-                    className='object-contain'
-                  />
-                </div>
-                <span className='sr-only'>Shine List</span>
+            <Link href="/wishlist" aria-label="Go to Shine List">
+              <button className="p-1 hover:bg-gray-100 rounded-md transition-colors">
+                <Image
+                  src="/assets/shine.svg"
+                  alt="wishlist"
+                  width={18}
+                  height={18}
+                />
+                <span className="sr-only">Shine List</span>
               </button>
             </Link>
-
             {/* Cart Icon */}
             <button
               onClick={openCart}
@@ -512,6 +468,17 @@ export default function MobileNavbar({
                   <h3 className='font-semibold text-lg mb-4 text-gray-800'>
                     Navigation
                   </h3>
+                   {/* Profile Dropdown inside Navigation */}
+                   <details className='mb-2'>
+                      <summary className='font-semibold text-base text-gray-800 py-3 px-3 rounded-lg cursor-pointer hover:bg-gray-50 flex items-center justify-between'>
+                        Your Profile
+                        <span className='ml-2'>&#8250;</span>
+                      </summary>
+                      <div className='pl-4 mt-2 space-y-2'>
+                        <Link href={isLoggedIn ? '/profile' : '/login'} className='block py-2 text-gray-700 hover:text-gray-900' onClick={closeMobileMenu}>Account</Link>
+                        <Link href='/user/coupons' className='block py-2 text-gray-700 hover:text-gray-900' onClick={closeMobileMenu}>Coupons</Link>
+                      </div>
+                    </details>
                   <div className='space-y-0'>
                     {navLinks.map((link) => (
                       <Link
@@ -523,57 +490,11 @@ export default function MobileNavbar({
                         {link.name}
                       </Link>
                     ))}
+
                   </div>
                 </div>
 
-                {/* Theme Toggle */}
-                <div className='pt-4 border-t border-gray-200'>
-                  <button
-                    className='flex items-center gap-3 hover:bg-gray-50 w-full justify-start p-3 rounded-lg transition-colors'
-                    onClick={toggleTheme}
-                  >
-                    {theme === 'dark' ? (
-                      <svg
-                        xmlns='http://www.w3.org/2000/svg'
-                        width='18'
-                        height='18'
-                        viewBox='0 0 24 24'
-                        fill='none'
-                        stroke='currentColor'
-                        strokeWidth='2'
-                        strokeLinecap='round'
-                        strokeLinejoin='round'
-                      >
-                        <circle cx='12' cy='12' r='5' />
-                        <line x1='12' y1='1' x2='12' y2='3' />
-                        <line x1='12' y1='21' x2='12' y2='23' />
-                        <line x1='4.22' y1='4.22' x2='5.64' y2='5.64' />
-                        <line x1='18.36' y1='18.36' x2='19.78' y2='19.78' />
-                        <line x1='1' y1='12' x2='3' y2='12' />
-                        <line x1='21' y1='12' x2='23' y2='12' />
-                        <line x1='4.22' y1='19.78' x2='5.64' y2='18.36' />
-                        <line x1='18.36' y1='5.64' x2='19.78' y2='4.22' />
-                      </svg>
-                    ) : (
-                      <svg
-                        xmlns='http://www.w3.org/2000/svg'
-                        width='18'
-                        height='18'
-                        viewBox='0 0 24 24'
-                        fill='none'
-                        stroke='currentColor'
-                        strokeWidth='2'
-                        strokeLinecap='round'
-                        strokeLinejoin='round'
-                      >
-                        <path d='M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z' />
-                      </svg>
-                    )}
-                    <span className='text-sm font-medium'>
-                      {theme === 'dark' ? 'Light Mode' : 'Dark Mode'}
-                    </span>
-                  </button>
-                </div>
+
               </div>
             </div>
           </div>

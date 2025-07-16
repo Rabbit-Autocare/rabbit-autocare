@@ -9,6 +9,7 @@ import { useAuth } from "@/hooks/useAuth"
 import CouponCard from "@/components/ui/CouponCard"
 import { createSupabaseBrowserClient } from '@/lib/supabase/browser-client'
 import { ClientUserService } from "@/lib/service/client-userService"
+import { SEARCH_MAP } from "@/utils/searchKeywords";
 
 const categoryImageMap = {
   "car-interior": "/assets/images/carinterior.png",
@@ -218,11 +219,17 @@ export default function ExtraNavbar() {
   }, [userCoupons, availableCoupons, isCouponsOpen, authLoading, user]);
 
   const handleSearch = (e) => {
-    e.preventDefault()
-    if (searchQuery.trim()) {
-      window.location.href = `/search?q=${encodeURIComponent(searchQuery.trim())}`
+    e.preventDefault();
+    const query = searchQuery.trim().toLowerCase();
+    const match = SEARCH_MAP.find(item =>
+      item.keywords.some(keyword => query.includes(keyword))
+    );
+    if (match) {
+      window.location.href = match.route;
+    } else {
+      window.location.href = `/search?q=${encodeURIComponent(query)}`;
     }
-  }
+  };
 
   return (
     <header className="w-full z-40 bg-transparent transition-all duration-300">

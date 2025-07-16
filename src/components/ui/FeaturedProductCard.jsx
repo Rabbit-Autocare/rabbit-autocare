@@ -977,10 +977,10 @@ export default function FeaturedProductCard({
               <div
                 className={`border-1 px-2 py-2 xs:px-3 xs:py-2 sm:px-4 sm:py-2 mr-1 rounded-[4px] transition-all duration-200 ${
                   isWishlisted
-                    ? 'border-blue-500 bg-blue-50'
+                    ? 'bg-gradient-to-br from-[#601E8D] to-[#3a0c59]' // Diagonal gradient, no border
                     : wishlistLoading
                       ? 'border-gray-300 bg-gray-100 opacity-60'
-                      : 'border-black hover:bg-blue-100 hover:border-blue-400'
+                      : 'border-black hover:border-[#601E8D]'
                 }`}
               >
                 <div className='relative w-4 h-4 xs:w-5 xs:h-5 cursor-pointer'>
@@ -990,8 +990,8 @@ export default function FeaturedProductCard({
                     disabled={isAddingToCart || wishlistLoading}
                     className={`text-xs transition-all duration-200 flex items-center justify-center ${
                       isWishlisted
-                        ? 'text-blue-600'
-                        : 'text-black hover:text-blue-600'
+                        ? 'text-[#601E8D]'
+                        : 'text-black hover:text-[#601E8D]'
                     } ${isAddingToCart || wishlistLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
                     title={
                       !user
@@ -1002,11 +1002,11 @@ export default function FeaturedProductCard({
                     }
                   >
                     {wishlistLoading ? (
-                      <span className="w-4 h-4 xs:w-5 xs:h-5 border-2 border-blue-400 border-t-transparent rounded-full animate-spin inline-block" />
+                      <span className="w-4 h-4 xs:w-5 xs:h-5 border-2 border-[#601E8D] border-t-transparent rounded-full animate-spin inline-block" />
                     ) : isWishlisted ? (
                       <div className='relative w-4 h-4 xs:w-5 xs:h-5'>
                         <Image
-                          src='/assets/shine.svg'
+                          src='/assets/star-filled-white.svg'
                           alt='wishlisted'
                           fill
                           className='object-contain animate-pulse'

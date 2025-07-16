@@ -44,72 +44,95 @@ export async function createShiprocketOrder(orderData) {
   }
 }
 
-// 🧠 Map order to Shiprocket format
+// 🧠 Smart unit discount calculator
+function calculateUnitDiscount({ item, totalQty, discountAmount = 0, discountMeta = {} }) {
+  const isComboOrKit = item.type === 'combo' || item.type === 'kit';
+  const mrp = Number(item.original_price || item.base_price || item.compare_at_price || item.price || 0);
+  const finalPrice = Number(item.price || mrp);
+  let unitDiscount = +(mrp - finalPrice).toFixed(2);
+
+  // 🧮 Coupon logic only for regular products
+  if (!isComboOrKit && discountAmount > 0) {
+    const perUnit = totalQty > 0 ? +(discountAmount / totalQty).toFixed(2) : 0;
+
+    switch (discountMeta.type) {
+      case 'percentage':
+        break; // already applied in price
+      case 'flat':
+        unitDiscount += perUnit;
+        break;
+      case 'category':
+        if (discountMeta.applicable_categories?.includes(item.category)) {
+          unitDiscount += perUnit;
+        }
+        break;
+      default:
+        unitDiscount += perUnit;
+    }
+  }
+
+  return +(unitDiscount).toFixed(2);
+}
+
+// 🧾 Map order to Shiprocket format
 export function mapOrderToShiprocket(order) {
   const shipping = order.user_info?.shipping_address || {};
   const gstRate = 18;
-  const totalCouponDiscount = order.discount_amount || 0;
-
   const totalQty = order.items.reduce((sum, item) => sum + item.quantity, 0);
-  const couponPerUnit = totalQty > 0 ? +(totalCouponDiscount / totalQty).toFixed(2) : 0;
+  const discountAmount = order.discount_amount || 0;
+  const discountMeta = order.applied_coupon || {}; // Coupon details like { type, value, categories }
 
   const orderItems = [];
 
   for (const item of order.items || []) {
     const quantity = item.quantity || 1;
+    const isComboOrKit = item.type === 'combo' || item.type === 'kit';
 
-    if (item.type === 'combo' || item.type === 'kit') {
-      const basePrice = Number(item.original_price || item.price || 0);
-      const finalPrice = Number(item.price || basePrice);
-      const unitDiscount = +(basePrice - finalPrice).toFixed(2);
-      const hsn = '34053000';
+    const finalPrice = Number(item.price || 0);
+    const unitDiscount = calculateUnitDiscount({
+      item,
+      totalQty,
+      discountAmount,
+      discountMeta,
+    });
 
-      // 🧾 Combo internal breakdown
-      const internal = (item.products || [])
-        .map((p) => {
-          const variant = p.variant_name || 'Default';
-          return `• ${p.name} (${variant}), Qty: ${p.quantity}, SKU: ${p.sku || 'N/A'}`;
-        })
+    const hsn = item.hsn || item.hsn_code || '34053000';
+
+    let comboIncludes = '';
+    if (isComboOrKit && item.products) {
+      comboIncludes = (item.products || [])
+        .map((p) => `• ${p.name} (${p.variant_name || 'Default'}), Qty: ${p.quantity}`)
         .join('\n');
-
-      const validDiscount = unitDiscount > 0 && unitDiscount < finalPrice ? unitDiscount : 0;
-
-      orderItems.push({
-        name: `${item.name}\nIncludes:\n${internal}`,
-        sku: item.sku || `KIT-${item.id}`,
-        units: quantity,
-        selling_price: finalPrice,
-        discount: validDiscount,
-        hsn,
-        tax: gstRate,
-      });
-    } else {
-      // 🧾 Regular product
-      const basePrice = item.base_price || item.price || 0;
-      const finalPrice = item.price || basePrice;
-      const baseDiscount = basePrice - finalPrice;
-      // Calculate total discount for this item (base + coupon)
-      const totalDiscountForItem = (baseDiscount * quantity) + (couponPerUnit * quantity);
-      // Calculate per-unit discount
-      const finalUnitDiscount = quantity > 0 ? +(totalDiscountForItem / quantity).toFixed(2) : 0;
-      const hsn = item.hsn_code || '34053000';
-
-      orderItems.push({
-        name: item.name || 'Unnamed',
-        sku: item.variant_code || item.product_code || 'SKU123',
-        units: quantity,
-        selling_price: finalPrice,
-        discount: finalUnitDiscount > 0 ? finalUnitDiscount : 0,
-        hsn,
-        tax: gstRate,
-      });
     }
+
+    orderItems.push({
+      name: isComboOrKit ? `${item.name}\nIncludes:\n${comboIncludes}` : item.name || 'Unnamed',
+      sku: item.variant_code || item.product_code || item.sku || `SKU-${item.id}`,
+      units: quantity,
+      selling_price: finalPrice,
+      discount: unitDiscount > 0 ? unitDiscount : 0,
+      hsn,
+      tax: gstRate,
+    });
   }
 
   const deliveryCharge = Number(order.delivery_charge || 0);
-  const subTotal = orderItems.reduce((sum, i) => sum + ((i.selling_price - i.discount) * i.units), 0);
-  const totalDiscount = orderItems.reduce((sum, i) => sum + (i.discount * i.units), 0);
+  const subTotal = orderItems.reduce(
+    (sum, i) => sum + ((i.selling_price - i.discount) * i.units),
+    0
+  );
+  const totalDiscount = orderItems.reduce(
+    (sum, i) => sum + (i.discount * i.units),
+    0
+  );
   const grandTotal = +(subTotal + deliveryCharge).toFixed(2);
+
+  // 🧾 Debug Log
+  console.log('🚀 Shiprocket Payload:', JSON.stringify({
+    order_id: order.order_number,
+    total_discount: totalDiscount,
+    order_items: orderItems
+  }, null, 2));
 
   return {
     order_id: order.order_number,

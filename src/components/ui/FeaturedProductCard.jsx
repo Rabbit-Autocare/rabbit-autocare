@@ -3,11 +3,13 @@
 import { useState, useEffect, useMemo } from 'react';
 import { ChevronLeft, ChevronRight, X, ShoppingCart } from 'lucide-react';
 import { useCart } from '@/contexts/CartContext.jsx';
+import { useAuth } from '@/contexts/AuthContext';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { WishlistService } from '@/lib/service/wishlistService';
 // import { FaShoppingCart } from 'react-icons/fa';
 import ProductRating from '@/components/ui/ProductRating';
+import { useToast } from '@/components/ui/CustomToast.jsx';
 // ...existing imports...
 console.log('FeaturedProductCard loaded!');
 export default function FeaturedProductCard({
@@ -15,7 +17,9 @@ export default function FeaturedProductCard({
   className = '',
   isLastCard = false,
 }) {
-  const { addToCart, user, openCart } = useCart();
+  // Only use user from useCart context
+  const { addToCart, openCart } = useCart();
+  const { user } = useAuth();
   const router = useRouter();
   const [imageSlideMap, setImageSlideMap] = useState({});
   const [activeImageIndex, setActiveImageIndex] = useState({});
@@ -30,6 +34,10 @@ export default function FeaturedProductCard({
     sizes: [],
   });
   const [wishlistItemId, setWishlistItemId] = useState(null);
+  const [wishlistLoading, setWishlistLoading] = useState(false);
+  const showToast = useToast();
+
+  // console.log('[FeaturedProductCard] user from useCart:', user);
 
   // Deterministic pseudo-random generator based on a string seed
   function seededRandom(seed) {
@@ -68,20 +76,20 @@ export default function FeaturedProductCard({
   const ratings = generateDeterministicRatings(product);
 
   // Debug: Log product data to check stock values
-  useEffect(() => {
-    if (product?.product_type === 'microfiber') {
-      console.log('🧽 Microfiber Product Debug:', {
-        name: product.name,
-        variants: product.variants?.map((v) => ({
-          id: v.id,
-          color: v.color,
-          size: v.size,
-          stock: v.stock,
-          base_price: v.base_price,
-        })),
-      });
-    }
-  }, [product]);
+  // useEffect(() => {
+  //   if (product?.product_type === 'microfiber') {
+  //     console.log('🧽 Microfiber Product Debug:', {
+  //       name: product.name,
+  //       variants: product.variants?.map((v) => ({
+  //         id: v.id,
+  //         color: v.color,
+  //         size: v.size,
+  //         stock: v.stock,
+  //         base_price: v.base_price,
+  //       })),
+  //     });
+  //   }
+  // }, [product]);
 
   // Check if product is microfiber category
   const isMicrofiber = useMemo(() => {
@@ -92,38 +100,40 @@ export default function FeaturedProductCard({
   useEffect(() => {
     const checkWishlistStatus = async () => {
       if (!user || !product) return;
-
       try {
-        const { data, error } = await WishlistService.getWishlist();
-        if (error) {
-          console.error('Error checking wishlist status:', error);
-          return;
+        let wishlistItem = null;
+        if (product.combo_id) {
+          const { data } = await WishlistService.getWishlist();
+          wishlistItem = data?.find(item => item.combo_id === product.combo_id);
+        } else if (product.kit_id) {
+          const { data } = await WishlistService.getWishlist();
+          wishlistItem = data?.find(item => item.kit_id === product.kit_id);
+        } else {
+          const { data } = await WishlistService.getWishlist();
+          wishlistItem = data?.find(item => {
+            if (item.product_id !== product.id) return false;
+            // Compare variants
+            const normalizeVariant = (v) => {
+              if (!v) return null;
+              const normalized = {};
+              if (v.id) normalized.id = v.id;
+              if (v.size) normalized.size = v.size;
+              if (v.color) normalized.color = v.color;
+              if (v.quantity_value) normalized.quantity_value = v.quantity_value;
+              if (v.unit) normalized.unit = v.unit;
+              if (v.gsm) normalized.gsm = v.gsm;
+              if (v.is_package !== undefined) normalized.is_package = v.is_package;
+              if (v.package_quantity) normalized.package_quantity = v.package_quantity;
+              return normalized;
+            };
+            const currentVariant = isMicrofiber
+              ? getVariantForCombination(selectedColor, selectedSize, selectedPackSize)
+              : selectedVariant;
+            const normalizedItemVariant = normalizeVariant(item.variant);
+            const normalizedCurrentVariant = normalizeVariant(currentVariant);
+            return JSON.stringify(normalizedItemVariant) === JSON.stringify(normalizedCurrentVariant);
+          });
         }
-
-        // Check if current product with selected variant is in wishlist
-        const currentVariant = isMicrofiber
-          ? getVariantForCombination(selectedColor, selectedSize, selectedPackSize)
-          : selectedVariant;
-
-        const wishlistItem = data?.find((item) => {
-          if (item.product_id !== product.id) return false;
-
-          if (isMicrofiber && selectedColor && selectedSize && selectedPackSize) {
-            // For microfiber, check color, size, and pack size combination
-            const hasColor = Array.isArray(item.variant?.color)
-              ? item.variant.color.includes(selectedColor)
-              : item.variant?.color === selectedColor;
-            const hasSize = item.variant?.size === selectedSize;
-            const hasPackSize = item.variant?.packSize === selectedPackSize;
-            return hasColor && hasSize && hasPackSize;
-          } else if (currentVariant) {
-            // For non-microfiber, check variant match
-            return item.variant?.id === currentVariant.id;
-          }
-
-          return !item.variant; // Default variant
-        });
-
         if (wishlistItem) {
           setIsWishlisted(true);
           setWishlistItemId(wishlistItem.id);
@@ -132,20 +142,12 @@ export default function FeaturedProductCard({
           setWishlistItemId(null);
         }
       } catch (error) {
-        console.error('Error checking wishlist status:', error);
+        setIsWishlisted(false);
+        setWishlistItemId(null);
       }
     };
-
     checkWishlistStatus();
-  }, [
-    user,
-    product,
-    selectedVariant,
-    selectedColor,
-    selectedSize,
-    selectedPackSize,
-    isMicrofiber,
-  ]);
+  }, [user, product, selectedVariant, selectedColor, selectedSize, selectedPackSize, isMicrofiber]);
 
   // Get color for display (could be hex, color name, etc.)
   const getColorStyle = (color) => {
@@ -592,10 +594,8 @@ export default function FeaturedProductCard({
       alert('Please login to add items to wishlist.');
       return;
     }
-
     try {
       let variantToSave = null;
-
       if (isMicrofiber && selectedColor && selectedSize && selectedPackSize) {
         const variant = getVariantForCombination(selectedColor, selectedSize, selectedPackSize);
         if (!variant) {
@@ -617,45 +617,56 @@ export default function FeaturedProductCard({
           variant_code: selectedVariant.variant_code || selectedVariant.code || '',
         };
       } else {
-        // Default variant for products without variants
         variantToSave = {
           id: 'default',
           price: product.base_price || product.price || product.mrp,
           displayText: 'Default',
         };
       }
-
       if (isWishlisted && wishlistItemId) {
-        // Remove from wishlist
-        const { error } = await WishlistService.removeFromWishlist(
-          wishlistItemId
-        );
-        if (error) {
-          console.error('Error removing from wishlist:', error);
-          alert('Could not remove from wishlist.');
-        } else {
-          setIsWishlisted(false);
-          setWishlistItemId(null);
-        }
+        await WishlistService.removeFromWishlist(wishlistItemId);
+        setIsWishlisted(false);
+        setWishlistItemId(null);
       } else {
-        // Add to wishlist
-        const { data, error } = await WishlistService.addToWishlist({
-          product_id: product.id,
-          variant: variantToSave,
-        });
-
-        if (error) {
-          console.error('Error adding to wishlist:', error);
-          alert('Could not add to wishlist.');
-        } else {
+        const { success, wishlistItem } = await WishlistService.addToWishlistSmart(product, variantToSave);
+        if (success) {
           setIsWishlisted(true);
-          setWishlistItemId(data?.[0]?.id);
+          setWishlistItemId(wishlistItem?.id);
         }
       }
     } catch (err) {
-      console.error('Error with wishlist operation:', err);
       alert('Could not update wishlist.');
     }
+  };
+
+  const handleWishlistButtonClick = async (e) => {
+    e.stopPropagation();
+    if (!user) {
+      showToast('Please login to use wishlist', { type: 'error' });
+      return;
+    }
+    setWishlistLoading(true);
+    try {
+      if (!isWishlisted) {
+        // Check if already in wishlist before adding
+        const { success, wishlistItem, existing } = await WishlistService.addToWishlistSmart(product, selectedVariant);
+        if (existing) {
+          showToast('Item already exists in your wishlist.', { type: 'info' });
+        } else if (success) {
+          setIsWishlisted(true);
+          setWishlistItemId(wishlistItem?.id);
+          showToast('Added to wishlist!', { type: 'success' });
+        }
+      } else if (wishlistItemId) {
+        await WishlistService.removeFromWishlist(wishlistItemId);
+        setIsWishlisted(false);
+        setWishlistItemId(null);
+        showToast('Removed from wishlist', { type: 'info' });
+      }
+    } catch (error) {
+      showToast('Wishlist action failed', { type: 'error' });
+    }
+    setWishlistLoading(false);
   };
 
   const formatPrice = (price) => {
@@ -966,20 +977,22 @@ export default function FeaturedProductCard({
               <div
                 className={`border-1 px-2 py-2 xs:px-3 xs:py-2 sm:px-4 sm:py-2 mr-1 rounded-[4px] transition-all duration-200 ${
                   isWishlisted
-                    ? 'border-red-500 bg-red-50'
-                    : 'border-black hover:bg-gray-50'
+                    ? 'border-blue-500 bg-blue-50'
+                    : wishlistLoading
+                      ? 'border-gray-300 bg-gray-100 opacity-60'
+                      : 'border-black hover:bg-blue-100 hover:border-blue-400'
                 }`}
               >
                 <div className='relative w-4 h-4 xs:w-5 xs:h-5 cursor-pointer'>
                   <button
                     type='button'
-                    onClick={handleAddToWishlist}
-                    disabled={!user}
-                    className={`text-xs transition-all duration-200 ${
+                    onClick={handleWishlistButtonClick}
+                    disabled={isAddingToCart || wishlistLoading}
+                    className={`text-xs transition-all duration-200 flex items-center justify-center ${
                       isWishlisted
-                        ? 'text-red-500'
-                        : 'text-black hover:text-purple-600'
-                    } ${!user ? 'opacity-50 cursor-not-allowed' : ''}`}
+                        ? 'text-blue-600'
+                        : 'text-black hover:text-blue-600'
+                    } ${isAddingToCart || wishlistLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
                     title={
                       !user
                         ? 'Login to add to wishlist'
@@ -988,7 +1001,9 @@ export default function FeaturedProductCard({
                         : 'Add to wishlist'
                     }
                   >
-                    {isWishlisted ? (
+                    {wishlistLoading ? (
+                      <span className="w-4 h-4 xs:w-5 xs:h-5 border-2 border-blue-400 border-t-transparent rounded-full animate-spin inline-block" />
+                    ) : isWishlisted ? (
                       <div className='relative w-4 h-4 xs:w-5 xs:h-5'>
                         <Image
                           src='/assets/shine.svg'

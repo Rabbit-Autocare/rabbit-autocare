@@ -5,6 +5,7 @@ import { createShiprocketOrder, mapOrderToShiprocket } from '@/lib/shiprocket';
 
 const supabase = createSupabaseBrowserClient();
 
+
 export async function POST(req) {
   try {
     const body = await req.json();
@@ -103,6 +104,14 @@ export async function POST(req) {
     }
 
     // ✅ Fetch Address
+    if (updateError) {
+      console.error('❌ Failed to update user coupons:', updateError);
+    } else {
+      console.log(`✅ Used coupon ${coupon_id} removed from user ${user_id}`);
+    }
+  }
+}
+
     const { data: address, error: addressError } = await supabase
       .from('addresses')
       .select('*')
@@ -131,6 +140,13 @@ export async function POST(req) {
       const shiprocketResult = await createShiprocketOrder(shiprocketPayload);
       console.log('✅ Shiprocket Order Created:', shiprocketResult);
 
+      if (shiprocketResult?.awb_code) {
+        await supabase
+          .from('orders')
+          .update({ awb_code: shiprocketResult.awb_code })
+          .eq('id', order.id);
+      }
+      // Save awb_code to the order if available
       if (shiprocketResult?.awb_code) {
         await supabase
           .from('orders')

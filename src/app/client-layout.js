@@ -10,6 +10,7 @@ import { ThemeProvider } from "@/contexts/ThemeContext"
 import ExtraNavbar from "@/components/navigation/extranavbar"
 import { createPortal } from "react-dom"
 import MobileNavbar from "@/components/navigation/MobileNavbar"
+import { ToastProvider } from '@/components/ui/CustomToast.jsx';
 
 const supabase = createSupabaseBrowserClient();
 
@@ -332,23 +333,23 @@ export default function ClientLayout({ children, initialCartItems = [] }) {
             mobilePortalContainer,
           )}
 
-        <div style={{ position: "relative" }}>
-          {/* ExtraNavbar */}
-          <div
-            className={`transition-all duration-300 ease-in-out ${
-              showExtraNavbar ? "opacity-100 translate-y-0" : "opacity-0 -translate-y-full pointer-events-none"
-            }`}
-            style={{ position: "relative", zIndex: 50 }}
-          >
-            <ExtraNavbar />
+
+          <div style={{ position: "relative" }} id="smooth-content">
+            {/* ExtraNavbar */}
+            <div
+              className={`transition-all duration-300 ease-in-out ${
+                showExtraNavbar ? "opacity-100 translate-y-0" : "opacity-0 -translate-y-full pointer-events-none"
+              }`}
+              style={{ position: "relative", zIndex: 50 }}
+            >
+              <ExtraNavbar />
+            </div>
+            <ToastProvider>
+              {/* Content */}
+              <div>{children}</div>
+              <Footer />
+            </ToastProvider>
           </div>
-
-          {/* Content */}
-          <div>{children}</div>
-
-          <Footer />
-        </div>
-
         {/* MainNavbar Portal - Desktop only */}
         {portalContainer &&
           createPortal(

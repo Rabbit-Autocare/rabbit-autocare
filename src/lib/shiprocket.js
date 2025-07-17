@@ -44,46 +44,37 @@ export async function createShiprocketOrder(orderData) {
   }
 }
 
-
-// 🚀 Universal discount handler
+// 🧠 Smart unit discount calculator
 function calculateUnitDiscount({ item, totalQty, discountAmount = 0, discountMeta = {} }) {
   const isComboOrKit = item.type === 'combo' || item.type === 'kit';
   const mrp = Number(item.original_price || item.base_price || item.compare_at_price || item.price || 0);
   const finalPrice = Number(item.price || mrp);
+  let unitDiscount = +(mrp - finalPrice).toFixed(2);
 
-  let unitDiscount = 0;
+  // 🧮 Coupon logic only for regular products
+  if (!isComboOrKit && discountAmount > 0) {
+    const perUnit = totalQty > 0 ? +(discountAmount / totalQty).toFixed(2) : 0;
 
-  if (discountMeta?.type === 'percentage') {
-    // ✅ Recalculate from MRP for percentage coupon
-    unitDiscount = +(mrp * (discountMeta.value / 100)).toFixed(2);
-  } else {
-    // ✅ Default: calculate from price difference
-    unitDiscount = +(mrp - finalPrice).toFixed(2);
-
-    if (!isComboOrKit && discountAmount > 0) {
-      const perUnit = totalQty > 0 ? +(discountAmount / totalQty).toFixed(2) : 0;
-
-      switch (discountMeta.type) {
-        case 'flat':
+    switch (discountMeta.type) {
+      case 'percentage':
+        break; // already applied in price
+      case 'flat':
+        unitDiscount += perUnit;
+        break;
+      case 'category':
+        if (discountMeta.applicable_categories?.includes(item.category)) {
           unitDiscount += perUnit;
-          break;
-
-        case 'category':
-          if (discountMeta.applicable_categories?.includes(item.category)) {
-            unitDiscount += perUnit;
-          }
-          break;
-
-        default:
-          unitDiscount += perUnit;
-      }
+        }
+        break;
+      default:
+        unitDiscount += perUnit;
     }
   }
 
   return +(unitDiscount).toFixed(2);
 }
 
-// 🧾 Shiprocket order payload creator
+// 🧾 Map order to Shiprocket format
 export function mapOrderToShiprocket(order) {
   const shipping = order.user_info?.shipping_address || {};
   const gstRate = 18;
@@ -97,13 +88,32 @@ export function mapOrderToShiprocket(order) {
     const quantity = item.quantity || 1;
     const isComboOrKit = item.type === 'combo' || item.type === 'kit';
 
-    const finalPrice = Number(item.price || 0);
-    const unitDiscount = calculateUnitDiscount({
-      item,
-      totalQty,
-      discountAmount,
-      discountMeta,
-    });
+    // ✅ Step 1: MRP including GST
+    const mrpInclGst = Number(item.original_price || item.base_price || item.compare_at_price || item.price || 0);
+
+    // ✅ Step 2: Calculate base price (without GST)
+    const basePrice = +(mrpInclGst / 1.18).toFixed(2);
+
+    // ✅ Step 3: Discount per unit on base price
+    let discountExGst = 0;
+
+    if (!isComboOrKit && discountAmount > 0) {
+      const perUnit = totalQty > 0 ? +(discountAmount / totalQty).toFixed(2) : 0;
+      switch (discountMeta.type) {
+        case 'flat':
+        case 'category':
+        default:
+          discountExGst += perUnit;
+      }
+    }
+
+    // ✅ Step 4: Final base price after discount
+    const discountedBase = +(basePrice - discountExGst).toFixed(2);
+
+    // ✅ Step 5: Final price (GST added back)
+    const finalUnitPrice = +(discountedBase * 1.18).toFixed(2);
+
+    const unitDiscountInclGst = +(mrpInclGst - finalUnitPrice).toFixed(2);
 
     const hsn = item.hsn || item.hsn_code || '34053000';
 
@@ -118,8 +128,8 @@ export function mapOrderToShiprocket(order) {
       name: isComboOrKit ? `${item.name}\nIncludes:\n${comboIncludes}` : item.name || 'Unnamed',
       sku: item.variant_code || item.product_code || item.sku || `SKU-${item.id}`,
       units: quantity,
-      selling_price: finalPrice,
-      discount: unitDiscount > 0 ? unitDiscount : 0,
+      selling_price: +mrpInclGst.toFixed(2),         // original MRP
+      discount: +unitDiscountInclGst.toFixed(2),     // difference b/w MRP & final price
       hsn,
       tax: gstRate,
     });
@@ -135,13 +145,6 @@ export function mapOrderToShiprocket(order) {
     0
   );
   const grandTotal = +(subTotal + deliveryCharge).toFixed(2);
-
-  // 🧾 Debug Log
-  console.log('🚀 Shiprocket Payload:', JSON.stringify({
-    order_id: order.order_number,
-    total_discount: totalDiscount,
-    order_items: orderItems
-  }, null, 2));
 
   return {
     order_id: order.order_number,

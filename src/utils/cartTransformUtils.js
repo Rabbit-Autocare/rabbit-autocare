@@ -1,62 +1,60 @@
-// cartTransformUtils.js
-export function calculatePriceSummary(cartItems, coupon) {
+// 📁 src/utils/cartCalculations.js
+export function calculateCartTotals(cartItems, coupon) {
   const GST_RATE = 18;
   let subtotal = 0;
-  let subtotalExGST = 0;
+  let gstRemoved = 0;
+  let basePrice = 0;
 
   cartItems.forEach(item => {
     const qty = item.quantity || 1;
+    const getPrice = (incl, excl) => {
+      const priceIncl = Number(incl) || 0;
+      const priceExcl = excl ?? priceIncl / 1.18;
+      return [priceIncl * qty, priceExcl * qty];
+    };
 
     if (item.kit_id && item.kit_price) {
-      const priceIncl = Number(item.kit_price) || 0;
-      let priceExcl = item.kit_price_excluding_gst ?? (priceIncl / 1.18);
-      subtotal += priceIncl * qty;
-      subtotalExGST += priceExcl * qty;
+      const [incl, excl] = getPrice(item.kit_price, item.kit_price_excluding_gst);
+      subtotal += incl;
+      basePrice += excl;
     } else if (item.combo_id && item.combo_price) {
-      const priceIncl = Number(item.combo_price) || 0;
-      let priceExcl = item.combo_price_excluding_gst ?? (priceIncl / 1.18);
-      subtotal += priceIncl * qty;
-      subtotalExGST += priceExcl * qty;
+      const [incl, excl] = getPrice(item.combo_price, item.combo_price_excluding_gst);
+      subtotal += incl;
+      basePrice += excl;
     } else if (Array.isArray(item.variant)) {
       item.variant.forEach(v => {
-        const priceIncl = Number(v.base_price) || Number(v.price) || 0;
-        let priceExcl = v.base_price_excluding_gst ?? (priceIncl / 1.18);
-        subtotal += priceIncl * (v.quantity || 1);
-        subtotalExGST += priceExcl * (v.quantity || 1);
+        const [incl, excl] = getPrice(v.base_price, v.base_price_excluding_gst);
+        subtotal += incl;
+        basePrice += excl;
       });
     } else {
       const v = item.variant || {};
-      const priceIncl = Number(v.base_price) || Number(v.price) || 0;
-      let priceExcl = v.base_price_excluding_gst ?? (priceIncl / 1.18);
-      subtotal += priceIncl * qty;
-      subtotalExGST += priceExcl * qty;
+      const [incl, excl] = getPrice(v.base_price, v.base_price_excluding_gst);
+      subtotal += incl;
+      basePrice += excl;
     }
   });
 
-  let discountExGST = 0;
+  gstRemoved = subtotal - basePrice;
+
   let discount = 0;
-  if (coupon) {
-    if (coupon.percent) {
-      discountExGST = subtotalExGST * (Number(coupon.percent) / 100);
-    } else if (coupon.discount) {
-      discountExGST = Number(coupon.discount) || 0;
-    }
-    discount = discountExGST * 1.18;
+  if (coupon?.percent) {
+    discount = Math.round(basePrice * (coupon.percent / 100));
+  } else if (coupon?.discount) {
+    discount = Math.round(Number(coupon.discount) / 1.18);
   }
 
-  const discountedExGST = subtotalExGST - discountExGST;
-  const totalGST = discountedExGST * (GST_RATE / 100);
-  const finalTotal = discountedExGST + totalGST;
+  const discountedBase = basePrice - discount;
+  const finalTotal = discountedBase + gstRemoved;
   const youSaved = subtotal - finalTotal;
 
   return {
     subtotal,
-    subtotalExGST,
+    basePrice,
+    gstRemoved,
     discount,
-    discountExGST,
-    discountedExGST,
-    totalGST,
+    discountedBase,
     finalTotal,
-    youSaved
+    youSaved,
   };
 }

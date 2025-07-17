@@ -7,7 +7,7 @@ import { useCart } from '@/contexts/CartContext';
 import { useAuth } from '@/contexts/AuthContext';
 
 import '@/app/globals.css';
-import { calculatePriceSummary } from "@/utils/cartTransformUtils";
+import { calculateCartTotals } from "@/utils/cartTransformUtils";
 import PriceSummary from '@/components/cart/PriceSummary';
 import AddressSection from '@/components/Address/AddressSection';
 import OrderSummary from '@/components/checkout-order/OrderSummary';
@@ -113,7 +113,7 @@ const formatPrice = (amount) => `₹${Number(amount).toFixed(0)}`;
   // Recalculate totals when items or coupon change
   useEffect(() => {
     if (transformedItems.length > 0) {
-     const summary = calculatePriceSummary(transformedItems, coupon);
+     const summary = calculateCartTotals(transformedItems, coupon);
 setOrderTotals({
   subtotal: summary.subtotal,
   discount: summary.discount,
@@ -176,7 +176,7 @@ setOrderTotals({
   };
 useEffect(() => {
   if (transformedItems.length > 0) {
-    const summary = calculatePriceSummary(transformedItems, coupon);
+    const summary = calculateCartTotals(transformedItems, coupon);
     setOrderTotals({
       subtotal: summary.subtotal,
       discount: summary.discount,
@@ -320,23 +320,15 @@ useEffect(() => {
     );
   };
 
-const handlePlaceOrder = async (orderTotals) => {
-  const {
-    subtotal,
-    basePrice,
-    discount,
-    gst,
-    total, // ✅ Final amount including delivery and GST
-    deliveryCharge,
-    items: transformedItems,
-  } = orderTotals;
-
+ const handlePlaceOrder = async () => {
   if (
     !selectedShippingAddressId ||
     (!useSameAddress && !selectedBillingAddressId) ||
     transformedItems.length === 0
   ) {
-    alert('Please select both shipping and billing addresses and ensure you have items in your cart.');
+    alert(
+      'Please select both shipping and billing addresses and ensure you have items in your cart.'
+    );
     return;
   }
 
@@ -374,28 +366,19 @@ const handlePlaceOrder = async (orderTotals) => {
       date.getDate()
     ).padStart(2, '0')}-${Math.floor(1000 + Math.random() * 9000)}`;
 
-    // ✅ Use the accurate final total from UI
-    const finalAmount = total;
+    // ✅ Calculate grand total manually
+    const calculatedSubtotal = transformedItems.reduce((sum, item) => {
+      const unit = item.price || 0;
+      const qty = item.quantity || 1;
+      const total = item.total_price ?? unit * qty;
+      return sum + total;
+    }, 0);
 
-    // ✅ Create Razorpay order with correct amount
-    const razorpayOrderRes = await fetch('/api/razorpay/create-order', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        amount: finalAmount, // ₹406 → will be converted to paisa on backend
-        currency: 'INR',
-        receipt: orderNumber,
-      }),
-    });
+    const finalAmount = calculatedSubtotal - (orderTotals.discount || 0) + (deliveryCharge || 0);
 
-    const razorpayOrderData = await razorpayOrderRes.json();
-    if (!razorpayOrderData?.success || !razorpayOrderData?.id) {
-      throw new Error(
-        razorpayOrderData?.error?.message || 'Failed to create payment order. Please try again.'
-      );
-    }
+    // Debug (optional)
+    console.log("Final payable amount:", finalAmount);
 
-    // ✅ Order object
     const orderData = {
       order_number: orderNumber,
       user_id: userId,
@@ -410,10 +393,8 @@ const handlePlaceOrder = async (orderTotals) => {
         ...item,
         main_image_url: item.main_image_url || null,
       })),
-      subtotal,
-      base_price: basePrice,
-      discount_amount: discount,
-      gst,
+      subtotal: calculatedSubtotal,
+      discount_amount: orderTotals.discount || 0,
       total: finalAmount,
       delivery_charge: deliveryCharge,
       coupon_id: coupon?.id || null,
@@ -421,6 +402,26 @@ const handlePlaceOrder = async (orderTotals) => {
       payment_status: 'pending',
       created_at: new Date().toISOString(),
     };
+
+    const razorpayOrderRes = await fetch('/api/razorpay/create-order', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        amount: finalAmount,
+        currency: 'INR',
+        receipt: orderNumber,
+      }),
+    });
+
+    const razorpayOrderData = await razorpayOrderRes.json();
+    console.log('Razorpay order API response:', razorpayOrderData);
+
+    if (!razorpayOrderData?.success || !razorpayOrderData?.id) {
+      throw new Error(
+        razorpayOrderData?.error?.message ||
+          'Failed to create payment order. Please try again.'
+      );
+    }
 
     const options = {
       key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
@@ -437,6 +438,7 @@ const handlePlaceOrder = async (orderTotals) => {
       theme: { color: '#601E8D' },
       handler: async function (response) {
         try {
+          console.log('[Razorpay handler] Payment response:', response);
           const verificationRes = await fetch('/api/razorpay/verify', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -444,8 +446,10 @@ const handlePlaceOrder = async (orderTotals) => {
           });
 
           const verificationData = await verificationRes.json();
+          console.log('[Razorpay handler] Verification data:', verificationData);
 
           if (verificationData.success) {
+            console.log('[Razorpay handler] Sending order completion request...');
             const completeOrderRes = await fetch('/api/orders/complete', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
@@ -457,8 +461,16 @@ const handlePlaceOrder = async (orderTotals) => {
                 razorpay_signature: response.razorpay_signature,
               }),
             });
+            let completeOrderData;
+            try {
+              completeOrderData = await completeOrderRes.json();
+              console.log('[Razorpay handler] Complete order data:', completeOrderData);
+            } catch (jsonErr) {
+              console.error('[Razorpay handler] Error parsing complete order response:', jsonErr);
+              setPaymentError('Order creation failed: Invalid server response.');
+              return;
+            }
 
-            const completeOrderData = await completeOrderRes.json();
             if (completeOrderData.success) {
               await supabase.from('cart_items').delete().eq('user_id', userId);
               if (coupon) clearCoupon();
@@ -468,22 +480,25 @@ const handlePlaceOrder = async (orderTotals) => {
               return;
             } else {
               setPaymentError('Order creation failed after payment. Please contact support.');
+              console.error('[Razorpay handler] Order creation failed:', completeOrderData);
             }
           } else {
             setPaymentError('Payment verification failed. Please contact support.');
+            console.error('[Razorpay handler] Payment verification failed:', verificationData);
           }
         } catch (handlerError) {
-          console.error('[Razorpay handler] Error:', handlerError);
-          setPaymentError('Failed to process payment. Please try again.');
+          console.error('[Razorpay handler] Payment handler error:', handlerError);
+          setPaymentError('Failed to process payment. Please try again or contact support.');
         } finally {
-          setLoading(false);
           setPaymentProcessing(false);
+          setLoading(false);
+          console.log('[Razorpay handler] Payment handler finished.');
         }
       },
       modal: {
         ondismiss: function () {
-          setLoading(false);
           setPaymentProcessing(false);
+          setLoading(false);
           setPaymentError('Payment was cancelled.');
         },
       },
@@ -496,19 +511,20 @@ const handlePlaceOrder = async (orderTotals) => {
 
     const rzp = new window.Razorpay(options);
     rzp.on('payment.failed', function (response) {
-      setLoading(false);
       setPaymentProcessing(false);
+      setLoading(false);
       setPaymentError(`Payment failed: ${response.error.description}`);
     });
     rzp.open();
   } catch (error) {
     console.error('Order creation error:', error);
-    setPaymentError(error.message || 'Error creating order. Please try again.');
+    setPaymentError(
+      error.message || 'There was an error creating your order. Please try again.'
+    );
     setLoading(false);
     setPaymentProcessing(false);
   }
 };
-
 
   // Add robust redirect fallback using localStorage
   useEffect(() => {

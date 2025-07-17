@@ -1,10 +1,9 @@
 import { NextResponse } from 'next/server';
 import { createSupabaseBrowserClient } from '@/lib/supabase/browser-client';
 import { sendOrderConfirmation, sendAdminNotification } from '@/lib/service/emailService';
-import { createShiprocketOrder, mapOrderToShiprocket } from '@/lib/shiprocket';
+import { createShiprocketOrder } from '@/lib/shiprocket';
 
 const supabase = createSupabaseBrowserClient();
-
 
 export async function POST(req) {
   try {
@@ -33,7 +32,6 @@ export async function POST(req) {
       );
     }
 
-    // ✅ Calculate GST Breakdown
     let totalTaxableValue = 0;
     for (const item of items) {
       const taxable = item.total_price / 1.18;
@@ -80,30 +78,24 @@ export async function POST(req) {
       return NextResponse.json({ success: false, error: 'Failed to create order' }, { status: 500 });
     }
 
-  // ✅ Remove used coupon from user's auth profile
-if (coupon_id && user_id) {
-  const { data: user, error: userError } = await supabase
-    .from('auth_users')
-    .select('coupons')
-    .eq('id', user_id)
-    .single();
+    if (coupon_id && user_id) {
+      const { data: user, error: userError } = await supabase
+        .from('auth_users')
+        .select('coupons')
+        .eq('id', user_id)
+        .single();
 
-  if (userError || !user) {
-    console.error('❌ Failed to fetch user for coupon removal:', userError);
-  } else {
-    const updatedCoupons = (user.coupons || []).filter((id) => id !== coupon_id);
-    const { error: updateError } = await supabase
-      .from('auth_users')
-      .update({ coupons: updatedCoupons })
-      .eq('id', user_id);
-
-    if (updateError) {
-      console.error('❌ Failed to update user coupons:', updateError);
-    } else {
-      console.log(`✅ Used coupon ${coupon_id} removed from user ${user_id}`);
+      if (!userError && user) {
+        const updatedCoupons = (user.coupons || []).filter((id) => id !== coupon_id);
+        const { error: updateError } = await supabase
+          .from('auth_users')
+          .update({ coupons: updatedCoupons })
+          .eq('id', user_id);
+        if (updateError) {
+          console.error('❌ Failed to update user coupons:', updateError);
+        }
+      }
     }
-  }
-}
 
     const { data: address, error: addressError } = await supabase
       .from('addresses')
@@ -140,7 +132,6 @@ if (coupon_id && user_id) {
       console.log('📦 Shiprocket Payload:', shiprocketPayload);
       const shiprocketResult = await createShiprocketOrder(shiprocketPayload);
       console.log('✅ Shiprocket Order Created:', shiprocketResult);
-      // Save awb_code to the order if available
       if (shiprocketResult?.awb_code) {
         await supabase
           .from('orders')
@@ -169,29 +160,63 @@ function generateOrderNumber() {
   return `${date}-${rand}`;
 }
 
+// ✅ Shiprocket required field fix added here
+function mapOrderToShiprocket(order) {
+  const shipping = order.user_info?.shipping_address || {};
+  const [firstName, lastName = 'NA'] = (shipping.name || 'NA').split(' ');
+
+  const orderItems = order.items.map((item, index) => {
+    const quantity = item.quantity || 1;
+    const unitPrice = Number(item.price || item.kit_price || item.combo_price || 0);
+    const rawDiscount = Number(item.discount || 0);
+    const discount = rawDiscount >= unitPrice ? 0 : rawDiscount;
+    return {
+      name: item.name || `Item ${index + 1}`,
+      sku: item.product_code || item.variant?.product_code || `SKU-${index + 1}`,
+      units: quantity,
+      selling_price: unitPrice,
+      discount: discount,
+    };
+  });
+
+  return {
+    order_id: order.order_number,
+    order_date: new Date().toISOString(),
+    billing_customer_name: firstName,
+    billing_last_name: lastName, // ✅ Required by Shiprocket
+    billing_address: shipping.address,
+    billing_city: shipping.city,
+    billing_state: shipping.state,
+    billing_pincode: shipping.postal_code,
+    billing_country: 'India',
+    billing_email: order.user_info?.email || '',
+    billing_phone: shipping.phone,
+    shipping_is_billing: true,
+    order_items: orderItems,
+    payment_method: 'Prepaid',
+    sub_total: order.total,
+    length: 10,
+    breadth: 10,
+    height: 10,
+    weight: 1,
+  };
+}
+
 async function processOrderItems(order) {
   try {
     const items = order.items || [];
     const orderNumber = order.order_number;
-
     for (const item of items) {
       const taxable_value = +(item.total_price / 1.18).toFixed(2);
       const gst_amount = +(item.total_price - taxable_value).toFixed(2);
-
       if (item.type === 'product') {
         if (item.variant?.id) {
-          const { error: stockError } = await supabase.rpc(
-            'decrement_stock_by_quantity',
-            {
-              variant_id: item.variant.id,
-              p_quantity: item.quantity,
-            }
-          );
-          if (stockError) {
-            console.error(`Stock adjustment failed for variant ${item.variant.id}:`, stockError);
-          }
+          const { error: stockError } = await supabase.rpc('decrement_stock_by_quantity', {
+            variant_id: item.variant.id,
+            p_quantity: item.quantity,
+          });
+          if (stockError) console.error(`Stock adjustment failed for variant ${item.variant.id}:`, stockError);
         }
-
         await supabase.from('sales_records').insert({
           order_id: order.id,
           order_number: orderNumber,
@@ -211,30 +236,23 @@ async function processOrderItems(order) {
         const sourceTable = item.type === 'kit' ? 'kit_products' : 'combo_products';
         const sourceIdColumn = item.type === 'kit' ? 'kit_id' : 'combo_id';
         const sourceId = item.type === 'kit' ? item.kit_id : item.combo_id;
-
         const { data: relatedItems, error: relatedError } = await supabase
           .from(sourceTable)
           .select('variant_id, quantity')
           .eq(sourceIdColumn, sourceId);
-
         if (relatedError) {
           console.error(`Error fetching related items for ${item.type}:`, relatedError);
           continue;
         }
-
         for (const related of relatedItems) {
-          const { error: stockError } = await supabase.rpc(
-            'decrement_stock_by_quantity',
-            {
-              variant_id: related.variant_id,
-              p_quantity: related.quantity * item.quantity,
-            }
-          );
+          const { error: stockError } = await supabase.rpc('decrement_stock_by_quantity', {
+            variant_id: related.variant_id,
+            p_quantity: related.quantity * item.quantity,
+          });
           if (stockError) {
             console.error(`Stock adjustment failed for variant ${related.variant_id}:`, stockError);
           }
         }
-
         await supabase.from('sales_records').insert({
           order_id: order.id,
           order_number: orderNumber,

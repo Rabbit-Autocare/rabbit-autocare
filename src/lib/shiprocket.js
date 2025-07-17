@@ -44,43 +44,52 @@ export async function createShiprocketOrder(orderData) {
   }
 }
 
-// 🧠 Smart unit discount calculator
+
+// 🚀 Universal discount handler
 function calculateUnitDiscount({ item, totalQty, discountAmount = 0, discountMeta = {} }) {
   const isComboOrKit = item.type === 'combo' || item.type === 'kit';
   const mrp = Number(item.original_price || item.base_price || item.compare_at_price || item.price || 0);
   const finalPrice = Number(item.price || mrp);
-  let unitDiscount = +(mrp - finalPrice).toFixed(2);
 
-  // 🧮 Coupon logic only for regular products
-  if (!isComboOrKit && discountAmount > 0) {
-    const perUnit = totalQty > 0 ? +(discountAmount / totalQty).toFixed(2) : 0;
+  let unitDiscount = 0;
 
-    switch (discountMeta.type) {
-      case 'percentage':
-        break; // already applied in price
-      case 'flat':
-        unitDiscount += perUnit;
-        break;
-      case 'category':
-        if (discountMeta.applicable_categories?.includes(item.category)) {
+  if (discountMeta?.type === 'percentage') {
+    // ✅ Recalculate from MRP for percentage coupon
+    unitDiscount = +(mrp * (discountMeta.value / 100)).toFixed(2);
+  } else {
+    // ✅ Default: calculate from price difference
+    unitDiscount = +(mrp - finalPrice).toFixed(2);
+
+    if (!isComboOrKit && discountAmount > 0) {
+      const perUnit = totalQty > 0 ? +(discountAmount / totalQty).toFixed(2) : 0;
+
+      switch (discountMeta.type) {
+        case 'flat':
           unitDiscount += perUnit;
-        }
-        break;
-      default:
-        unitDiscount += perUnit;
+          break;
+
+        case 'category':
+          if (discountMeta.applicable_categories?.includes(item.category)) {
+            unitDiscount += perUnit;
+          }
+          break;
+
+        default:
+          unitDiscount += perUnit;
+      }
     }
   }
 
   return +(unitDiscount).toFixed(2);
 }
 
-// 🧾 Map order to Shiprocket format
+// 🧾 Shiprocket order payload creator
 export function mapOrderToShiprocket(order) {
   const shipping = order.user_info?.shipping_address || {};
   const gstRate = 18;
   const totalQty = order.items.reduce((sum, item) => sum + item.quantity, 0);
   const discountAmount = order.discount_amount || 0;
-  const discountMeta = order.applied_coupon || {}; // Coupon details like { type, value, categories }
+  const discountMeta = order.applied_coupon || {};
 
   const orderItems = [];
 

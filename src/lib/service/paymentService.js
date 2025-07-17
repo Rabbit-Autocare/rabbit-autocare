@@ -100,7 +100,7 @@ export const PaymentService = {
     if (typeof window === 'undefined' || !window.Razorpay) {
       throw new Error('Razorpay is not loaded');
     }
-
+ 
     return new window.Razorpay(options);
   },
 };

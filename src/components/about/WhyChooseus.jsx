@@ -34,7 +34,7 @@ export default function WhyChooseus() {
               "linear-gradient(to right, #601E8D 0%, #300F47 59%, #000000 97%)",
           }}
         >
-          What makes RABBIT / RABBIT AUTOCARE different
+          <span>What makes RABBIT AUTOCARE different</span>
         </h2>
 
         <div className="flex flex-col lg:flex-row items-center md:gap-12 mt-7 md:mt-7 lg:mt-0">
@@ -43,7 +43,7 @@ export default function WhyChooseus() {
           <div className="flex-1 space-y-10 lg:pl-4 xl:pl-0">
             {whyPoints.map((point, index) => (
               <div key={index} className="flex items-start gap-4 md:gap-6">
-                <div className="min-w-[48px] min-h-[48px] flex items-center justify-center lg:pt-8 xl:pt-6">
+                <div className="min-w-[48px] min-h-[48px] flex items-center justify-center lg:pt-8 xl:pt-5">
                   <Image src="/assets/about/svg/chooseus.svg" alt="choose-icon" width={70} height={70} />
                 </div>
                 <div>

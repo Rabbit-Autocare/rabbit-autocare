@@ -983,12 +983,12 @@ export default function FeaturedProductCard({
                       : 'border-black hover:border-[#601E8D]'
                 }`}
               >
-                <div className='relative w-4 h-4 xs:w-5 xs:h-5 cursor-pointer'>
+                <div className='relative w-4 h-6 xs:w-5 xs:h-5 cursor-pointer'>
                   <button
                     type='button'
                     onClick={handleWishlistButtonClick}
                     disabled={isAddingToCart || wishlistLoading}
-                    className={`text-xs transition-all duration-200 flex items-center justify-center ${
+                    className={`text-[16px] transition-all duration-200 flex items-center justify-center ${
                       isWishlisted
                         ? 'text-[#601E8D]'
                         : 'text-black hover:text-[#601E8D]'
@@ -1002,9 +1002,9 @@ export default function FeaturedProductCard({
                     }
                   >
                     {wishlistLoading ? (
-                      <span className="w-4 h-4 xs:w-5 xs:h-5 border-2 border-[#601E8D] border-t-transparent rounded-full animate-spin inline-block" />
+                      <span className="w-6 h-6 xs:w-5 xs:h-5 border-2 border-[#601E8D] border-t-transparent rounded-full animate-spin inline-block" />
                     ) : isWishlisted ? (
-                      <div className='relative w-4 h-4 xs:w-5 xs:h-5'>
+                      <div className='relative -left-1 w-6 h-6 xs:w-5 xs:h-5'>
                         <Image
                           src='/assets/star-filled-white.svg'
                           alt='wishlisted'
@@ -1013,7 +1013,7 @@ export default function FeaturedProductCard({
                         />
                       </div>
                     ) : (
-                      <div className='relative w-4 h-4 xs:w-5 xs:h-5'>
+                      <div className='relative -left-1  w-6 h-6 xs:w-5 xs:h-5'>
                         <Image
                           src='/assets/shine.svg'
                           alt='add to wishlist'
@@ -1028,7 +1028,7 @@ export default function FeaturedProductCard({
               <button
                 onClick={handleAddToCart}
                 disabled={isAddingToCart || !isCurrentSelectionAvailable()}
-                className='text-xs xs:text-sm text-black font-semibold border-1 px-2 py-2 xs:px-3 xs:py-2 sm:px-4 sm:py-2 w-full rounded-[4px] border-black cursor-pointer flex items-center justify-center gap-1 xs:gap-2 hover:bg-gray-50 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed disabled:bg-gray-100'
+                className='text-[16px] xs:text-sm text-black font-semibold border-1 px-2 py-2 xs:px-3 xs:py-2 sm:px-4 sm:py-2 w-full rounded-[4px] border-black cursor-pointer flex items-center justify-center gap-1 xs:gap-2 hover:bg-gray-50 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed disabled:bg-gray-100'
               >
                 {isAddingToCart ? (
                   <>
@@ -1049,10 +1049,10 @@ export default function FeaturedProductCard({
             <button
               onClick={handleBuyNow}
               disabled={!isCurrentSelectionAvailable()}
-              className='bg-black cursor-pointer rounded-[4px] text-white w-full px-2 py-2 xs:px-3 xs:py-3 sm:px-4 sm:py-3 flex items-center justify-center gap-1 xs:gap-2 hover:bg-gray-800 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed disabled:bg-gray-600 text-xs xs:text-sm'
+              className='bg-black cursor-pointer rounded-[4px] text-white w-full px-2 py-2 xs:px-3 xs:py-3 sm:px-4 sm:py-3 flex items-center justify-center gap-1 xs:gap-2 hover:bg-gray-800 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed disabled:bg-gray-600 text-[16px] xs:text-sm'
             >
               {!isCurrentSelectionAvailable() ? 'Out of Stock' : 'Buy Now'}
-              <div className='relative w-4 h-4 xs:w-5 xs:h-5'>
+              <div className='relative w-6 h-6 xs:w-5 xs:h-5'>
                 <Image
                   src='/assets/featured/buynowsvg.svg'
                   alt='buy-now'

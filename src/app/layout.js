@@ -10,13 +10,15 @@ import { transformCartForCheckout } from '@/lib/utils/cartTransformUtils';
 import ClientOnly from '../components/ClientOnly.jsx';
 import { WishlistProvider } from "@/contexts/WishlistContext";
 
-// Montserrat for paragraphs and spans
+// Montserrat for paragraphs and spans (all weights)
 const montserrat = localFont({
-  src: '../../public/fonts/Montserrat-Regular.ttf',
+  src: [
+    { path: '../../public/fonts/Montserrat-Regular.ttf', weight: '400', style: 'normal' },
+    { path: '../../public/fonts/Montserrat-Bold.ttf', weight: '700', style: 'normal' },
+  ],
   variable: '--font-montserrat',
   display: 'swap',
 });
-
 // Sansation for headings and buttons
 const sansation = localFont({
   src: '../../public/fonts/Sansation-Regular.ttf',

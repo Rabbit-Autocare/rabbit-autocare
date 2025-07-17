@@ -6,18 +6,18 @@ export default function MeetFounder() {
   return (
     <section className="w-full flex justify-center px-4 md:px-16 lg:px-8 xl:px-4 md:pb-16 lg:py-16">
       <div className="max-w-[1240px] w-full bg-[#f5f5f5] rounded-[50px] p-6 md:p-12 lg:p-16">
-        <div className="flex flex-col lg:flex-row items-center justify-between gap-12">
+        <div className="flex flex-col lg:flex-row items-center justify-between gap-0">
 
           {/* Left: Heading + Paragraphs */}
-          <div className="flex-1 space-y-6 text-left">
+          <div className="flex-1  space-y-6 text-left">
             {/* Mobile/Tablet: Gradient heading */}
-<h2 className="text-[40px] md:text-[56px] lg:text-[45px] xl:text-[58px] font-bold bg-gradient-to-r from-[#601E8D] to-black bg-clip-text text-transparent w-fit block lg:hidden">
-  Meet The <br /> Founder
+<h2 className="text-[40px] md:text-[56px] lg:text-[45px] xl:text-[58px] font-bold bg-gradient-to-r from-[#601E8D] to-black bg-clip-text text-transparent w-fit block lg:hidden ">
+ <span className='font-bold' > Meet The Founder </span>
 </h2>
 
 {/* Desktop: Plain black heading */}
 <h2 className="hidden lg:block text-[45px] xl:text-[58px] font-bold bg-gradient-to-r from-[#601E8D] to-black bg-clip-text text-transparent">
-  Meet The Founder
+<span className='font-bold' >Meet The Founder</span>
 </h2>
 
 

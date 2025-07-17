@@ -9,17 +9,18 @@ export default function FirstSection() {
 
         {/* Desktop Heading */}
         <div className="relative w-fit hidden lg:block">
-          <h1 className="text-[64px] w-[900px] font-bold leading-tight">
-            <span className="bg-gradient-to-r from-[#601E8D] to-black bg-clip-text text-transparent tracking-wide">
-            Rabbit
+          <h1 className="text-[64px] w-[900px]  leading-tight">
+            <span className="bg-gradient-to-r from-[#601E8D] to-black bg-clip-text text-transparent tracking-wide font-extrabold"
+            >
+            Rabbit Delivers Car Care
             </span>{' '}
-            <span className="text-black tracking-wider">Delivers Car Care</span>{' '}
-            <span className="bg-gradient-to-r from-[#601E8D] to-black bg-clip-text text-transparent tracking-wide">
-            That
+            {/* <span className="text-black tracking-wider"></span>{' '} */}
+            <span className="bg-gradient-to-r from-[#601E8D] to-black bg-clip-text text-transparent tracking-wide font-bold">
+            That Hits Like Luxury.
             </span>{' '}
-            <span className="text-black tracking-wide relative">
-            Hits Like Luxury.
-            </span>
+            {/* <span className="text-black tracking-wide relative">
+
+            </span> */}
           </h1>
 
           {/* Star icon for desktop */}

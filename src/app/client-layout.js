@@ -346,7 +346,7 @@ export default function ClientLayout({ children, initialCartItems = [] }) {
             </div>
             <ToastProvider>
               {/* Content */}
-              <div>{children}</div>
+              <div style={{ paddingTop: '80px' }}>{children}</div>
               <Footer />
             </ToastProvider>
           </div>

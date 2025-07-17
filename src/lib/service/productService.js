@@ -339,9 +339,8 @@ export class ProductService {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(productData),
+        body: JSON.stringify(productData), // productData should include images and main_image_url
       });
-
       if (!res.ok) {
         const errorText = await res.text();
         try {
@@ -353,7 +352,6 @@ export class ProductService {
           );
         }
       }
-
       const data = await res.json();
       return this.transformProductData(data.product || data);
     } catch (error) {

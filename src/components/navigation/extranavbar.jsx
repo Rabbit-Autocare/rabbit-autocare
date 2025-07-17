@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from "react"
 import { Search, User } from "lucide-react"
 import Link from "next/link"
 import Image from "next/image"
+import { usePathname } from "next/navigation"
 import { useCart } from "@/hooks/useCart"
 import { useAuth } from "@/hooks/useAuth"
 import CouponCard from "@/components/ui/CouponCard"
@@ -25,14 +26,18 @@ const STATIC_CATEGORIES = [
   { name: "Kits & Combos", href: "/shop/kits-combos", image: "/assets/images/banner.png" },
 ];
 
-function MobileCouponDropdown({ availableCoupons, authLoading, user, isCouponsOpen, setIsCouponsOpen }) {
+function MobileCouponDropdown({ availableCoupons, authLoading, user, isCouponsOpen, setIsCouponsOpen, isHomePage }) {
+  const textColor = isHomePage ? "text-white" : "text-gray-500";
+  const bgColor = isHomePage ? "bg-white/10 backdrop-blur-sm" : "bg-white";
+  const borderColor = isHomePage ? "border-white/20" : "border-gray-200";
+
   if (!isCouponsOpen) return null;
   return (
-    <div className="fixed left-0 right-0 top-[56px] z-50 bg-white shadow-lg border-b border-gray-200 px-4 py-4 w-full">
+    <div className="fixed z-50 px-4 py-4 w-full">
       <div className="coupon-scroll-area max-h-80 overflow-y-auto">
         {authLoading ? (
           <div className="text-center">
-            <p className="text-gray-500">Loading...</p>
+            <p className={textColor}>Loading...</p>
           </div>
         ) : user ? (
           availableCoupons && availableCoupons.length > 0 ? (
@@ -47,9 +52,9 @@ function MobileCouponDropdown({ availableCoupons, authLoading, user, isCouponsOp
               ))}
             </div>
           ) : (
-            <div className="text-center py-8 text-gray-500">
+            <div className={`text-center py-8 ${textColor}`}>
               <svg
-                className="mx-auto mb-3 w-12 h-12 text-gray-300"
+                className={`mx-auto mb-3 w-12 h-12 ${isHomePage ? 'text-white/50' : 'text-gray-300'}`}
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"
@@ -67,7 +72,7 @@ function MobileCouponDropdown({ availableCoupons, authLoading, user, isCouponsOp
         ) : (
           <div className="text-center py-8">
             <svg
-              className="mx-auto mb-3 w-12 h-12 text-gray-300"
+              className={`mx-auto mb-3 w-12 h-12 ${isHomePage ? 'text-white/50' : 'text-gray-300'}`}
               fill="none"
               stroke="currentColor"
               viewBox="0 0 24 24"
@@ -79,7 +84,7 @@ function MobileCouponDropdown({ availableCoupons, authLoading, user, isCouponsOp
                 d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
               />
             </svg>
-            <p className="text-gray-500 mb-3">Please log in to view your coupons</p>
+            <p className={`${textColor} mb-3`}>Please log in to view your coupons</p>
             <Link href="/login" className="inline-block bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition-colors">
               Login
             </Link>
@@ -91,6 +96,9 @@ function MobileCouponDropdown({ availableCoupons, authLoading, user, isCouponsOp
 }
 
 export default function ExtraNavbar() {
+  const pathname = usePathname()
+  const isHomePage = pathname === "/" || pathname === "/home"
+
   const [isLoggedIn, setIsLoggedIn] = useState(false)
   const [isShopOpen, setIsShopOpen] = useState(false)
   const [isCouponsOpen, setIsCouponsOpen] = useState(false)
@@ -109,6 +117,16 @@ export default function ExtraNavbar() {
 
   // State to track if we're on mobile
   const [isMobile, setIsMobile] = useState(false)
+
+  // Dynamic colors based on homepage
+  const textColor = isHomePage ? "text-white" : "text-black"
+  const iconStroke = isHomePage ? "white" : "black"
+  const placeholderColor = isHomePage ? "placeholder-white/70" : "placeholder-gray-500"
+  const inputBorder = isHomePage ? "border-white/30" : "border-gray-300"
+  const inputFocus = isHomePage ? "focus:border-white/50" : "focus:border-gray-500"
+  const dropdownBg = isHomePage ? "bg-white/10 backdrop-blur-sm" : "bg-white"
+  const dropdownBorder = isHomePage ? "border-white/20" : "border-gray-200"
+  const dropdownText = isHomePage ? "text-white" : "text-gray-500"
 
   // Check if device is mobile
   useEffect(() => {
@@ -232,14 +250,14 @@ export default function ExtraNavbar() {
   };
 
   return (
-    <header className="w-full z-40 bg-transparent transition-all duration-300">
+    <header className="fixed top-0 left-0 w-full z-40 bg-transparent transition-all duration-300">
       <div className="flex justify-between items-center px-4 md:px-6 py-4">
         {/* Logo and SHOP button - Left side */}
         <div className="flex items-center space-x-2 md:space-x-6 relative">
           <Link href="/">
             <div className="text-2xl font-black flex items-center space-x-1">
               <img
-                src="/assets/RabbitLogo.png"
+                src={isHomePage ? "/assets/RabbitLogo.png" : "/assets/RabbitLogo.png"}
                 alt="Rabbit"
                 className="w-[110px] h-[35px] md:w-[197px] md:h-[60px]"
               />
@@ -249,12 +267,12 @@ export default function ExtraNavbar() {
           {/* SHOP button - Now visible on both mobile and desktop with ml-1 on mobile */}
           <div
             ref={shopButtonRef}
-            className="text-sm font-semibold cursor-pointer relative ml-1 md:ml-0"
+            className={`text-sm font-semibold cursor-pointer relative ml-1 md:ml-0 ${textColor}`}
             onMouseEnter={() => handleShopHover(true)}
             onMouseLeave={() => handleShopHover(false)}
           >
             <button
-              className="flex items-center gap-1 font-medium text-sm cursor-pointer"
+              className={`flex items-center gap-1 font-medium text-sm cursor-pointer ${textColor}`}
               onClick={handleShopClick}
             >
               SHOP
@@ -285,11 +303,11 @@ export default function ExtraNavbar() {
               placeholder="Search products..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-64 pl-4 pr-10 py-2 text-sm border border-gray-300 rounded-full focus:outline-none focus:border-gray-500"
+              className={`w-64 pl-4 pr-10 py-2 text-sm border rounded-full focus:outline-none ${inputBorder} ${inputFocus} ${placeholderColor} ${isHomePage ? 'bg-white/10 backdrop-blur-sm text-white' : 'bg-white text-black'}`}
             />
             <button
               type="submit"
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
+              className={`absolute right-3 top-1/2 -translate-y-1/2 ${isHomePage ? 'text-white/70 hover:text-white' : 'text-gray-500 hover:text-gray-700'}`}
             >
               <Search className="w-4 h-4" />
             </button>
@@ -310,28 +328,28 @@ export default function ExtraNavbar() {
               <svg viewBox="0 0 25 26" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-[20px] h-[20px] md:w-[20px] md:h-[20px]">
                 <path
                   d="M2.08301 9.87498C2.91181 9.87498 3.70667 10.2042 4.29272 10.7903C4.87877 11.3763 5.20801 12.1712 5.20801 13C5.20801 13.8288 4.87877 14.6236 4.29272 15.2097C3.70667 15.7957 2.91181 16.125 2.08301 16.125V18.2083C2.08301 18.7608 2.3025 19.2908 2.6932 19.6815C3.0839 20.0722 3.61381 20.2916 4.16634 20.2916H20.833C21.3855 20.2916 21.9154 20.0722 22.3061 19.6815C22.6968 19.2908 22.9163 18.7608 22.9163 18.2083V16.125C22.0875 16.125 21.2927 15.7957 20.7066 15.2097C20.1206 14.6236 19.7913 13.8288 19.7913 13C19.7913 12.1712 20.1206 11.3763 20.7066 10.7903C21.2927 10.2042 22.0875 9.87498 22.9163 9.87498V7.79165C22.9163 7.23911 22.6968 6.70921 22.3061 6.31851C21.9154 5.92781 21.3855 5.70831 20.833 5.70831H4.16634C3.61381 5.70831 3.0839 5.92781 2.6932 6.31851C2.3025 6.70921 2.08301 7.23911 2.08301 7.79165V9.87498Z"
-                  stroke="black"
+                  stroke={iconStroke}
                   strokeWidth="1.5"
                   strokeLinecap="round"
                   strokeLinejoin="round"
                 />
                 <path
                   d="M9.375 9.875H9.38542"
-                  stroke="black"
+                  stroke={iconStroke}
                   strokeWidth="1.5"
                   strokeLinecap="round"
                   strokeLinejoin="round"
                 />
                 <path
                   d="M15.625 9.875L9.375 16.125"
-                  stroke="black"
+                  stroke={iconStroke}
                   strokeWidth="1.5"
                   strokeLinecap="round"
                   strokeLinejoin="round"
                 />
                 <path
                   d="M15.625 16.125H15.6354"
-                  stroke="black"
+                  stroke={iconStroke}
                   strokeWidth="1.5"
                   strokeLinecap="round"
                   strokeLinejoin="round"
@@ -341,17 +359,17 @@ export default function ExtraNavbar() {
             </button>
             {/* Coupons dropdown - Desktop style with fixed positioning */}
             {isCouponsOpen && !isMobile && (
-              <div className="absolute right-0 top-full mt-1 bg-white shadow-lg z-30 border border-gray-200 rounded-lg overflow-hidden w-80">
+              <div className={`absolute right-0 top-full mt-1 shadow-lg z-30 border rounded-lg overflow-hidden w-80 ${dropdownBg} ${dropdownBorder}`}>
                 <div className="p-2">
                   <div className="coupon-scroll-area max-h-80 overflow-y-auto" style={{ overscrollBehavior: 'contain', touchAction: 'auto' }}>
                     {authLoading ? (
                       <div className="text-center p-4">
-                        <p className="text-gray-500">Loading...</p>
+                        <p className={dropdownText}>Loading...</p>
                       </div>
                     ) : user ? (
                       availableCoupons.length > 0 ? (
                         <div className="space-y-3">
-                          <h4 className="font-semibold text-sm text-gray-600 px-2 pt-2">Available Coupons</h4>
+                          <h4 className={`font-semibold text-sm px-2 pt-2 ${isHomePage ? 'text-white/80' : 'text-gray-600'}`}>Available Coupons</h4>
                           {availableCoupons.map((coupon) => (
                             <CouponCard
                               key={`avail-${coupon.id}`}
@@ -362,8 +380,8 @@ export default function ExtraNavbar() {
                           ))}
                         </div>
                       ) : (
-                        <div className="text-center py-8 text-gray-500">
-                          <svg className="mx-auto mb-3 w-12 h-12 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <div className={`text-center py-8 ${dropdownText}`}>
+                          <svg className={`mx-auto mb-3 w-12 h-12 ${isHomePage ? 'text-white/50' : 'text-gray-300'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                           </svg>
                           <p>No coupons available</p>
@@ -371,10 +389,10 @@ export default function ExtraNavbar() {
                       )
                     ) : (
                       <div className="text-center py-8">
-                        <svg className="mx-auto mb-3 w-12 h-12 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <svg className={`mx-auto mb-3 w-12 h-12 ${isHomePage ? 'text-white/50' : 'text-gray-300'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
                         </svg>
-                        <p className="text-gray-500 mb-3">Please log in to view your coupons</p>
+                        <p className={`${dropdownText} mb-3`}>Please log in to view your coupons</p>
                         <Link href="/login" className="inline-block bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition-colors">
                           Login
                         </Link>
@@ -394,7 +412,12 @@ export default function ExtraNavbar() {
               aria-label="Go to Shine List"
             >
               <div className="relative w-5 h-5">
-                <Image src="/assets/shine.svg" alt="shine list" fill className="object-contain" />
+                <Image
+                  src={isHomePage ? "/assets/star-filled-white.svg" : "/assets/shine.svg"}
+                  alt="shine list"
+                  fill
+                  className="object-contain"
+                />
               </div>
               <span className="sr-only">Shine List</span>
             </Link>
@@ -405,14 +428,14 @@ export default function ExtraNavbar() {
             {isLoggedIn ? (
               <Link href="/profile">
                 <button className="h-auto w-auto p-0 hover:bg-transparent bg-transparent border-none cursor-pointer transition-colors">
-                  <User className="w-[20px] h-[20px] md:w-5 md:h-5" />
+                  <User className={`w-[20px] h-[20px] md:w-5 md:h-5 ${textColor}`} />
                   <span className="sr-only">User Profile</span>
                 </button>
               </Link>
             ) : (
               <Link href="/login">
                 <button className="h-auto w-auto p-0 hover:bg-transparent bg-transparent border-none cursor-pointer transition-colors">
-                  <User className="w-[20px] h-[20px] md:w-5 md:h-5" />
+                  <User className={`w-[20px] h-[20px] md:w-5 md:h-5 ${textColor}`} />
                   <span className="sr-only">User account</span>
                 </button>
               </Link>
@@ -433,7 +456,7 @@ export default function ExtraNavbar() {
                 strokeWidth="2"
                 strokeLinecap="round"
                 strokeLinejoin="round"
-                className="w-[18px] h-[18px] md:w-5 md:h-5"
+                className={`w-[18px] h-[18px] md:w-5 md:h-5 ${textColor}`}
               >
                 <circle cx="9" cy="21" r="1" />
                 <circle cx="20" cy="21" r="1" />
@@ -488,6 +511,7 @@ export default function ExtraNavbar() {
           user={user}
           isCouponsOpen={showMobileCoupons}
           setIsCouponsOpen={setShowMobileCoupons}
+          isHomePage={isHomePage}
         />
       )}
     </header>

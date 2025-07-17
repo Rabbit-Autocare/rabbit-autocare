@@ -1,7 +1,8 @@
 import { redirect } from "next/navigation";
 
 import { CategoryService } from "@/lib/service/microdataService";
-import HeroBannerSlider from "@/components/home/HeroBannerSlider";
+// import HeroBannerSlider from "@/components/home/HeroBannerSlider";
+import VideoHeroSection from "@/components/home/VideoHeroSection";
 import FeaturedProducts from "@/components/home/FeaturedProducts";
 import Shop from "@/components/home/Shop";
 import WhyChooseRabbit from "@/components/home/WhyChooseRabbit";
@@ -18,7 +19,8 @@ export default async function Home() {
 
   return (
     <main>
-      <HeroBannerSlider />
+      {/* <HeroBannerSlider /> */}
+      <VideoHeroSection/>
       <CarInteriorSection initialCategories={initialCategories} initialError={initialError} />
       <FeaturedProducts />
       <Shop />

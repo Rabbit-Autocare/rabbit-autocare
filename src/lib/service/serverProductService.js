@@ -304,19 +304,16 @@ export class ServerProductService {
   static async updateProduct(id, productData) {
     try {
       const supabase = await this.getServerSupabaseClient();
-
       const { data, error } = await supabase
         .from('products')
-        .update(productData)
+        .update(productData) // productData should include images and main_image_url
         .eq('id', id)
         .select()
         .single();
-
       if (error) {
         console.error('Error updating product:', error);
         throw error;
       }
-
       return data;
     } catch (error) {
       console.error('Error in ServerProductService.updateProduct:', error);

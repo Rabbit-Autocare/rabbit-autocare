@@ -7,6 +7,7 @@ import { KitsCombosService } from "@/lib/service/kitsCombosService"
 import FilterSidebar from "@/components/shop/FilterSidebar"
 import ProductGrid from "@/components/shop/ProductGrid"
 import { Filter, ArrowUpDown, X } from "lucide-react"
+import BannerCarousel from "@/components/shop/BannerCarousel"
 
 export default function ShopPage({ initialCategories, initialError }) {
   const router = useRouter()
@@ -581,7 +582,8 @@ export default function ShopPage({ initialCategories, initialError }) {
   }
 
   return (
-    <div className="bg-white min-h-screen">
+    <div className="bg-white pt-[100px] min-h-screen">
+      <BannerCarousel/>
       <div className="container mx-auto px-4 py-6 max-w-[1300px]">
         {/* Page Header */}
         <div className="mb-6">

@@ -29,7 +29,7 @@ export async function GET(request, { params }) {
           unit,
           base_price,
           stock,
-         compare_at_price 
+         compare_at_price
         )
       `);
 
@@ -122,5 +122,62 @@ export async function GET(request, { params }) {
       },
       { status: 500 }
     );
+  }
+}
+
+export async function PUT(request, { params }) {
+  try {
+    const id = params.id;
+    if (!id) {
+      return NextResponse.json({ error: 'Product ID is required' }, { status: 400 });
+    }
+    const body = await request.json();
+    // Destructure all fields, including images and main_image_url
+    const {
+      name,
+      product_code,
+      description,
+      product_type,
+      category,
+      subcategory,
+      hsn_code,
+      features,
+      usage_instructions,
+      warnings,
+      main_image_url,
+      images,
+      taglines,
+      variants,
+      // Add any other fields as needed
+    } = body;
+    // Create Supabase server client
+    const supabase = await createSupabaseServerClient();
+    // Update the product in the database, including images and main_image_url
+    const { error } = await supabase
+      .from('products')
+      .update({
+        name,
+        product_code,
+        description,
+        product_type,
+        category,
+        subcategory,
+        hsn_code,
+        features,
+        usage_instructions,
+        warnings,
+        main_image_url, // allow update/removal
+        images,         // allow update/removal
+        taglines,
+        // Add any other fields as needed
+      })
+      .eq('id', id);
+    if (error) {
+      return NextResponse.json({ error: 'Failed to update product', details: error.message }, { status: 500 });
+    }
+    // Optionally update variants if needed (not shown here)
+    return NextResponse.json({ success: true });
+  } catch (error) {
+    return NextResponse.json({ error: 'Internal server error', details: error.message }, { status: 500 });
   }
 }

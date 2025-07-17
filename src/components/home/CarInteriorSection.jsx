@@ -274,13 +274,13 @@ export default function CarInteriorSection({ initialCategories = [], initialErro
             <button
               onClick={prev}
               disabled={isAnimating || isLoading}
-              className="absolute left-0 text-4xl w-10 h-10 flex items-center justify-center md:mt-10 xl:mt-10 cursor-pointer hover:bg-[#601e8d] hover:text-white   "
+              className="absolute left-0 text-4xl w-10 h-10 flex items-center justify-center md:mt-10 xl:mt-10 cursor-pointer  "
             >
               ‹
             </button>
 
             <h2
-              className="text-2xl tracking-wider md:mt-10 xl:mt-10 font-bold text-black text-center mx-12 whitespace-nowrap overflow-hidden text-ellipsis cursor-pointer hover:text-[#601e8d]"
+              className="text-2xl uppercase tracking-wider md:mt-10 xl:mt-10 font-bold text-black text-center mx-12 whitespace-nowrap overflow-hidden text-ellipsis cursor-pointer hover:text-[#601e8d]"
               style={{
                 maxWidth: isMobile ? "292px" : "558px",
               }}
@@ -292,7 +292,7 @@ export default function CarInteriorSection({ initialCategories = [], initialErro
             <button
               onClick={next}
               disabled={isAnimating || isLoading}
-              className="absolute right-0 text-4xl w-10 h-10 flex items-center justify-center md:mt-10 xl:mt-10 cursor-pointer hover:bg-[#601e8d] hover:text-white  "
+              className="absolute right-0 text-4xl w-10 h-10 flex items-center justify-center md:mt-10 xl:mt-10 cursor-pointer  "
             >
               ›
             </button>

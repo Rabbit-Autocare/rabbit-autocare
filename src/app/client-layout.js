@@ -6,7 +6,7 @@ import { createSupabaseBrowserClient } from "@/lib/supabase/browser-client"
 import Footer from "@/components/navigation/Footer"
 import MainNavbar from "@/components/navigation/MainNavbar"
 import { CartProvider } from "@/contexts/CartContext"
-import { ThemeProvider } from "@/contexts/ThemeContext"
+// import { ThemeProvider } from "@/contexts/ThemeContext"
 import ExtraNavbar from "@/components/navigation/extranavbar"
 import { createPortal } from "react-dom"
 import MobileNavbar from "@/components/navigation/MobileNavbar"
@@ -319,7 +319,7 @@ export default function ClientLayout({ children, initialCartItems = [] }) {
   }, [showMobileNavbar, mobilePortalContainer])
 
   return (
-    <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
+    // <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
       <CartProvider initialCartItems={initialCartItems}>
         {/* MobileNavbar Portal - Mobile only */}
         {mobilePortalContainer &&
@@ -359,6 +359,6 @@ export default function ClientLayout({ children, initialCartItems = [] }) {
             portalContainer,
           )}
       </CartProvider>
-    </ThemeProvider>
+    // </ThemeProvider>
   )
 }

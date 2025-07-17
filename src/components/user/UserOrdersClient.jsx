@@ -1,98 +1,182 @@
 'use client';
 
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import UserLayout from '@/components/layouts/UserLayout';
 import '@/app/globals.css';
 import Image from 'next/image';
+import { fetchReviews, submitReview } from '@/lib/service/reviewService';
+import { useAuth } from '@/contexts/AuthContext';
+
+const statusColors = {
+  delivered: 'text-green-600',
+  shipped: 'text-blue-600',
+  processing: 'text-yellow-500',
+  cancelled: 'text-red-500',
+};
+
+function getStatusColor(status) {
+  if (!status) return 'text-gray-400';
+  return statusColors[status.toLowerCase()] || 'text-gray-400';
+}
+
+function StarRating({ rating, setRating }) {
+  return (
+    <div className="flex gap-1">
+      {[1, 2, 3, 4, 5].map((star) => (
+        <button
+          key={star}
+          type="button"
+          className={`text-2xl ${star <= rating ? 'text-yellow-400' : 'text-gray-300'}`}
+          onClick={() => setRating(star)}
+          aria-label={`Rate ${star} star${star > 1 ? 's' : ''}`}
+        >
+          ★
+        </button>
+      ))}
+    </div>
+  );
+}
 
 export default function UserOrdersClient({ initialOrders }) {
   const router = useRouter();
+  const { user, loading: authLoading, sessionChecked } = useAuth();
+  const [reviewRatings, setReviewRatings] = useState({});
+  const [submitted, setSubmitted] = useState({});
+  const [loading, setLoading] = useState({});
+
+  // Fetch existing ratings for orders on mount or when user/sessionChecked changes
+  useEffect(() => {
+    async function loadOrderRatings() {
+      if (!sessionChecked || !user?.id || !initialOrders?.length) return;
+      const ratings = {};
+      const submittedMap = {};
+      for (const order of initialOrders) {
+        const productId = order.items?.[0]?.product_id || order.items?.[0]?.product?.id;
+        if (!productId) continue;
+        try {
+          const reviews = await fetchReviews({
+            user_id: user.id,
+            order_id: order.id,
+            product_id: productId,
+          });
+          if (reviews && reviews.length > 0) {
+            ratings[order.id] = reviews[0].rating;
+            submittedMap[order.id] = true;
+          }
+        } catch {}
+      }
+      setReviewRatings(ratings);
+      setSubmitted(submittedMap);
+    }
+    loadOrderRatings();
+  }, [sessionChecked, user?.id, initialOrders]);
 
   const formatDate = (dateString) => {
     const options = { year: 'numeric', month: 'long', day: 'numeric' };
     return new Date(dateString).toLocaleDateString(undefined, options);
   };
 
+  const handleSetRating = (orderId, rating) => {
+    setReviewRatings((prev) => ({ ...prev, [orderId]: rating }));
+  };
+
+  const handleSubmitRating = async (order) => {
+    if (!sessionChecked || !user?.id) {
+      alert('You must be logged in to submit a review.');
+      return;
+    }
+    setLoading((prev) => ({ ...prev, [order.id]: true }));
+    try {
+      await submitReview({
+        user_id: user.id,
+        order_id: order.id,
+        product_id: order.items[0]?.product_id || order.items[0]?.product?.id,
+        rating: reviewRatings[order.id],
+        review_text: '',
+      });
+      setSubmitted((prev) => ({ ...prev, [order.id]: true }));
+    } catch (err) {
+      alert('Failed to submit review.');
+    } finally {
+      setLoading((prev) => ({ ...prev, [order.id]: false }));
+    }
+  };
+
   return (
     <UserLayout>
-      <div className='p-4 space-y-6'>
-        <h1 className='text-2xl font-bold'>Order History</h1>
-
+      <div className="max-w-2xl mx-auto py-8 px-2 sm:px-0">
+        <h1 className="text-xl font-semibold mb-6 border-l-4 border-[#601e8d] pl-2">Order History</h1>
         {initialOrders.length === 0 ? (
-          <div className='bg-white rounded-lg shadow border p-8 text-center'>
-            <svg className="mx-auto mb-4 w-16 h-16 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
-            </svg>
-            <h3 className='text-xl font-medium text-gray-600 mb-2'>No Orders Yet</h3>
-            <p className='text-gray-500 mb-6'>You haven't placed any orders yet. Start shopping to see your order history here.</p>
+          <div className="bg-white rounded-xl border border-gray-100 p-10 text-center shadow-none">
+            <h3 className="text-lg font-medium text-gray-600 mb-2">No Orders Yet</h3>
+            <p className="text-gray-400 mb-6">You haven't placed any orders yet.</p>
             <button
               onClick={() => router.push('/shop')}
-              className='bg-[#601e8d] hover:bg-[#4a1a6f] text-white px-6 py-3 rounded-lg font-medium transition-colors'
+              className="bg-[#601e8d] hover:bg-[#4a1a6f] text-white px-6 py-2 rounded-full font-medium transition-colors"
             >
               Start Shopping
             </button>
           </div>
         ) : (
-          initialOrders.map((order) => (
-            <div
-              key={order.id}
-              className='bg-white rounded-lg shadow border overflow-hidden hover:shadow-lg transition-shadow duration-300'
-            >
-              <div className='flex justify-between items-start p-4 border-b'>
-                <div>
-                  <p
-                    className={`text-sm font-semibold ${
-                      order.status === 'delivered'
-                        ? 'text-green-600'
-                        : order.status === 'shipped'
-                        ? 'text-purple-600'
-                        : 'text-red-600'
-                    }`}
+          <div className="space-y-6">
+            {initialOrders.map((order) => (
+              <div
+                key={order.id}
+                className="bg-white rounded-lg border border-gray-100 p-4 mb-2"
+              >
+                <div className="flex justify-between items-center mb-2">
+                  <span className={`font-semibold ${getStatusColor(order.status)}`}>{order.status || 'Processing'}</span>
+                  <span className="text-gray-400 text-sm">{formatDate(order.created_at)}</span>
+                  <button
+                    onClick={() => router.push(`/user/orders/${order.id}`)}
+                    className="text-xl text-gray-500 hover:text-[#601e8d]"
+                    aria-label="View order details"
                   >
-                    {order.status || 'Processing'}
-                  </p>
-                  <p className='text-sm text-gray-500 mt-1'>
-                    {formatDate(order.created_at)}
-                  </p>
-                  {order.order_id && (
-                    <p className='text-xs text-gray-400 mt-1'>Order ID: {order.order_id}</p>
-                  )}
+                    &gt;
+                  </button>
                 </div>
-                <button
-                  onClick={() => router.push(`/user/orders/${order.id}`)}
-                  className='p-2 hover:bg-gray-100 rounded-full transition-colors'
-                >
-                  <span className='text-xl text-gray-400'>&#x276F;</span>
-                </button>
-              </div>
-              {order.items?.slice(0, 1).map((item, idx) => (
-                <div
-                  key={idx}
-                  className='flex items-center gap-4 p-4 border-b last:border-none'
-                >
-                  <div className='w-16 h-16 bg-gray-100 rounded-md overflow-hidden flex-shrink-0'>
+                {order.items && order.items[0] && (
+                  <div className="flex items-center gap-4 mb-2">
                     <Image
-                      src={item.main_image_url || item.images?.[0] || '/placeholder.jpg'}
-                      alt={item.name}
-                      width={64}
-                      height={64}
-                      className='object-cover w-full h-full'
+                      src={order.items[0].main_image_url || order.items[0].images?.[0] || '/placeholder.jpg'}
+                      alt={order.items[0].name}
+                      width={56}
+                      height={56}
+                      className="object-cover w-14 h-14 rounded"
                     />
+                    <div>
+                      <div className="font-medium text-gray-900">{order.items[0].name}</div>
+                      <div className="text-sm text-gray-500">Quantity: {order.items[0].quantity}</div>
+                      <div className="text-sm text-gray-500">Price: ₹{order.items[0].price}</div>
+                    </div>
                   </div>
-                  <div className='flex-1 min-w-0'>
-                    <h4 className='font-medium text-gray-900 truncate'>{item.name}</h4>
-                    <p className='text-sm text-gray-500'>Qty: {item.quantity}</p>
-                    <p className='text-sm font-semibold text-gray-900'>₹{item.price}</p>
+                )}
+                {/* Only show review UI if sessionChecked and user is present */}
+                {sessionChecked && user && (
+                  <div className="mt-2">
+                    <div className="font-medium text-gray-700 mb-1">Leave a Review</div>
+                    <StarRating
+                      rating={reviewRatings[order.id] || 0}
+                      setRating={(rating) => handleSetRating(order.id, rating)}
+                    />
+                    {reviewRatings[order.id] > 0 && !submitted[order.id] && (
+                      <button
+                        className="mt-2 bg-[#601e8d] hover:bg-[#4a1a6f] text-white px-4 py-1 rounded-full text-sm font-medium"
+                        onClick={() => handleSubmitRating(order)}
+                        disabled={loading[order.id]}
+                      >
+                        {loading[order.id] ? 'Submitting...' : 'Submit Rating'}
+                      </button>
+                    )}
+                    {submitted[order.id] && (
+                      <div className="text-green-600 text-sm mt-2">Thank you for your rating!</div>
+                    )}
                   </div>
-                </div>
-              ))}
-              {order.items && order.items.length > 1 && (
-                <div className='px-4 py-2 bg-gray-50 text-sm text-gray-600'>
-                  +{order.items.length - 1} more item{order.items.length - 1 !== 1 ? 's' : ''}
-                </div>
-              )}
-            </div>
-          ))
+                )}
+              </div>
+            ))}
+          </div>
         )}
       </div>
     </UserLayout>

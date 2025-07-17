@@ -3,11 +3,12 @@ import localFont from "next/font/local";
 import "./globals.css";
 import ClientLayout from "./client-layout";
 import { AuthProvider } from '@/contexts/AuthContext'
-import { cookies } from 'next/headers';
+// import { cookies } from 'next/headers';
 import { createSupabaseServerClient } from '@/lib/supabase/server-client';
 import { fetchCartItems } from '@/lib/service/cartService';
 import { transformCartForCheckout } from '@/lib/utils/cartTransformUtils';
 import ClientOnly from '../components/ClientOnly.jsx';
+import { WishlistProvider } from "@/contexts/WishlistContext";
 
 // Montserrat for paragraphs and spans
 const montserrat = localFont({
@@ -49,12 +50,14 @@ export default async function RootLayout({ children }) {
       <body suppressHydrationWarning>
         <ClientOnly>
           <AuthProvider>
+            <WishlistProvider>
             {/* ✅ ScrollSmoother wrapper */}
             <div id="smooth-wrapper">
               <div id="smooth-content">
                 <ClientLayout initialCartItems={initialCartItems}>{children}</ClientLayout>
               </div>
             </div>
+            </WishlistProvider>
           </AuthProvider>
         </ClientOnly>
       </body>

@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import { createSupabaseBrowserClient } from '@/lib/supabase/browser-client';
+import UserOrderDetailsClient from '@/components/user/UserOrderDetailsClient';
 const supabase = createSupabaseBrowserClient();
 // ... other imports ...
 
@@ -15,13 +16,7 @@ export default function OrderDetailsPage({ params }) {
     try {
       const { data, error } = await supabase
         .from('orders')
-        .select(`
-          *,
-          order_items (
-            *,
-            product:products (*)
-          )
-        `)
+        .select('*')
         .eq('id', params.id)
         .single();
 
@@ -47,10 +42,6 @@ export default function OrderDetailsPage({ params }) {
   }
 
   return (
-    <div>
-      <h1>Order Details</h1>
-      <p>Order Number: {order.order_number}</p>
-      {/* Add more order details display here */}
-    </div>
+    <UserOrderDetailsClient order={order} />
   );
 }

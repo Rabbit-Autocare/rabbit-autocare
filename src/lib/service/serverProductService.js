@@ -34,7 +34,8 @@ export class ServerProductService {
             stock,
             is_active,
             created_at,
-            updated_at
+            updated_at,
+            pack_size
           )
         `
       );
@@ -161,7 +162,8 @@ export class ServerProductService {
             stock,
             is_active,
             created_at,
-            updated_at
+            updated_at,
+            pack_size
           )
         `
         )
@@ -218,7 +220,8 @@ export class ServerProductService {
             stock,
             is_active,
             created_at,
-            updated_at
+            updated_at,
+            pack_size
           )
         `
         )

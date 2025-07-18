@@ -40,7 +40,8 @@ export async function GET(request) {
 					unit,
 					base_price,
 					base_price_excluding_gst,
-					stock
+					stock,
+					pack_size
 				)
 			`,
       { count: 'exact' }
@@ -265,7 +266,8 @@ export async function POST(request) {
           stock,
           is_active,
           created_at,
-          updated_at
+          updated_at,
+          pack_size
         )
       `
       )

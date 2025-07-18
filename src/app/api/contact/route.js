@@ -3,17 +3,20 @@ import nodemailer from 'nodemailer';
 export async function POST(req) {
   const { name, email, phone, subject, message } = await req.json();
 
+  // Use separate SMTP credentials for contact form
   const transporter = nodemailer.createTransport({
-    service: 'gmail', // Change if using another SMTP provider
+    host: 'smtp.hostinger.com',
+    port: 465,
+    secure: true, // true for port 465
     auth: {
-      user: process.env.EMAIL_USER,
-      pass: process.env.EMAIL_PASS,
+      user: process.env.CONTACT_EMAIL_USER, // e.g. contact@rabbitautocare.com
+      pass: process.env.CONTACT_EMAIL_PASS, // password for contact email
     },
   });
 
   const mailOptions = {
-    from: email,
-    to: process.env.ADMIN_EMAIL,
+    from: process.env.CONTACT_EMAIL_USER, // send from the contact email
+    to: process.env.CONTACT_ADMIN_EMAIL,
     subject: `Contact Form: ${subject}`,
     text: `Name: ${name}\nEmail: ${email}\nPhone: ${phone}\nMessage: ${message}`,
     html: `

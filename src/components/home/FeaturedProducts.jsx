@@ -16,6 +16,9 @@ if (typeof window !== 'undefined') {
   window.scrollSmoother = null;
 }
 
+// Hand-picked featured product IDs
+const FEATURED_PRODUCT_IDS = [4, 6, 11, 13];
+
 export default function FeaturedProducts() {
   const containerRef = useRef(null);
   const sectionRefs = useRef([]);
@@ -31,91 +34,63 @@ export default function FeaturedProducts() {
     const calculateMobileHeight = () => {
       const screenWidth = window.innerWidth;
       const screenHeight = window.innerHeight;
-
-      // Only apply custom heights for mobile screens (width <= 768px)
       if (screenWidth <= 768) {
-        // Different heights based on screen dimensions
         if (screenWidth <= 320) {
-          // Very small screens (iPhone SE, small Android)
           setMobileCardHeight('1098px');
         } else if (screenWidth <= 360 && screenHeight <= 640) {
-          // Small Android phones with low height
           setMobileCardHeight('1098px');
         } else if (screenWidth <= 360 && screenHeight > 640) {
-          // Small Android phones with higher height
           setMobileCardHeight('950px');
         } else if (screenWidth <= 375 && screenHeight <= 667) {
-          // iPhone 8, iPhone SE 2nd gen
           setMobileCardHeight('900px');
         } else if (screenWidth <= 375 && screenHeight > 667) {
-          // iPhone 12 mini, iPhone 13 mini
           setMobileCardHeight('750px');
         } else if (screenWidth <= 390 && screenHeight <= 844) {
-          // iPhone 12, iPhone 13, iPhone 14
           setMobileCardHeight('700px');
         } else if (screenWidth <= 414 && screenHeight <= 736) {
-          // iPhone 8 Plus, older large phones
           setMobileCardHeight('850px');
         } else if (screenWidth <= 414 && screenHeight > 736) {
-          // iPhone 12 Pro Max, iPhone 13 Pro Max, iPhone 14 Plus
           setMobileCardHeight('650px');
         } else if (screenWidth <= 430) {
-          // iPhone 14 Pro Max, newer large phones
           setMobileCardHeight('600px');
         } else if (screenWidth <= 480) {
-          // Small tablets in portrait, large phones
           setMobileCardHeight('750px');
         } else {
-          // Larger mobile screens and small tablets
           setMobileCardHeight('800px');
         }
       } else {
-        // For desktop/tablet screens, use empty string to fall back to Tailwind classes
         setMobileCardHeight('');
       }
     };
-
-    // Calculate on mount
     calculateMobileHeight();
-
-    // Recalculate on resize
     const handleResize = () => {
       calculateMobileHeight();
     };
-
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
-  // Fetch products using the updated ProductService
+  // Fetch hand-picked featured products by ID
   useEffect(() => {
-    const fetchProducts = async () => {
+    const fetchFeaturedProducts = async () => {
       try {
         setLoading(true);
         setError(null);
-
-        // Use the new ProductService.getProducts method
-        const response = await ProductService.getProducts({ limit: 4 });
-
-        if (response.success && response.products) {
-          // Transform products for display and filter out invalid ones
-          const validProducts = response.products
-            .map((product) => ProductService.formatProductForDisplay(product))
-            .filter((product) => product !== null && product.id);
-
-          setProducts(validProducts);
-        } else {
-          throw new Error('Failed to fetch products');
-        }
+        // Fetch all products in parallel using getProduct
+        const productPromises = FEATURED_PRODUCT_IDS.map(id => ProductService.getProduct(id));
+        const responses = await Promise.all(productPromises);
+        // Each response should be a product object or null
+        const validProducts = responses
+          .map(product => product && ProductService.formatProductForDisplay ? ProductService.formatProductForDisplay(product) : null)
+          .filter(product => product && product.id);
+        setProducts(validProducts);
       } catch (error) {
-        console.error('Error fetching featured products:', error);
         setError(error.message || 'Failed to load featured products');
       } finally {
         setLoading(false);
       }
     };
-
-    fetchProducts();
+    fetchFeaturedProducts();
   }, []);
 
   // Enhanced scroll animations from original component

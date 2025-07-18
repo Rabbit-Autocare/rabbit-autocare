@@ -87,6 +87,18 @@ export function AuthProvider({ children }) {
     }
   }, [supabase])
 
+  useEffect(() => {
+    const handleFocus = async () => {
+      try {
+        await supabase.auth.getSession();
+      } catch (e) {
+        console.error('[AuthContext] Error refreshing session on focus:', e);
+      }
+    };
+    window.addEventListener('focus', handleFocus);
+    return () => window.removeEventListener('focus', handleFocus);
+  }, [supabase]);
+
   const checkUserRole = async (user) => {
     console.log(`[AuthContext] Checking profile for user: ${user.id}`);
     try {

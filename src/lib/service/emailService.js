@@ -1,10 +1,12 @@
 import nodemailer from 'nodemailer';
 
 const transporter = nodemailer.createTransport({
-  service: 'gmail',
+  host: 'smtp.hostinger.com',
+  port: 465,
+  secure: true, // true for port 465
   auth: {
-    user: process.env.EMAIL_USER,
-    pass: process.env.EMAIL_PASS,
+    user: process.env.EMAIL_USER, // set to support@rabbitautocare.com
+    pass: process.env.EMAIL_PASS, // set to Rabbit@support123
   },
 });
 
@@ -64,12 +66,12 @@ export async function sendOrderConfirmation(to, order) {
       <hr style="margin: 30px 0;" />
 
       <p style="font-size: 14px; color: #888;">
-        We'll send you another update once your order is shipped.  
+        We'll send you another update once your order is shipped.
         <br/>Questions? Reach us at <a href="mailto:support@rabbitautocare.in">support@rabbitautocare.in</a>
       </p>
 
       <footer style="text-align: center; font-size: 12px; color: #aaa; margin-top: 20px;">
-        © ${new Date().getFullYear()} Rabbit Auto Care. All rights reserved.  
+        © ${new Date().getFullYear()} Rabbit Auto Care. All rights reserved.
         <br/><a href="https://rabbitautocare.in/policies" style="color: #aaa;">Policies</a>
       </footer>
     </div>
@@ -164,4 +166,3 @@ Please check the dashboard for full details.
     html: htmlContent,
   });
 }
-

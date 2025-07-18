@@ -300,6 +300,7 @@ export default function ProductForm({ product, onSuccess, onCancel, categories, 
           base_price_excluding_gst: variant.base_price_excluding_gst || 0,
           stock: variant.stock || 0,
           is_active: variant.is_active !== false,
+          pack_size: variant.pack_size || 1, // Initialize pack_size
         })),
       )
     }
@@ -326,6 +327,7 @@ export default function ProductForm({ product, onSuccess, onCancel, categories, 
       base_price_excluding_gst: 0,
       stock: 0,
       is_active: true,
+      pack_size: 1, // <-- Add pack_size default
     }
   }
 
@@ -430,6 +432,7 @@ export default function ProductForm({ product, onSuccess, onCancel, categories, 
         // Handle JSONB fields for color - convert to array format for database
         color: variant.color ? [variant.color] : null,
         color_hex: variant.color_hex ? [variant.color_hex] : null,
+        pack_size: Number(variant.pack_size), // Include pack_size in submission
       })),
     }
   }
@@ -1030,6 +1033,19 @@ export default function ProductForm({ product, onSuccess, onCancel, categories, 
                             handleVariantChange(variant.id, "stock", Number.parseInt(e.target.value) || 0)
                           }
                           placeholder="Enter stock quantity"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <Label>Pack Size *</Label>
+                        <Input
+                          type="number"
+                          min={1}
+                          value={variant.pack_size || 1}
+                          onChange={e => handleVariantChange(variant.id, "pack_size", Number.parseInt(e.target.value) || 1)}
+                          placeholder="Enter pack size (e.g., 1, 2, 5)"
                         />
                       </div>
                     </div>

@@ -267,6 +267,7 @@ export class ProductService {
           size: v.size,
           stock: v.stock,
           base_price: v.base_price,
+          pack_size: v.pack_size,
         })),
       });
     }
@@ -293,6 +294,7 @@ export class ProductService {
           price: variant.price || variant.base_price || 0,
           mrp: variant.mrp || variant.price || variant.base_price || 0,
           base_price: variant.base_price || 0,
+          pack_size: variant.pack_size || null, // <-- Add pack_size
         };
 
         // Debug log for microfiber products
@@ -303,6 +305,7 @@ export class ProductService {
             originalStock: variant.stock,
             transformedStock: transformedVariant.stock,
             size: transformedVariant.size,
+            pack_size: transformedVariant.pack_size,
           });
         }
 
@@ -321,6 +324,7 @@ export class ProductService {
           size: v.size,
           stock: v.stock,
           base_price: v.base_price,
+          pack_size: v.pack_size,
         })),
       });
     }
@@ -386,6 +390,29 @@ export class ProductService {
       return this.transformProductData(data.product || data);
     } catch (error) {
       console.error('Error in createProduct:', error);
+      throw error;
+    }
+  }
+
+  static async deleteProduct(productId) {
+    try {
+      const res = await fetch(`/api/products/${productId}`, {
+        method: 'DELETE',
+      });
+      if (!res.ok) {
+        const errorText = await res.text();
+        try {
+          const errorJson = JSON.parse(errorText);
+          throw new Error(errorJson.error || `API error: ${res.status}`);
+        } catch (e) {
+          throw new Error(
+            `API error: ${errorText || res.statusText || res.status}`
+          );
+        }
+      }
+      return true;
+    } catch (error) {
+      console.error('Error in deleteProduct:', error);
       throw error;
     }
   }

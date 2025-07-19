@@ -10,6 +10,7 @@ import { ShoppingCart, ChevronLeft } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
+import Image from 'next/image';
 
 export default function CartDrawer() {
   const {
@@ -201,9 +202,11 @@ export default function CartDrawer() {
             >
               {loading ? (
                 <div className='flex flex-col items-center justify-center h-full p-4'>
-                  <img
+                  <Image
                     src='/assets/loader.gif'
                     alt='Loading...'
+                    width={96}
+                    height={96}
                     className='h-24 w-24 mx-auto mb-4'
                   />
                   <p className='text-gray-600'>Loading your cart...</p>

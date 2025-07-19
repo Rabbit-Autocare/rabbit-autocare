@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import { Suspense } from "react";
+import Image from "next/image";
 
 import { CategoryService } from "@/lib/service/microdataService";
 // import HeroBannerSlider from "@/components/home/HeroBannerSlider";
@@ -16,9 +17,11 @@ function SectionLoading() {
   return (
     <div className="py-8 flex items-center justify-center">
       <div className="text-center">
-        <img
+        <Image
           src='/assets/loader.gif'
           alt='Loading...'
+          width={96}
+          height={96}
           className='h-24 w-24 mx-auto mb-2'
         />
         <p className="text-gray-500 text-sm">Loading...</p>

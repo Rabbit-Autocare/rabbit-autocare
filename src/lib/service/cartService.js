@@ -10,16 +10,15 @@ class CartService {
     if (!userId) return { cartItems: [] };
     const supabase = createSupabaseBrowserClient();
 
-    return fetchWithRetry(async () => {
-      try {
-        // Increase timeout to 30 seconds for better reliability
-        const timeoutPromise = new Promise((_, reject) =>
-          setTimeout(() => reject(new Error('Cart fetch timeout - please try again')), 30000)
-        );
-        const cartPromise = supabase
-          .from('cart_items')
-          .select(
-            `
+    try {
+      // Increase timeout to 30 seconds for better reliability
+      const timeoutPromise = new Promise((_, reject) =>
+        setTimeout(() => reject(new Error('Cart fetch timeout - please try again')), 30000)
+      );
+      const cartPromise = supabase
+        .from('cart_items')
+        .select(
+          `
             *,
             product:products(
               id,
@@ -29,17 +28,16 @@ class CartService {
               images
             )
           `
-          )
-          .eq('user_id', userId)
-          .order('created_at', { ascending: false });
-        const { data, error } = await Promise.race([cartPromise, timeoutPromise]);
-        if (error) throw error;
-        return { cartItems: data || [] };
-      } catch (error) {
-        console.error('[getCartItems] Error:', error);
-        throw new Error(error.message || 'Failed to fetch cart items');
-      }
-    }, 2, 1000); // Retry 2 times with 1 second base delay
+        )
+        .eq('user_id', userId)
+        .order('created_at', { ascending: false });
+      const { data, error } = await Promise.race([cartPromise, timeoutPromise]);
+      if (error) return { cartItems: [], error: error.message };
+      return { cartItems: data || [] };
+    } catch (error) {
+      console.error('[getCartItems] Error:', error);
+      return { cartItems: [], error: error.message || 'Failed to fetch cart items' };
+    }
   }
 
   // New method to find existing cart item with same product and variant

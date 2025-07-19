@@ -1,5 +1,5 @@
 'use client';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { createSupabaseBrowserClient } from '@/lib/supabase/browser-client';
 const supabase = createSupabaseBrowserClient();
 import Image from 'next/image';
@@ -57,7 +57,7 @@ export default function WishlistPage() {
   const { addToCart } = useCart();
   const showToast = useToast();
 
-  const fetchWishlist = async () => {
+  const fetchWishlist = useCallback(async () => {
     try {
       const { data: { user }, error: userError } = await supabase.auth.getUser();
       if (userError || !user) {
@@ -74,11 +74,11 @@ export default function WishlistPage() {
       console.error('Wishlist fetch error:', error);
     }
     setLoading(false);
-  };
+  }, [supabase.auth, WishlistService.getWishlist, showToast]);
 
   useEffect(() => {
     fetchWishlist();
-  }, []);
+  }, [fetchWishlist]);
 
   const handleRemove = async (id) => {
     setRemovingId(id);

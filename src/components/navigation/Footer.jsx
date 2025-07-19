@@ -16,21 +16,24 @@ export default function Footer() {
 							dealerships, fleet operators, and hospitality pros—shipped PAN
 							India.
 						</p>
-						<Link
+						<p>
+							<a href="mailto:b2bsales@rabbitautocare.com" className="underline hover:text-gray-300">b2bsales@rabbitautocare.com</a>
+						</p>
+						{/* <Link
 							href="#"
 							className="text-white underline text-sm hover:text-gray-300"
 						>
 							Learn More
-						</Link>
+						</Link> */}
 					</div>
 
 					{/* Rabbit for Business - Products */}
 					<div className="lg:col-span-1">
-						<h3 className="text-lg font-semibold mb-4">Rabbit for Business</h3>
+						<h3 className="text-lg font-semibold mb-4">Rabbit Catagorys</h3>
 						<ul className="space-y-3">
 							<li>
 								<Link
-									href="#"
+									href="/shop/car-interior"
 									className="text-gray-300 text-sm hover:text-white"
 								>
 									Car Interior
@@ -38,7 +41,7 @@ export default function Footer() {
 							</li>
 							<li>
 								<Link
-									href="#"
+									href="/shop/car-exterior"
 									className="text-gray-300 text-sm hover:text-white"
 								>
 									Car Exterior
@@ -46,7 +49,7 @@ export default function Footer() {
 							</li>
 							<li>
 								<Link
-									href="#"
+									href="/shop/microfiber-cloth"
 									className="text-gray-300 text-sm hover:text-white"
 								>
 									Microfibers
@@ -54,10 +57,10 @@ export default function Footer() {
 							</li>
 							<li>
 								<Link
-									href="#"
+									href="/shop/all"
 									className="text-gray-300 text-sm hover:text-white"
 								>
-									Bestsellers
+									All Products
 								</Link>
 							</li>
 						</ul>
@@ -69,7 +72,7 @@ export default function Footer() {
 						<ul className="space-y-3">
 							<li>
 								<Link
-									href="#"
+									href="/contact"
 									className="text-gray-300 text-sm hover:text-white"
 								>
 									Contact Us
@@ -85,26 +88,12 @@ export default function Footer() {
 							</li>
 							<li>
 								<Link
-									href="#"
-									className="text-gray-300 text-sm hover:text-white"
-								>
-									FAQs
-								</Link>
-							</li>
-							<li>
-								<Link
-									href="#"
+									href="https://ubnifppknfszvqkxqbfp.supabase.co/storage/v1/object/public/staticimages/Policys/Rabbitautocare%20Refund,%20return%20and%20exchange%20policy.docx.pdf"
+									target="_blank"
+									rel="noopener noreferrer"
 									className="text-gray-300 text-sm hover:text-white"
 								>
 									Shipping & Returns
-								</Link>
-							</li>
-							<li>
-								<Link
-									href="#"
-									className="text-gray-300 text-sm hover:text-white"
-								>
-									Support
 								</Link>
 							</li>
 						</ul>
@@ -116,7 +105,7 @@ export default function Footer() {
 						<ul className="space-y-3">
 							<li>
 								<Link
-									href="#"
+									href="/about"
 									className="text-gray-300 text-sm hover:text-white"
 								>
 									About Us
@@ -124,7 +113,9 @@ export default function Footer() {
 							</li>
 							<li>
 								<Link
-									href="#"
+									href="https://ubnifppknfszvqkxqbfp.supabase.co/storage/v1/object/public/staticimages/Policys/Privacy%20Policy%20for%20Rabbitautocare%20(Pratham).docx.pdf"
+									target="_blank"
+									rel="noopener noreferrer"
 									className="text-gray-300 text-sm hover:text-white"
 								>
 									Privacy Policy
@@ -132,7 +123,9 @@ export default function Footer() {
 							</li>
 							<li>
 								<Link
-									href="#"
+									href="https://ubnifppknfszvqkxqbfp.supabase.co/storage/v1/object/public/staticimages/Policys/Terms%20of%20Use%20Rabbitautocare.docx.pdf"
+									target="_blank"
+									rel="noopener noreferrer"
 									className="text-gray-300 text-sm hover:text-white"
 								>
 									Terms & Conditions
@@ -145,8 +138,12 @@ export default function Footer() {
 					<div className="lg:col-span-1">
 						<h3 className="text-lg font-semibold mb-4">Get in Touch</h3>
 						<div className="space-y-3">
-							<p className="text-gray-300 text-sm">rabbitautocare@gmail.com</p>
-							<p className="text-gray-300 text-sm">Whatsapp: +919124456781</p>
+							<p className="text-gray-300 text-sm">
+								<a href="mailto:Contact@rabbitautocare.com" className="underline hover:text-white">Contact@rabbitautocare.com</a>
+							</p>
+							<p className="text-gray-300 text-sm">
+								<a href="https://wa.me/919467047525" target="_blank" rel="noopener noreferrer" className="underline hover:text-white">Whatsapp: +919467047525</a>
+							</p>
 						</div>
 					</div>
 				</div>

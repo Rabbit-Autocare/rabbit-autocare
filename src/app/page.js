@@ -6,7 +6,7 @@ import { CategoryService } from "@/lib/service/microdataService";
 // import HeroBannerSlider from "@/components/home/HeroBannerSlider";
 import VideoHeroSection from "@/components/home/VideoHeroSection";
 import FeaturedProducts from "@/components/home/FeaturedProducts";
-import Shop from "@/components/home/Shop";
+import Shop from "@/components/home/ShopByConcern";
 import WhyChooseRabbit from "@/components/home/WhyChooseRabbit";
 import Customer from "@/components/home/Customer";
 import Testimonial from "@/components/home/Testimonial";

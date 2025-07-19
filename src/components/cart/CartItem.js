@@ -190,14 +190,10 @@ export default function CartItem({ item, formatPrice, getVariantDisplayText }) {
                   item.variant.displayText ||
                   getVariantDisplayText(item.variant)}
               </p>
-              {(item.variant.variant_code ||
-                item.variant.code ||
-                item.variant.id) && (
+              {/* Display variant code - stored directly on item object */}
+              {item.variant_code && (
                 <p className='text-gray-400 text-xs mt-0.5'>
-                  Code:{' '}
-                  {item.variant.variant_code ||
-                    item.variant.code ||
-                    item.variant.id}
+                  Code: {item.variant_code}
                 </p>
               )}
             </>

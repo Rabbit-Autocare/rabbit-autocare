@@ -29,7 +29,8 @@ export async function GET(request, { params }) {
           unit,
           base_price,
           stock,
-         compare_at_price
+          pack_size,
+          compare_at_price
         )
       `);
 
@@ -43,6 +44,20 @@ export async function GET(request, { params }) {
     // Execute the query
     const { data: product, error } = await query.single();
 
+    // Debug: Log raw database response
+    console.log('🗄️ Raw database response:', {
+      id,
+      hasProduct: !!product,
+      productVariantsCount: product?.product_variants?.length || 0,
+      rawVariants: product?.product_variants?.map(v => ({
+        id: v.id,
+        size: v.size,
+        pack_size: v.pack_size,
+        stock: v.stock,
+        base_price: v.base_price,
+      })) || [],
+    });
+
     console.log('Supabase product fetch result:', {
       id,
       product: product
@@ -52,6 +67,7 @@ export async function GET(request, { params }) {
               id: v.id,
               color: v.color,
               size: v.size,
+              pack_size: v.pack_size,
               stock: v.stock,
               base_price: v.base_price,
             })),
@@ -105,6 +121,7 @@ export async function GET(request, { params }) {
           id: v.id,
           color: v.color,
           size: v.size,
+          pack_size: v.pack_size,
           stock: v.stock,
           base_price: v.base_price,
         })),

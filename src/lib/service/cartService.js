@@ -169,6 +169,7 @@ class CartService {
       user_id: userId,
       product_id: productId || null, // integer or null
       variant: (productId && variantToStore) ? variantToStore : ((isCombo || isKit) ? variantToStore : null),
+      variant_code: (productId && variantToStore?.variant_code) ? variantToStore.variant_code : null,
       quantity: quantity,
       combo_id: isCombo ? comboId : null, // uuid or null
       kit_id: isKit ? kitId : null,       // uuid or null

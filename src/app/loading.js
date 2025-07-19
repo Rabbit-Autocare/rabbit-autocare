@@ -11,7 +11,7 @@ export default function Loading() {
           height={192}
           className='h-48 w-48 mx-auto mb-4'
         />
-        <p className="text-gray-600">Loading Rabbit Auto Care...</p>
+        <p className="text-gray-600">Loading Rabbit Auto Care</p>
       </div>
     </div>
   );

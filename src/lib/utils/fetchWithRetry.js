@@ -1,22 +1,32 @@
 /**
- * Fetch with retry logic for network resilience.
- * @param {Function} fetchFn - The fetch function to call (should return a Promise).
- * @param {number} retries - Number of retries (default: 3)
- * @param {number} delay - Delay between retries in ms (default: 500)
- * @returns {Promise<any>} - The result of the fetch function
- */ 
-export async function fetchWithRetry(fetchFn, retries = 3, delay = 500) {
+ * Retry a function with exponential backoff
+ * @param {Function} fn - The function to retry
+ * @param {number} maxRetries - Maximum number of retries (default: 3)
+ * @param {number} baseDelay - Base delay in milliseconds (default: 1000)
+ * @returns {Promise} - Promise that resolves with the function result
+ */
+export async function fetchWithRetry(fn, maxRetries = 3, baseDelay = 1000) {
   let lastError;
-  for (let i = 0; i < retries; i++) {
+
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
     try {
-      return await fetchFn();
-    } catch (err) {
-      lastError = err;
-      if (i < retries - 1) {
-        await new Promise((resolve) => setTimeout(resolve, delay));
-      } 
+      return await fn();
+    } catch (error) {
+      lastError = error;
+
+      if (attempt === maxRetries) {
+        // Last attempt failed, throw the error
+        throw error;
+      }
+
+      // Calculate delay with exponential backoff
+      const delay = baseDelay * Math.pow(2, attempt);
+      console.log(`Attempt ${attempt + 1} failed, retrying in ${delay}ms...`, error.message);
+
+      // Wait before retrying
+      await new Promise(resolve => setTimeout(resolve, delay));
     }
   }
+
   throw lastError;
 }
- 

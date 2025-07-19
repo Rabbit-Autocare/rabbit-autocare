@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import { Suspense } from "react";
 
 import { CategoryService } from "@/lib/service/microdataService";
 // import HeroBannerSlider from "@/components/home/HeroBannerSlider";
@@ -10,23 +11,66 @@ import Customer from "@/components/home/Customer";
 import Testimonial from "@/components/home/Testimonial";
 import CarInteriorSection from "@/components/home/CarInteriorSection";
 
+// Loading component for sections
+function SectionLoading() {
+  return (
+    <div className="py-8 flex items-center justify-center">
+      <div className="text-center">
+        <img
+          src='/assets/loader.gif'
+          alt='Loading...'
+          className='h-24 w-24 mx-auto mb-2'
+        />
+        <p className="text-gray-500 text-sm">Loading...</p>
+      </div>
+    </div>
+  );
+}
 
 export default async function Home() {
   // Fetch categories on the server
-  const result = await CategoryService.getCategories();
-  const initialCategories = result.success && Array.isArray(result.data) ? result.data : [];
-  const initialError = result.success ? null : result.error || null;
+  let initialCategories = [];
+  let initialError = null;
+
+  try {
+    const result = await CategoryService.getCategories();
+    initialCategories = result.success && Array.isArray(result.data) ? result.data : [];
+    initialError = result.success ? null : result.error || null;
+  } catch (error) {
+    console.error('Error fetching categories:', error);
+    initialError = error.message;
+  }
 
   return (
     <main>
       {/* <HeroBannerSlider /> */}
-      <VideoHeroSection/>
-      <CarInteriorSection initialCategories={initialCategories} initialError={initialError} />
-      <FeaturedProducts />
-      <Shop />
-      <WhyChooseRabbit />
-      <Customer />
-      <Testimonial />
+      <Suspense fallback={<SectionLoading />}>
+        <VideoHeroSection/>
+      </Suspense>
+
+      <Suspense fallback={<SectionLoading />}>
+        <CarInteriorSection initialCategories={initialCategories} initialError={initialError} />
+      </Suspense>
+
+      <Suspense fallback={<SectionLoading />}>
+        <FeaturedProducts />
+      </Suspense>
+
+      <Suspense fallback={<SectionLoading />}>
+        <Shop />
+      </Suspense>
+
+      <Suspense fallback={<SectionLoading />}>
+        <WhyChooseRabbit />
+      </Suspense>
+
+      <Suspense fallback={<SectionLoading />}>
+        <Customer />
+      </Suspense>
+
+      <Suspense fallback={<SectionLoading />}>
+        <Testimonial />
+      </Suspense>
     </main>
   );
 }

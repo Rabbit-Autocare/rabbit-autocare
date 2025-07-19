@@ -1,5 +1,5 @@
 "use client"
- 
+
 import { useState, useEffect } from 'react'
 
 export default function LoadingErrorBoundary({
@@ -26,13 +26,18 @@ export default function LoadingErrorBoundary({
   }, [loading, timeout])
 
   // Show loading component
-  if (loading && !hasTimedOut) {
-    return loadingComponent || (
-      <div className="flex items-center justify-center p-8">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
-        <span className="ml-3 text-gray-600">Loading...</span>
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-[200px]">
+        <div className="text-center">
+          <img
+            src='/assets/loader.gif'
+            alt='Loading...'
+            className='h-24 w-24 mx-auto mb-2'
+          />
+        </div>
       </div>
-    )
+    );
   }
 
   // Show timeout error

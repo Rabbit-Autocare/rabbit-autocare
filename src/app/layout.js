@@ -44,6 +44,7 @@ export default async function RootLayout({ children }) {
     }
   } catch (e) {
     // Fail silently, fallback to empty cart
+    console.error('Error fetching initial cart items:', e);
     initialCartItems = [];
   }
 

@@ -130,7 +130,7 @@ export default function InvoiceTemplate({ orderNumber }) {
               {items.map((item, index) => (
                 <tr key={index} className="border-b border-gray-300">
                   <td className="p-2">{index + 1}</td>
-                  <td className="p-2">{item.name}<br /><span className="text-xs text-gray-500">SKU: {item.variant_code}</span></td>
+                  <td className="p-2">{item.name}<br /><span className="text-xs text-gray-500">SKU: {item.variant?.variant_code || 'N/A'}</span></td>
                   <td className="p-2">{item.hsn_code || '—'}</td>
                   <td className="p-2">{item.quantity}</td>
                   <td className="p-2">₹{item.base_price?.toFixed(2)}</td>

@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createSupabaseBrowserClient } from '@/lib/supabase/browser-client';
-import { sendOrderConfirmation, sendAdminNotification } from '@/lib/service/emailService';
+//import { sendOrderConfirmation, sendAdminNotification } from '@/lib/service/emailService';
 import { createShiprocketOrder, mapOrderToShiprocket } from '@/lib/shiprocket';
 
 const supabase = createSupabaseBrowserClient();

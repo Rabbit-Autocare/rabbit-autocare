@@ -6,14 +6,19 @@ const SHIPROCKET_PASSWORD = process.env.SHIPROCKET_PASSWORD;
 let token = null;
 
 // 🔐 Get Shiprocket token
-async function getShiprocketToken() {
+export async function getShiprocketToken() {
   if (token) return token;
 
   try {
     const res = await axios.post(
       'https://apiv2.shiprocket.in/v1/external/auth/login',
-      { email: SHIPROCKET_EMAIL, password: SHIPROCKET_PASSWORD },
-      { headers: { 'Content-Type': 'application/json' } }
+      {
+        email: SHIPROCKET_EMAIL,
+        password: SHIPROCKET_PASSWORD
+      },
+      {
+        headers: { 'Content-Type': 'application/json' }
+      }
     );
     token = res.data.token;
     return token;
@@ -26,6 +31,7 @@ async function getShiprocketToken() {
 // 🚚 Create Shiprocket order
 export async function createShiprocketOrder(orderData) {
   const authToken = await getShiprocketToken();
+
   try {
     const response = await axios.post(
       'https://apiv2.shiprocket.in/v1/external/orders/create/adhoc',
@@ -44,40 +50,11 @@ export async function createShiprocketOrder(orderData) {
   }
 }
 
-// 🧠 Smart unit discount calculator
-function calculateUnitDiscount({ item, totalQty, discountAmount = 0, discountMeta = {} }) {
-  const isComboOrKit = item.type === 'combo' || item.type === 'kit';
-  const mrp = Number(item.original_price || item.base_price || item.compare_at_price || item.price || 0);
-  const finalPrice = Number(item.price || mrp);
-  let unitDiscount = +(mrp - finalPrice).toFixed(2);
-
-  // 🧮 Coupon logic only for regular products
-  if (!isComboOrKit && discountAmount > 0) {
-    const perUnit = totalQty > 0 ? +(discountAmount / totalQty).toFixed(2) : 0;
-
-    switch (discountMeta.type) {
-      case 'percentage':
-        break; // already applied in price
-      case 'flat':
-        unitDiscount += perUnit;
-        break;
-      case 'category':
-        if (discountMeta.applicable_categories?.includes(item.category)) {
-          unitDiscount += perUnit;
-        }
-        break;
-      default:
-        unitDiscount += perUnit;
-    }
-  }
-
-  return +(unitDiscount).toFixed(2);
-}
-
-// 🧾 Map order to Shiprocket format
+// 🔁 Convert internal order → Shiprocket format
 export function mapOrderToShiprocket(order) {
   const shipping = order.user_info?.shipping_address || {};
   const gstRate = 18;
+
   const totalQty = order.items.reduce((sum, item) => sum + item.quantity, 0);
   const discountAmount = order.discount_amount || 0;
   const discountMeta = order.applied_coupon || {};
@@ -88,39 +65,19 @@ export function mapOrderToShiprocket(order) {
     const quantity = item.quantity || 1;
     const isComboOrKit = item.type === 'combo' || item.type === 'kit';
 
-    // ✅ Step 1: MRP including GST
     const mrpInclGst = Number(item.original_price || item.base_price || item.compare_at_price || item.price || 0);
 
-    // ✅ Step 2: Calculate base price (without GST)
-    const basePrice = +(mrpInclGst / 1.18).toFixed(2);
-
-    // ✅ Step 3: Discount per unit on base price
-    let discountExGst = 0;
-
-    if (!isComboOrKit && discountAmount > 0) {
-      const perUnit = totalQty > 0 ? +(discountAmount / totalQty).toFixed(2) : 0;
-      switch (discountMeta.type) {
-        case 'flat':
-        case 'category':
-        default:
-          discountExGst += perUnit;
-      }
-    }
-
-    // ✅ Step 4: Final base price after discount
-    const discountedBase = +(basePrice - discountExGst).toFixed(2);
-
-    // ✅ Step 5: Final price (GST added back)
-    const finalUnitPrice = +(discountedBase * 1.18).toFixed(2);
-
-    const unitDiscountInclGst = +(mrpInclGst - finalUnitPrice).toFixed(2);
+    // 👇 Send MRP directly as "selling_price"
+    const unitDiscountInclGst = totalQty > 0 && discountAmount > 0
+      ? +(discountAmount / totalQty).toFixed(2)
+      : 0;
 
     const hsn = item.hsn || item.hsn_code || '34053000';
 
     let comboIncludes = '';
     if (isComboOrKit && item.products) {
       comboIncludes = (item.products || [])
-        .map((p) => `• ${p.name} (${p.variant_name || 'Default'}), Qty: ${p.quantity}`)
+        .map(p => `• ${p.name} (${p.variant_name || 'Default'}), Qty: ${p.quantity}`)
         .join('\n');
     }
 
@@ -128,22 +85,25 @@ export function mapOrderToShiprocket(order) {
       name: isComboOrKit ? `${item.name}\nIncludes:\n${comboIncludes}` : item.name || 'Unnamed',
       sku: item.variant_code || item.product_code || item.sku || `SKU-${item.id}`,
       units: quantity,
-      selling_price: +mrpInclGst.toFixed(2),         // original MRP
-      discount: +unitDiscountInclGst.toFixed(2),     // difference b/w MRP & final price
+      selling_price: +mrpInclGst.toFixed(2),   // ✅ Send MRP
+      discount: +unitDiscountInclGst.toFixed(2), // ✅ Per unit discount
       hsn,
-      tax: gstRate,
+      tax: gstRate                              // ✅ Let Shiprocket add tax
     });
   }
 
   const deliveryCharge = Number(order.delivery_charge || 0);
+
   const subTotal = orderItems.reduce(
     (sum, i) => sum + ((i.selling_price - i.discount) * i.units),
     0
   );
+
   const totalDiscount = orderItems.reduce(
     (sum, i) => sum + (i.discount * i.units),
     0
   );
+
   const grandTotal = +(subTotal + deliveryCharge).toFixed(2);
 
   return {
@@ -180,3 +140,4 @@ export function mapOrderToShiprocket(order) {
     comment: `Final: ₹${grandTotal} | Discount: ₹${totalDiscount}`
   };
 }
+////-------------

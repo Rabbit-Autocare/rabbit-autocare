@@ -212,6 +212,8 @@ export function CartProvider({ children, initialCartItems = [] }) {
       const data = await CartService.getCartItems(user.id);
       if (data.error) {
         console.error('[CartProvider] Error fetching cart:', data.error);
+        // Show user-friendly error message for cart fetch issues
+        console.warn('[CartProvider] Cart fetch failed, using empty cart:', data.error);
         updateCalculatedState([], coupon);
       } else {
         updateCalculatedState(data.cartItems || [], coupon);
@@ -224,6 +226,8 @@ export function CartProvider({ children, initialCartItems = [] }) {
       }
     } catch (error) {
       console.error('[CartProvider] Error initializing cart:', error);
+      // Show user-friendly error message
+      console.warn('[CartProvider] Cart initialization failed, using empty cart:', error.message);
       updateCalculatedState([], coupon);
     } finally {
       setLoading(false);
@@ -269,15 +273,20 @@ export function CartProvider({ children, initialCartItems = [] }) {
         quantity,
         user.id
       );
-      if (result.error) {
-        console.error('Database error:', result.error);
+      if (result.success) {
+        await refreshCart(); // Refetch and recalculate everything
+        openCart();
+        return true;
+      } else {
+        console.error('Failed to add to cart:', result.error);
+        // Show user-friendly error message
+        alert(`Failed to add item to cart: ${result.error || 'Please try again'}`);
         return false;
       }
-      await refreshCart(); // Refetch and recalculate everything
-      openCart();
-      return true;
     } catch (error) {
       console.error('Error adding to cart:', error);
+      // Show user-friendly error message
+      alert(`Error adding to cart: ${error.message || 'Please try again'}`);
       return false;
     }
   };
@@ -413,7 +422,17 @@ export function CartProvider({ children, initialCartItems = [] }) {
   };
 
   if (!sessionChecked) {
-    return <div className="min-h-screen flex items-center justify-center"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900"></div></div>;
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <img
+            src='/assets/loader.gif'
+            alt='Loading...'
+            className='h-48 w-48 mx-auto mb-4'
+          />
+        </div>
+      </div>
+    );
   }
 
   return (

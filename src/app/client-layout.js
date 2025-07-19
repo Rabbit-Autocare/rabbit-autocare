@@ -29,10 +29,16 @@ export default function ClientLayout({ children, initialCartItems = [] }) {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
   const [isInitialized, setIsInitialized] = useState(false)
 
-  // Initialize scroll state
+  // Initialize scroll state with a delay to prevent blocking
   useEffect(() => {
-    setIsInitialized(true);
-    return () => setIsInitialized(false);
+    const timer = setTimeout(() => {
+      setIsInitialized(true);
+    }, 50);
+
+    return () => {
+      clearTimeout(timer);
+      setIsInitialized(false);
+    };
   }, []);
 
   // Reset states on route change

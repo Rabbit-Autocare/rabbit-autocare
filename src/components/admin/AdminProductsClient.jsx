@@ -113,6 +113,7 @@ function getVisibleVariantColumns(variants, productType) {
     { key: 'gsm', label: 'GSM' },
     { key: 'dimensions', label: 'Dimensions' },
     { key: 'color', label: 'Color' },
+    { key: 'pack_size', label: 'Pack Size' },
     { key: 'base_price', label: 'Base Price (Inc. GST)' },
     { key: 'base_price_excluding_gst', label: 'Price (Exc. GST)' },
     { key: 'stock', label: 'Stock' },
@@ -124,6 +125,10 @@ function getVisibleVariantColumns(variants, productType) {
       return variants.some(v => v[col.key] !== undefined && v[col.key] !== null && v[col.key] !== '');
     }
     if (col.key === 'unit' && productType === 'microfiber') return false;
+    if (col.key === 'pack_size') {
+      // Show pack_size for microfiber products or if any variant has a pack_size
+      return productType === 'microfiber' || variants.some(v => v[col.key] !== undefined && v[col.key] !== null && v[col.key] !== '');
+    }
     if (col.key === 'color') {
       return variants.some(v => {
         const val = v[col.key];
@@ -132,6 +137,16 @@ function getVisibleVariantColumns(variants, productType) {
     }
     return variants.some(v => v[col.key] !== undefined && v[col.key] !== null && v[col.key] !== '');
   });
+}
+
+// Add a helper for pack size display
+function formatPackSize(packSize) {
+  if (packSize === undefined || packSize === null || packSize === "") return <span className="text-gray-400">—</span>;
+  return (
+    <span className="inline-block px-2 py-0.5 rounded-full text-xs font-semibold bg-blue-100 text-blue-700">
+      Pack of {packSize}
+    </span>
+  );
 }
 
 // Add a helper for stock badge color
@@ -526,6 +541,9 @@ export default function AdminProductsClient({ initialProducts, initialCategories
                                             }
                                             if (col.key === 'stock') {
                                               return <td key={col.key} className="px-2 py-2 text-center align-middle">{getStockBadge(variant.stock)}</td>;
+                                            }
+                                            if (col.key === 'pack_size') {
+                                              return <td key={col.key} className="px-2 py-2 text-center align-middle">{formatPackSize(variant.pack_size)}</td>;
                                             }
                                             if (value === undefined || value === null || value === "") value = "—";
                                             return <td key={col.key} className="px-2 py-2 text-center align-middle">{value}</td>;

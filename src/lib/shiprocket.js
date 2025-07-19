@@ -83,7 +83,7 @@ export function mapOrderToShiprocket(order) {
 
     orderItems.push({
       name: isComboOrKit ? `${item.name}\nIncludes:\n${comboIncludes}` : item.name || 'Unnamed',
-      sku: item.variant_code || item.product_code || item.sku || `SKU-${item.id}`,
+      sku: item.variant?.variant_code || item.product_code || item.sku || `SKU-${item.id}`,
       units: quantity,
       selling_price: +mrpInclGst.toFixed(2),   // ✅ Send MRP
       discount: +unitDiscountInclGst.toFixed(2), // ✅ Per unit discount

@@ -10,6 +10,7 @@ import { ShoppingCart, ChevronLeft } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
+import Image from 'next/image';
 
 export default function CartDrawer() {
   const {
@@ -201,7 +202,13 @@ export default function CartDrawer() {
             >
               {loading ? (
                 <div className='flex flex-col items-center justify-center h-full p-4'>
-                  <div className='animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900 mb-4'></div>
+                  <Image
+                    src='/assets/loader.gif'
+                    alt='Loading...'
+                    width={96}
+                    height={96}
+                    className='h-24 w-24 mx-auto mb-4'
+                  />
                   <p className='text-gray-600'>Loading your cart...</p>
                 </div>
               ) : cartItems.length === 0 ? (

@@ -161,6 +161,8 @@ function generateVariantCode(productData, variant) {
     if (variant.size) parts.push(`S${variant.size}`)
     if (variant.gsm) parts.push(`G${variant.gsm}`)
     if (variant.color) parts.push(variant.color.substring(0, 3).toUpperCase())
+    // Add pack size to variant code for microfiber products
+    if (variant.pack_size && variant.pack_size > 0) parts.push(`${variant.pack_size}X`)
   } else {
     if (variant.quantity) parts.push(`Q${variant.quantity}`)
     if (variant.unit) parts.push(variant.unit.toUpperCase())
@@ -404,6 +406,7 @@ export default function ProductForm({ product, onSuccess, onCancel, categories, 
         if (formData.product_type === "microfiber") {
           if (!variant.size) newErrors[`variant_${index}_size`] = "Size is required for microfiber"
           if (!variant.gsm) newErrors[`variant_${index}_gsm`] = "GSM is required for microfiber"
+          if (!variant.pack_size || variant.pack_size < 1) newErrors[`variant_${index}_pack_size`] = "Pack size is required and must be at least 1"
         } else {
           if (!variant.quantity) newErrors[`variant_${index}_quantity`] = "Quantity is required for regular products"
           if (!variant.unit) newErrors[`variant_${index}_unit`] = "Unit is required for regular products"
@@ -417,7 +420,7 @@ export default function ProductForm({ product, onSuccess, onCancel, categories, 
 
   const transformDataForSubmission = () => {
     // Transform data to match database schema
-    return {
+    const transformedData = {
       ...formData,
       variants: variants.map((variant) => ({
         ...variant,
@@ -432,15 +435,30 @@ export default function ProductForm({ product, onSuccess, onCancel, categories, 
         // Handle JSONB fields for color - convert to array format for database
         color: variant.color ? [variant.color] : null,
         color_hex: variant.color_hex ? [variant.color_hex] : null,
-        pack_size: Number(variant.pack_size), // Include pack_size in submission
+        // Handle pack_size properly - ensure it's a valid number or null
+        pack_size: variant.pack_size && !isNaN(variant.pack_size) ? Number(variant.pack_size) : null,
       })),
+    };
+
+    // Debug: Log pack_size values for microfiber products
+    if (formData.product_type === 'microfiber') {
+      console.log('📦 Form submission pack_size values:', transformedData.variants.map(v => ({
+        id: v.id,
+        size: v.size,
+        pack_size: v.pack_size,
+        pack_size_type: typeof v.pack_size,
+        original_pack_size: variants.find(orig => orig.id === v.id)?.pack_size
+      })));
     }
-  }
+
+    return transformedData;
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault()
 
     if (!validateForm()) {
+      console.log('❌ Form validation failed:', errors);
       return
     }
 
@@ -448,18 +466,32 @@ export default function ProductForm({ product, onSuccess, onCancel, categories, 
 
     try {
       const productData = transformDataForSubmission()
+
       // Debug log for payload
-      console.log('Submitting product payload:', productData)
+      console.log('📦 Submitting product payload:', {
+        product_type: productData.product_type,
+        variant_count: productData.variants?.length,
+        variants: productData.variants?.map(v => ({
+          id: v.id,
+          size: v.size,
+          pack_size: v.pack_size,
+          variant_code: v.variant_code,
+          base_price: v.base_price
+        }))
+      });
 
       if (product?.id) {
+        console.log('🔄 Updating existing product:', product.id);
         await ProductService.updateProduct(product.id, productData)
       } else {
+        console.log('🆕 Creating new product');
         await ProductService.createProduct(productData)
       }
 
+      console.log('✅ Product saved successfully');
       onSuccess()
     } catch (error) {
-      console.error("Error submitting form:", error)
+      console.error("❌ Error submitting form:", error)
       setErrors({ submit: error.message || "Failed to save product" })
     } finally {
       setSubmitting(false)
@@ -1043,10 +1075,19 @@ export default function ProductForm({ product, onSuccess, onCancel, categories, 
                         <Input
                           type="number"
                           min={1}
-                          value={variant.pack_size || 1}
-                          onChange={e => handleVariantChange(variant.id, "pack_size", Number.parseInt(e.target.value) || 1)}
+                          value={variant.pack_size || ""}
+                          onChange={e => {
+                            const value = e.target.value;
+                            const numValue = value === "" ? null : Number.parseInt(value);
+                            handleVariantChange(variant.id, "pack_size", numValue);
+                          }}
                           placeholder="Enter pack size (e.g., 1, 2, 5)"
+                          error={!!errors[`variant_${index}_pack_size`]}
                         />
+                        <p className="text-xs text-gray-500 mt-1">Must be at least 1</p>
+                        {errors[`variant_${index}_pack_size`] && (
+                          <p className="text-sm text-red-600 mt-1">{errors[`variant_${index}_pack_size`]}</p>
+                        )}
                       </div>
                     </div>
 

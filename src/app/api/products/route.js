@@ -168,6 +168,16 @@ export async function POST(request) {
             { status: 400 }
           );
         }
+        // Validate pack_size for microfiber products
+        if (!variant.pack_size || variant.pack_size < 1) {
+          return NextResponse.json(
+            {
+              error:
+                'Pack size is required and must be at least 1 for microfiber variants',
+            },
+            { status: 400 }
+          );
+        }
       } else {
         // Optional fields for liquid variants
         if (!variant.base_price) {
@@ -177,6 +187,16 @@ export async function POST(request) {
           );
         }
       }
+    }
+
+    // Debug: Log pack_size values for microfiber products
+    if (data.product_type === 'microfiber') {
+      console.log('📦 Microfiber product pack_size values:', data.variants.map(v => ({
+        id: v.id,
+        size: v.size,
+        pack_size: v.pack_size,
+        pack_size_type: typeof v.pack_size
+      })));
     }
 
     // Prepare the product data
@@ -228,6 +248,14 @@ export async function POST(request) {
       ...variant,
       product_id: product.id, // This is an integer
     }));
+
+    // Debug: Log variants being inserted
+    console.log('📦 Variants to insert:', variantsToInsert.map(v => ({
+      id: v.id,
+      size: v.size,
+      pack_size: v.pack_size,
+      pack_size_type: typeof v.pack_size
+    })));
 
     // Insert the variants
     const { error: variantsError } = await supabase
@@ -301,6 +329,16 @@ export async function PUT(request) {
 
     if (!id) {
       return errorResponse('Product ID is required for update', 400);
+    }
+
+    // Debug: Log pack_size values for updates
+    if (variants && Array.isArray(variants)) {
+      console.log('📦 Update variants pack_size values:', variants.map(v => ({
+        id: v.id,
+        size: v.size,
+        pack_size: v.pack_size,
+        pack_size_type: typeof v.pack_size
+      })));
     }
 
     // Update the core product details

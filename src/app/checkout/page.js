@@ -1,5 +1,5 @@
 'use client';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { createSupabaseBrowserClient } from '@/lib/supabase/browser-client';
 const supabase = createSupabaseBrowserClient();
@@ -95,6 +95,121 @@ const formatPrice = (amount) => `₹${Number(amount).toFixed(0)}`;
   totalQuantity: 0,
 });
 
+  // Move function definitions here
+  const fetchSingleProduct = useCallback(async () => {
+    try {
+      const { data } = await supabase
+        .from('products')
+        .select('*')
+        .eq('id', productId)
+        .single();
+
+      if (data) {
+        const transformedProduct = {
+          id: `direct-${data.id}`,
+          type: 'product',
+          product_id: data.id,
+          product_code: data.product_code,
+          name: data.name,
+          description: data.description,
+          main_image_url: data.main_image_url,
+          images: data.images,
+          variant: null,
+          variant_display_text: 'Default',
+          base_price: data.price,
+          quantity: qtyParam,
+          total_price: data.price * qtyParam,
+          is_microfiber: data.is_microfiber,
+          key_features: data.key_features,
+          taglines: data.taglines,
+          category_name: data.category_name,
+        };
+
+        setTransformedItems([transformedProduct]);
+      }
+    } catch (error) {
+      console.error('Error fetching single product:', error);
+    } finally {
+      setLoading(false);
+    }
+  }, [productId, qtyParam]);
+
+  const fetchSingleCombo = useCallback(async () => {
+  try {
+    const { data: combo } = await supabase
+      .from('combos')
+      .select('*')
+      .eq('id', comboId)
+      .single();
+
+    if (!combo) return;
+
+    setCombo(combo);
+
+    const { data: comboProducts } = await supabase
+      .from('combo_products')
+      .select(`
+        *,
+        product:products(*),
+        variant:product_variants(variant_code)
+      `)
+      .eq('combo_id', combo.id);
+
+    if (!comboProducts) {
+      console.error('No combo products found');
+      return;
+    }
+
+    const transformedCombo = {
+      id: `direct-${combo.id}`,
+      type: 'combo',
+      combo_id: combo.id,
+      name: combo.name,
+      description: combo.description,
+      main_image_url: combo.main_image_url,
+      images: combo.images,
+      price: combo.price,
+      original_price: combo.original_price,
+      discount_percentage: combo.discount_percent,
+      quantity: 1,
+      total_price: combo.price,
+      included_products: comboProducts.map((cp) => ({
+        product_id: cp.product_id,
+        product_name: cp.product?.name,
+        product_code: cp.product?.product_code,
+        variant_id: cp.variant_id,
+        variant_code: cp.variant?.variant_code || '', // ✅ directly fetched
+        quantity: cp.quantity,
+      })),
+      included_variants: [],
+    };
+
+    setTransformedItems([transformedCombo]);
+  } catch (error) {
+    console.error('Error in fetchSingleCombo:', error);
+  } finally {
+    setLoading(false);
+  }
+}, [comboId]);
+
+  const transformCartData = useCallback(async () => {
+    if (!cartItems || cartItems.length === 0) {
+      setTransformedItems([]);
+      setLoading(false);
+      return;
+    }
+
+    try {
+      setLoading(true);
+      const transformed = await transformCartForCheckout(cartItems, userId);
+      setTransformedItems(transformed);
+    } catch (error) {
+      console.error('Error transforming cart data:', error);
+      setTransformedItems([]);
+    } finally {
+      setLoading(false);
+    }
+  }, [cartItems, userId]);
 
   useEffect(() => {
     if (user) {
@@ -108,7 +223,7 @@ const formatPrice = (amount) => `₹${Number(amount).toFixed(0)}`;
       else if (comboId) fetchSingleCombo();
       else transformCartData();
     }
-  }, [userId, cartItems]);
+  }, [userId, cartItems, productId, comboId, fetchSingleProduct, fetchSingleCombo, transformCartData]);
 
   // Recalculate totals when items or coupon change
   useEffect(() => {
@@ -187,122 +302,6 @@ useEffect(() => {
   }
 }, [transformedItems, coupon]);
 
-
-  const fetchSingleProduct = async () => {
-    try {
-      const { data } = await supabase
-        .from('products')
-        .select('*')
-        .eq('id', productId)
-        .single();
-
-      if (data) {
-        const transformedProduct = {
-          id: `direct-${data.id}`,
-          type: 'product',
-          product_id: data.id,
-          product_code: data.product_code,
-          name: data.name,
-          description: data.description,
-          main_image_url: data.main_image_url,
-          images: data.images,
-          variant: null,
-          variant_display_text: 'Default',
-          base_price: data.price,
-          quantity: qtyParam,
-          total_price: data.price * qtyParam,
-          is_microfiber: data.is_microfiber,
-          key_features: data.key_features,
-          taglines: data.taglines,
-          category_name: data.category_name,
-        };
-
-        setTransformedItems([transformedProduct]);
-      }
-    } catch (error) {
-      console.error('Error fetching single product:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const fetchSingleCombo = async () => {
-  try {
-    const { data: combo } = await supabase
-      .from('combos')
-      .select('*')
-      .eq('id', comboId)
-      .single();
-
-    if (!combo) return;
-
-    setCombo(combo);
-
-    const { data: comboProducts } = await supabase
-      .from('combo_products')
-      .select(`
-        *,
-        product:products(*),
-        variant:product_variants(variant_code)
-      `)
-      .eq('combo_id', combo.id);
-
-    if (!comboProducts) {
-      console.error('No combo products found');
-      return;
-    }
-
-    const transformedCombo = {
-      id: `direct-${combo.id}`,
-      type: 'combo',
-      combo_id: combo.id,
-      name: combo.name,
-      description: combo.description,
-      main_image_url: combo.main_image_url,
-      images: combo.images,
-      price: combo.price,
-      original_price: combo.original_price,
-      discount_percentage: combo.discount_percent,
-      quantity: 1,
-      total_price: combo.price,
-      included_products: comboProducts.map((cp) => ({
-        product_id: cp.product_id,
-        product_name: cp.product?.name,
-        product_code: cp.product?.product_code,
-        variant_id: cp.variant_id,
-        variant_code: cp.variant?.variant_code || '', // ✅ directly fetched
-        quantity: cp.quantity,
-      })),
-      included_variants: [],
-    };
-
-    setTransformedItems([transformedCombo]);
-  } catch (error) {
-    console.error('Error in fetchSingleCombo:', error);
-  } finally {
-    setLoading(false);
-  }
-};
-
-
-  const transformCartData = async () => {
-    if (!cartItems || cartItems.length === 0) {
-      setTransformedItems([]);
-      setLoading(false);
-      return;
-    }
-
-    try {
-      setLoading(true);
-      const transformed = await transformCartForCheckout(cartItems, userId);
-      setTransformedItems(transformed);
-    } catch (error) {
-      console.error('Error transforming cart data:', error);
-      setTransformedItems([]);
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const updateItemQuantity = (itemId, newQuantity) => {
     if (newQuantity < 1) return;
@@ -437,62 +436,60 @@ useEffect(() => {
       },
       theme: { color: '#601E8D' },
       handler: async function (response) {
+        setPaymentProcessing(true);
+        setLoading(true);
+        setPaymentError(null);
         try {
-          console.log('[Razorpay handler] Payment response:', response);
+          // 1. Verify payment
           const verificationRes = await fetch('/api/razorpay/verify', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ ...response }),
           });
-
           const verificationData = await verificationRes.json();
-          console.log('[Razorpay handler] Verification data:', verificationData);
-
-          if (verificationData.success) {
-            console.log('[Razorpay handler] Sending order completion request...');
-            const completeOrderRes = await fetch('/api/orders/complete', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                ...orderData,
-                payment_status: 'paid',
-                razorpay_order_id: razorpayOrderData.id,
-                razorpay_payment_id: response.razorpay_payment_id,
-                razorpay_signature: response.razorpay_signature,
-              }),
-            });
-            let completeOrderData;
-            try {
-              completeOrderData = await completeOrderRes.json();
-              console.log('[Razorpay handler] Complete order data:', completeOrderData);
-            } catch (jsonErr) {
-              console.error('[Razorpay handler] Error parsing complete order response:', jsonErr);
-              setPaymentError('Order creation failed: Invalid server response.');
-              return;
-            }
-
-            if (completeOrderData.success) {
-              await supabase.from('cart_items').delete().eq('user_id', userId);
-              if (coupon) clearCoupon();
-              const redirectUrl = `/order-confirmation/${completeOrderData.order_id}?success=true`;
-              localStorage.setItem('rbbit_redirect', redirectUrl);
-              window.location.replace(redirectUrl);
-              return;
-            } else {
-              setPaymentError('Order creation failed after payment. Please contact support.');
-              console.error('[Razorpay handler] Order creation failed:', completeOrderData);
-            }
-          } else {
+          if (!verificationData.success) {
             setPaymentError('Payment verification failed. Please contact support.');
-            console.error('[Razorpay handler] Payment verification failed:', verificationData);
+            setPaymentProcessing(false);
+            setLoading(false);
+            return;
           }
-        } catch (handlerError) {
-          console.error('[Razorpay handler] Payment handler error:', handlerError);
-          setPaymentError('Failed to process payment. Please try again or contact support.');
-        } finally {
+
+          // 2. Complete order
+          const completeOrderRes = await fetch('/api/orders/complete', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              ...orderData,
+              payment_status: 'paid',
+              razorpay_order_id: razorpayOrderData.id,
+              razorpay_payment_id: response.razorpay_payment_id,
+              razorpay_signature: response.razorpay_signature,
+            }),
+          });
+          const completeOrderData = await completeOrderRes.json();
+          if (!completeOrderData.success || !completeOrderData.order_id) {
+            setPaymentError('Order creation failed after payment. Please contact support.');
+            setPaymentProcessing(false);
+            setLoading(false);
+            return;
+          }
+
+          // 3. Clear cart (Supabase and context)
+          await supabase.from('cart_items').delete().eq('user_id', userId);
+          if (coupon) clearCoupon();
+          if (typeof retryCartFetch === 'function') {
+            setTimeout(() => {
+              retryCartFetch().catch(console.error);
+            }, 1000);
+          }
+
+          // 4. Hard redirect to confirmation page
+          const redirectUrl = `/order-confirmation/${completeOrderData.order_id}?success=true`;
+          window.location.replace(redirectUrl);
+        } catch (error) {
+          setPaymentError('An error occurred after payment. Please contact support.');
           setPaymentProcessing(false);
           setLoading(false);
-          console.log('[Razorpay handler] Payment handler finished.');
         }
       },
       modal: {
@@ -529,10 +526,38 @@ useEffect(() => {
   // Add robust redirect fallback using localStorage
   useEffect(() => {
     const redirectUrl = localStorage.getItem('rbbit_redirect');
+    console.log('[Checkout Fallback] On mount, localStorage rbbit_redirect:', redirectUrl);
     if (redirectUrl) {
       localStorage.removeItem('rbbit_redirect');
-      window.location.replace(redirectUrl);
+      console.log('[Checkout Fallback] Redirecting to:', redirectUrl);
+      router.push(redirectUrl);
     }
+    // Hard fallback: if stuck, check again after 5 seconds
+    const timeout = setTimeout(() => {
+      const retryUrl = localStorage.getItem('rbbit_redirect');
+      console.log('[Checkout Fallback] Timeout check, localStorage rbbit_redirect:', retryUrl);
+      if (retryUrl) {
+        localStorage.removeItem('rbbit_redirect');
+        console.log('[Checkout Fallback] Timeout redirecting to:', retryUrl);
+        router.push(retryUrl);
+      }
+    }, 5000);
+    return () => clearTimeout(timeout);
+  }, [router]);
+
+  // Add fallback manual redirect button if stuck
+  const [showManualRedirect, setShowManualRedirect] = useState(false);
+  const [manualRedirectUrl, setManualRedirectUrl] = useState(null);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      const url = localStorage.getItem('rbbit_redirect');
+      if (url) {
+        setManualRedirectUrl(url);
+        setShowManualRedirect(true);
+      }
+    }, 10000); // 10 seconds
+    return () => clearTimeout(timer);
   }, []);
 
   if (cartError) {
@@ -570,6 +595,17 @@ useEffect(() => {
                 Loading Checkout
               </h2>
               <p className='text-gray-600'>Preparing your order details...</p>
+              {showManualRedirect && manualRedirectUrl && (
+                <div className="mt-8">
+                  <button
+                    className="bg-[#601E8D] hover:bg-[#4a1770] text-white px-6 py-3 rounded font-semibold shadow-sm transition-all duration-200"
+                    onClick={() => window.location.replace(manualRedirectUrl)}
+                  >
+                    Go to Order Confirmation
+                  </button>
+                  <p className="text-gray-500 mt-2">If you are not redirected automatically, click the button above to view your order confirmation.</p>
+                </div>
+              )}
             </div>
           </div>
         </div>

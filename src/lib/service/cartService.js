@@ -1,5 +1,6 @@
 // services/cartService.js
 import { createSupabaseBrowserClient } from '@/lib/supabase/browser-client';
+import { fetchWithRetry } from '@/lib/utils/fetchWithRetry';
 // If you have a server-side client, import and use it here instead
 const supabase = createSupabaseBrowserClient(); // Make sure this is NOT inside the method
 
@@ -8,33 +9,34 @@ class CartService {
   async getCartItems(userId) {
     if (!userId) return { cartItems: [] };
     const supabase = createSupabaseBrowserClient();
+
     try {
-      // Add a timeout to prevent hanging
+      // Increase timeout to 30 seconds for better reliability
       const timeoutPromise = new Promise((_, reject) =>
-        setTimeout(() => reject(new Error('Cart fetch timeout')), 10000)
+        setTimeout(() => reject(new Error('Cart fetch timeout - please try again')), 30000)
       );
       const cartPromise = supabase
         .from('cart_items')
         .select(
           `
-          *,
-          product:products(
-            id,
-            name,
-            main_image_url,
-            product_code,
-            images
-          )
-        `
+            *,
+            product:products(
+              id,
+              name,
+              main_image_url,
+              product_code,
+              images
+            )
+          `
         )
         .eq('user_id', userId)
         .order('created_at', { ascending: false });
       const { data, error } = await Promise.race([cartPromise, timeoutPromise]);
-      if (error) throw error;
+      if (error) return { cartItems: [], error: error.message };
       return { cartItems: data || [] };
     } catch (error) {
       console.error('[getCartItems] Error:', error);
-      return { cartItems: [], error: error.message || 'Unknown error' };
+      return { cartItems: [], error: error.message || 'Failed to fetch cart items' };
     }
   }
 
@@ -102,91 +104,102 @@ class CartService {
   // Smart add method that handles duplicates
   async addToCartSmart(productOrComboOrKit, variant, quantity = 1, userId) {
     console.log('addToCartSmart input:', productOrComboOrKit, variant, quantity, userId);
-    const supabase = createSupabaseBrowserClient();
-    let isCombo = false;
-    let isKit = false;
-    let comboId = null;
-    let kitId = null;
-    let productId = null;
-    let variantToStore = null;
 
-    if (productOrComboOrKit && productOrComboOrKit.combo_id) {
-      isCombo = true;
-      comboId = productOrComboOrKit.combo_id; // always use UUID
-      // For combos, ensure variant is an array of full variant objects
-      variantToStore = Array.isArray(variant) ? variant.map(v => ({ ...v })) : [];
-    } else if (productOrComboOrKit && productOrComboOrKit.kit_id) {
-      isKit = true;
-      kitId = productOrComboOrKit.kit_id; // always use UUID
-      // For kits, ensure variant is an array of full variant objects
-      variantToStore = Array.isArray(variant) ? variant.map(v => ({ ...v })) : [];
-    } else if (productOrComboOrKit && productOrComboOrKit.id) {
-      productId = productOrComboOrKit.id; // integer for products
-      // For single products, ensure variant is a full object
-      variantToStore = { ...variant };
-    }
+    return fetchWithRetry(async () => {
+      const supabase = createSupabaseBrowserClient();
 
-    // Check if this item already exists in the cart
-    let existingItem = null;
-    if (isCombo) {
-      // Only query by combo_id for combos
-      const { data, error } = await supabase
-        .from('cart_items')
-        .select('*')
-        .eq('user_id', userId)
-        .eq('combo_id', comboId)
-        .single();
-      if (!error && data) existingItem = data;
-    } else if (isKit) {
-      // Only query by kit_id for kits
-      const { data, error } = await supabase
-        .from('cart_items')
-        .select('*')
-        .eq('user_id', userId)
-        .eq('kit_id', kitId)
-        .single();
-      if (!error && data) existingItem = data;
-    } else if (productId) {
-      // Only query by product_id for products
-      existingItem = await this.findExistingCartItem(productId, variantToStore, userId);
-    }
+      try {
+        let isCombo = false;
+        let isKit = false;
+        let comboId = null;
+        let kitId = null;
+        let productId = null;
+        let variantToStore = null;
 
-    if (existingItem) {
-      // Update quantity if already in cart
-      const newQuantity = existingItem.quantity + quantity;
-      const { data, error } = await supabase
-        .from('cart_items')
-        .update({ quantity: newQuantity })
-        .eq('id', existingItem.id)
-        .select()
-        .single();
-      if (error) throw error;
-      return { success: true, cartItem: data, updated: true };
-    }
+        if (productOrComboOrKit && productOrComboOrKit.combo_id) {
+          isCombo = true;
+          comboId = productOrComboOrKit.combo_id; // always use UUID
+          // For combos, ensure variant is an array of full variant objects
+          variantToStore = Array.isArray(variant) ? variant.map(v => ({ ...v })) : [];
+        } else if (productOrComboOrKit && productOrComboOrKit.kit_id) {
+          isKit = true;
+          kitId = productOrComboOrKit.kit_id; // always use UUID
+          // For kits, ensure variant is an array of full variant objects
+          variantToStore = Array.isArray(variant) ? variant.map(v => ({ ...v })) : [];
+        } else if (productOrComboOrKit && productOrComboOrKit.id) {
+          productId = productOrComboOrKit.id; // integer for products
+          // For single products, ensure variant is a full object
+          variantToStore = { ...variant };
+        } else {
+          throw new Error('Invalid product, combo, or kit data provided');
+        }
 
-    // Insert new cart item
-    const cartItem = {
-      user_id: userId,
-      product_id: productId || null, // integer or null
-      variant: (productId && variantToStore) ? variantToStore : ((isCombo || isKit) ? variantToStore : null),
-      quantity: quantity,
-      combo_id: isCombo ? comboId : null, // uuid or null
-      kit_id: isKit ? kitId : null,       // uuid or null
-      created_at: new Date().toISOString(),
-    };
-    // Defensive: never allow product_id to be a string/uuid
-    if (cartItem.product_id && typeof cartItem.product_id !== 'number') {
-      console.warn('cartService.js - product_id is not a number, setting to null:', cartItem.product_id);
-      cartItem.product_id = null;
-    }
-    console.log('cartService.js - cartItem to insert:', cartItem);
-    const { data, error } = await supabase
-      .from('cart_items')
-      .insert([cartItem])
-      .select()
-      .single();
-    if (error) throw error;
-    return { success: true, cartItem: data, created: true };
+        // Check if this item already exists in the cart
+        let existingItem = null;
+        if (isCombo) {
+          // Only query by combo_id for combos
+          const { data, error } = await supabase
+            .from('cart_items')
+            .select('*')
+            .eq('user_id', userId)
+            .eq('combo_id', comboId)
+            .single();
+          if (!error && data) existingItem = data;
+        } else if (isKit) {
+          // Only query by kit_id for kits
+          const { data, error } = await supabase
+            .from('cart_items')
+            .select('*')
+            .eq('user_id', userId)
+            .eq('kit_id', kitId)
+            .single();
+          if (!error && data) existingItem = data;
+        } else if (productId) {
+          // Only query by product_id for products
+          existingItem = await this.findExistingCartItem(productId, variantToStore, userId);
+        }
+
+        if (existingItem) {
+          // Update quantity if already in cart
+          const newQuantity = existingItem.quantity + quantity;
+          const { data, error } = await supabase
+            .from('cart_items')
+            .update({ quantity: newQuantity })
+            .eq('id', existingItem.id)
+            .select()
+            .single();
+          if (error) throw new Error(`Failed to update cart item: ${error.message}`);
+          return { success: true, cartItem: data, updated: true };
+        }
+
+        // Insert new cart item
+        const cartItem = {
+          user_id: userId,
+          product_id: productId || null, // integer or null
+          variant: (productId && variantToStore) ? variantToStore : ((isCombo || isKit) ? variantToStore : null),
+          quantity: quantity,
+          combo_id: isCombo ? comboId : null, // uuid or null
+          kit_id: isKit ? kitId : null,       // uuid or null
+          created_at: new Date().toISOString(),
+        };
+        // Defensive: never allow product_id to be a string/uuid
+        if (cartItem.product_id && typeof cartItem.product_id !== 'number') {
+          console.warn('cartService.js - product_id is not a number, setting to null:', cartItem.product_id);
+          cartItem.product_id = null;
+        }
+        console.log('cartService.js - cartItem to insert:', cartItem);
+        const { data, error } = await supabase
+          .from('cart_items')
+          .insert([cartItem])
+          .select()
+          .single();
+        if (error) throw new Error(`Failed to add item to cart: ${error.message}`);
+        return { success: true, cartItem: data, created: true };
+      } catch (error) {
+        console.error('addToCartSmart error:', error);
+        throw new Error(error.message || 'Failed to add item to cart');
+      }
+    }, 2, 500); // Retry 2 times with 500ms base delay
   }
 
   // Add item to cart

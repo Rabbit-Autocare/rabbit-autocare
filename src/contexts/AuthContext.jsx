@@ -8,7 +8,7 @@ export const AuthContext = createContext()
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null)
   const [isAdmin, setIsAdmin] = useState(false)
-  const [loading, setLoading] = useState(true)
+  const [loading, setLoading] = useState(false) // Start with false to allow initial render
   const [sessionChecked, setSessionChecked] = useState(false)
 
   // Initialize supabase client immediately
@@ -16,6 +16,7 @@ export function AuthProvider({ children }) {
 
   useEffect(() => {
     console.log('[AuthContext] Initializing AuthContext...')
+    setLoading(true) // Set loading to true when starting session check
 
     // Check initial session immediately
     const checkInitialSession = async () => {
@@ -40,14 +41,16 @@ export function AuthProvider({ children }) {
       }
     }
 
-    checkInitialSession()
+    // Add a small delay to prevent blocking initial render
+    const timer = setTimeout(() => {
+      checkInitialSession()
+    }, 100)
 
     // onAuthStateChange is the single source of truth.
     // It fires with INITIAL_SESSION on load, SIGNED_IN after login, TOKEN_REFRESH on refresh.
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       console.log(`[AuthContext] onAuthStateChange event: ${event}`);
       console.log(`[AuthContext] Session user:`, session?.user?.email);
-      console.log(`[AuthContext] Session data:`, session);
 
       if (session?.user) {
         await checkUserRole(session.user);
@@ -82,6 +85,7 @@ export function AuthProvider({ children }) {
     }, 5 * 60 * 1000); // 5 minutes
 
     return () => {
+      clearTimeout(timer)
       subscription?.unsubscribe()
       clearInterval(interval)
     }

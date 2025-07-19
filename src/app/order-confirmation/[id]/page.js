@@ -15,6 +15,16 @@ export default function OrderConfirmationPage() {
   const [error, setError] = useState(null);
 
   useEffect(() => {
+    // Clear the redirect key on mount
+    const redirectVal = localStorage.getItem('rbbit_redirect');
+    console.log('[Order Confirmation] On mount, localStorage rbbit_redirect:', redirectVal);
+    if (redirectVal) {
+      localStorage.removeItem('rbbit_redirect');
+      console.log('[Order Confirmation] Cleared rbbit_redirect from localStorage.');
+    }
+  }, []);
+
+  useEffect(() => {
     async function fetchOrder() {
       setLoading(true);
       setError(null);

@@ -261,6 +261,19 @@ export function CartProvider({ children, initialCartItems = [] }) {
     }
   }, [coupon]); // Remove cartState.cartItems from dependencies to avoid infinite loop
 
+  // Clear cart and reset loading if user becomes null after sessionChecked
+  useEffect(() => {
+    if (sessionChecked && !user) {
+      setCartState({ cartItems: [], cartCount: 0, subtotal: 0, discount: 0, total: 0, youSaved: 0, hasComboOrKit: false });
+      setLoading(false);
+      console.log('[CartContext] Cleared cart because user is null after sessionChecked.');
+    }
+  }, [sessionChecked, user]);
+
+  useEffect(() => {
+    console.log('[CartContext] loading:', loading, 'user:', user, 'sessionChecked:', sessionChecked);
+  }, [loading, user, sessionChecked]);
+
   const addToCart = async (item, variant, quantity = 1) => {
     if (!user) {
       router.push('/login');
@@ -279,15 +292,15 @@ export function CartProvider({ children, initialCartItems = [] }) {
         return true;
       } else {
         console.error('Failed to add to cart:', result.error);
-        // Show user-friendly error message
         alert(`Failed to add item to cart: ${result.error || 'Please try again'}`);
         return false;
       }
     } catch (error) {
       console.error('Error adding to cart:', error);
-      // Show user-friendly error message
       alert(`Error adding to cart: ${error.message || 'Please try again'}`);
       return false;
+    } finally {
+      setLoading(false);
     }
   };
 

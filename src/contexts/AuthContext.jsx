@@ -14,15 +14,33 @@ export function AuthProvider({ children }) {
   // Initialize supabase client immediately
   const supabase = createSupabaseBrowserClient()
 
+  // Store session in localStorage for convenience
+  const storeSession = (session) => {
+    if (session) {
+      localStorage.setItem('supabase.session', JSON.stringify(session));
+    } else {
+      localStorage.removeItem('supabase.session');
+    }
+  };
+
   useEffect(() => {
     console.log('[AuthContext] Initializing AuthContext...')
     setLoading(true) // Set loading to true when starting session check
+    let didSet = false;
+    const timeout = setTimeout(() => {
+      if (!didSet) {
+        setSessionChecked(true);
+        setLoading(false);
+        console.warn('AuthContext: Forced sessionChecked=true due to timeout')
+      }
+    }, 5000);
 
     // Check initial session immediately
     const checkInitialSession = async () => {
       try {
         const { data: { session }, error } = await supabase.auth.getSession()
         console.log('[AuthContext] Initial session check:', { session: !!session, user: session?.user?.email, error })
+        storeSession(session);
 
         if (session?.user) {
           await checkUserRole(session.user)
@@ -31,6 +49,7 @@ export function AuthProvider({ children }) {
           setIsAdmin(false)
           setLoading(false)
           setSessionChecked(true)
+          didSet = true;
         }
       } catch (error) {
         console.error('[AuthContext] Error checking initial session:', error)
@@ -38,6 +57,7 @@ export function AuthProvider({ children }) {
         setIsAdmin(false)
         setLoading(false)
         setSessionChecked(true)
+        didSet = true;
       }
     }
 
@@ -51,6 +71,7 @@ export function AuthProvider({ children }) {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       console.log(`[AuthContext] onAuthStateChange event: ${event}`);
       console.log(`[AuthContext] Session user:`, session?.user?.email);
+      storeSession(session);
 
       if (session?.user) {
         await checkUserRole(session.user);
@@ -59,6 +80,7 @@ export function AuthProvider({ children }) {
         setIsAdmin(false);
         setLoading(false);
         setSessionChecked(true);
+        didSet = true;
       }
     });
 
@@ -67,6 +89,7 @@ export function AuthProvider({ children }) {
       try {
         console.log('[AuthContext] Periodic session check...');
         const { data: { session }, error } = await supabase.auth.getSession();
+        storeSession(session);
         if (session?.user) {
           await checkUserRole(session.user);
         } else {
@@ -74,6 +97,7 @@ export function AuthProvider({ children }) {
           setIsAdmin(false);
           setLoading(false);
           setSessionChecked(true);
+          didSet = true;
         }
       } catch (error) {
         console.error('[AuthContext] Error in periodic session check:', error);
@@ -81,11 +105,13 @@ export function AuthProvider({ children }) {
         setIsAdmin(false);
         setLoading(false);
         setSessionChecked(true);
+        didSet = true;
       }
     }, 5 * 60 * 1000); // 5 minutes
 
     return () => {
       clearTimeout(timer)
+      clearTimeout(timeout)
       subscription?.unsubscribe()
       clearInterval(interval)
     }
@@ -94,7 +120,8 @@ export function AuthProvider({ children }) {
   useEffect(() => {
     const handleFocus = async () => {
       try {
-        await supabase.auth.getSession();
+        const { data: { session } } = await supabase.auth.getSession();
+        storeSession(session);
       } catch (e) {
         console.error('[AuthContext] Error refreshing session on focus:', e);
       }
@@ -102,6 +129,10 @@ export function AuthProvider({ children }) {
     window.addEventListener('focus', handleFocus);
     return () => window.removeEventListener('focus', handleFocus);
   }, [supabase]);
+
+  useEffect(() => {
+    console.log('[AuthContext] sessionChecked:', sessionChecked, 'user:', user);
+  }, [sessionChecked, user]);
 
   const checkUserRole = async (user) => {
     console.log(`[AuthContext] Checking profile for user: ${user.id}`);

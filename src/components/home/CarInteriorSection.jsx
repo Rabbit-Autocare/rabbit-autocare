@@ -14,8 +14,8 @@ const images = [
 // Mapping for user-friendly display names
 const categoryDisplayNames = {
   "microfiber-cloth": "Microfibers",
-  "car-interior": "Interior",
-  "car-exterior": "Exterior",
+  "car-interior": "Car Interior",
+  "car-exterior": "Car Exterior",
   "kits-combos": "Kits & Combos",
   // Add more as needed
 };
@@ -275,15 +275,15 @@ export default function CarInteriorSection({ initialCategories = [], initialErro
               ‹
             </button>
 
-            <h2
-              className="text-2xl uppercase tracking-wider md:mt-10 xl:mt-10 font-bold text-black text-center mx-12 whitespace-nowrap overflow-hidden text-ellipsis cursor-pointer hover:text-[#601e8d]"
+            <p
+              className="text-2xl  tracking-wider md:mt-10 xl:mt-10 font-bold text-black text-center mx-12 whitespace-nowrap overflow-hidden text-ellipsis cursor-pointer hover:text-[#601e8d]"
               style={{
                 maxWidth: isMobile ? "292px" : "558px",
               }}
               onClick={() => handleCardClick(current, titles[current])}
             >
               {titles[current] || "Category"}
-            </h2>
+            </p>
 
             <button
               onClick={next}

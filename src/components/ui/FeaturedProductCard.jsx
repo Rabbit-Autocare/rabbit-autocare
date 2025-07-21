@@ -11,7 +11,6 @@ import { WishlistService } from '@/lib/service/wishlistService';
 import ProductRating from '@/components/ui/ProductRating';
 import { useToast } from '@/components/ui/CustomToast.jsx';
 // ...existing imports...
-console.log('FeaturedProductCard loaded!');
 export default function FeaturedProductCard({
   product,
   className = '',
@@ -36,8 +35,6 @@ export default function FeaturedProductCard({
   const [wishlistItemId, setWishlistItemId] = useState(null);
   const [wishlistLoading, setWishlistLoading] = useState(false);
   const showToast = useToast();
-
-  // console.log('[FeaturedProductCard] user from useCart:', user);
 
   // Deterministic pseudo-random generator based on a string seed
   function seededRandom(seed) {
@@ -380,7 +377,6 @@ export default function FeaturedProductCard({
 
     // Find all variants with the selected size
     const variantsForSize = product.variants.filter(v => v.size === selectedSize);
-    console.log('🔍 Variants for size', selectedSize, ':', variantsForSize);
 
     // Extract pack sizes from their pack_size field or fallback to variant_code
     const packSizes = variantsForSize
@@ -390,19 +386,15 @@ export default function FeaturedProductCard({
         // First try to use pack_size field
         if (v.pack_size !== null && v.pack_size !== undefined) {
           packSize = Number(v.pack_size);
-          console.log('📦 Variant', v.id, 'using pack_size field:', v.pack_size, 'parsed:', packSize);
         } else {
           // Fallback to extracting from variant_code
           const code = v.variant_code || v.code || v.id;
           packSize = extractPackSize(code);
-          console.log('📦 Variant', v.id, 'using variant_code fallback:', code, 'extracted:', packSize);
         }
 
         return packSize;
       })
       .filter(x => !isNaN(x) && x > 0);
-
-    console.log('📦 Available pack sizes for', selectedSize, ':', packSizes);
 
     // Unique and sorted
     return Array.from(new Set(packSizes)).sort((a, b) => a - b);
@@ -418,14 +410,12 @@ export default function FeaturedProductCard({
   // On load, select the first available size and its first available pack size
   useEffect(() => {
     if (isMicrofiber && microfiberSizes.length > 0 && !selectedSize) {
-      console.log('🎯 Setting initial size to:', microfiberSizes[0]);
       setSelectedSize(microfiberSizes[0]);
     }
   }, [isMicrofiber, microfiberSizes, selectedSize]);
 
   useEffect(() => {
     if (isMicrofiber && selectedSize && availablePackSizesForSelectedSize.length > 0 && !selectedPackSize) {
-      console.log('🎯 Setting initial pack size to:', availablePackSizesForSelectedSize[0]);
       setSelectedPackSize(availablePackSizesForSelectedSize[0]);
     }
   }, [isMicrofiber, selectedSize, availablePackSizesForSelectedSize, selectedPackSize]);
@@ -447,12 +437,8 @@ export default function FeaturedProductCard({
         const extractedPackSize = extractPackSize(code);
         packSizeMatch = extractedPackSize === Number(packSize);
       }
-
-      console.log('🔍 Checking variant', v.id, 'size:', v.size, 'pack_size:', v.pack_size, 'matches:', sizeMatch && packSizeMatch);
       return sizeMatch && packSizeMatch;
     });
-
-    console.log('✅ Found variant for', size, 'pack', packSize, ':', variant);
     return variant || null;
   };
 
@@ -755,7 +741,7 @@ export default function FeaturedProductCard({
       className={`w-full pt-0 overflow-visible bg-white featured-product-section ${className}`}
     >
       <div
-        className={`flex flex-col lg:flex-row gap-4 sm:gap-6 px-4 md:px-[30px] lg:px-4 pt-6 md:pt-16 lg:pt-[30px] items-center ${
+        className={`flex flex-col max-w-[1440px] mx-auto lg:flex-row gap-4 sm:gap-6 px-4 md:px-[30px] lg:px-4 pt-6 md:pt-16 lg:pt-[30px] items-center ${
           isLastCard
             ? 'pb-[0px] xs:pb-[0px] sm:pb-[0px] md:pb-[0px] lg:pb-[0px] xl:pb-[50px]'
             : 'pb-[0px] sm:pb-[160px] md:pb-[180px] lg:pb-[80px] xl:pb-[80px]'
@@ -940,14 +926,12 @@ export default function FeaturedProductCard({
           {isMicrofiber && selectedSize && (
             <div className='space-y-2 sm:space-y-3'>
               <h4 className='font-medium text-xs xs:text-sm'>Choose Pack Size:</h4>
-              {console.log('🎨 Rendering pack sizes section for size:', selectedSize, 'available:', availablePackSizesForSelectedSize)}
               {availablePackSizesForSelectedSize.length > 0 ? (
                 <div className='flex flex-wrap gap-1 xs:gap-2'>
                   {availablePackSizesForSelectedSize.map((packSize) => {
                     const variant = getVariantForCombination(selectedSize, packSize);
                     const isOutOfStock = !variant || variant.stock === 0;
                     const isSelected = selectedPackSize === packSize;
-                    console.log('🎨 Pack size button:', packSize, 'variant:', variant, 'selected:', isSelected, 'outOfStock:', isOutOfStock);
                     return (
                       <button
                         key={packSize}

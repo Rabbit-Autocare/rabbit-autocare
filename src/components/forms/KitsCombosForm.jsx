@@ -820,26 +820,55 @@ const KitsCombosForm = ({
                 </div>
 
                 {/* Description */}
-                <div>
-                  <label className='block text-base font-medium text-gray-900 mb-2'>
-                    {itemLabel} Description
-                  </label>
-                  <textarea
-                    placeholder='Enter description'
-                    rows={4}
-                    className='w-full px-4 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-black resize-none'
-                    value={itemData.description}
-                    onChange={(e) =>
-                      onChange({ ...itemData, description: e.target.value })
-                    }
-                  />
-                  {errors.description && (
-                    <p className='text-red-500 text-sm mt-1 flex items-center'>
-                      <AlertCircle size={16} className='mr-1' />
-                      {errors.description}
-                    </p>
-                  )}
-                </div>
+<div>
+  <label className='block text-base font-medium text-gray-900 mb-2'>
+    {itemLabel} Description
+  </label>
+  <textarea
+    placeholder='Enter description'
+    rows={4}
+    className='w-full px-4 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-black resize-none'
+    value={itemData.description}
+    onChange={(e) =>
+      onChange({ ...itemData, description: e.target.value })
+    }
+  />
+  {errors.description && (
+    <p className='text-red-500 text-sm mt-1 flex items-center'>
+      <AlertCircle size={16} className='mr-1' />
+      {errors.description}
+    </p>
+  )}
+</div>
+
+{/* SKU Field */}
+<div>
+  <label className='block text-base font-medium text-gray-900 mb-2'>
+    SKU
+  </label>
+  <input
+    type='text'
+    placeholder='Enter SKU code'
+    className='w-full px-4 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-black'
+    value={itemData.sku || ''}
+    onChange={(e) => onChange({ ...itemData, sku: e.target.value })}
+  />
+</div>
+
+{/* HSN Code Field */}
+<div>
+  <label className='block text-base font-medium text-gray-900 mb-2'>
+    HSN Code
+  </label>
+  <input
+    type='text'
+    placeholder='Enter HSN code'
+    className='w-full px-4 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-black'
+    value={itemData.hsn || ''}
+    onChange={(e) => onChange({ ...itemData, hsn: e.target.value })}
+  />
+</div>
+
 
                 {/* Image Upload */}
                 <div>

@@ -36,7 +36,7 @@ export default function CouponForm({
   };
 
   const validateForm = () => {
-    const { code, discount_percent, min_order_amount } = couponData;
+    const { code, discount_percent, min_order_amount, expiry_date } = couponData;
 
     if (!code || code.trim() === '') {
       alert('Please enter a coupon code');
@@ -60,7 +60,7 @@ export default function CouponForm({
 
     if (
       !couponData.is_permanent &&
-      (!couponData.expiry_date || new Date(couponData.expiry_date) < new Date())
+      (!expiry_date || new Date(expiry_date) < new Date())
     ) {
       alert(
         'Please enter a valid future expiry date for non-permanent coupons'

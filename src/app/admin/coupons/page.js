@@ -25,6 +25,7 @@ export default function CouponsPage() {
   const MAX_ACTIVE_COUPONS = 15;
   const supabase = createSupabaseBrowserClient();
 
+  // Fetch all coupons and handle expired ones
   useEffect(() => {
     fetchCoupons();
     // eslint-disable-next-line
@@ -80,6 +81,45 @@ export default function CouponsPage() {
     }
   };
 
+  // Function to assign active coupons to a new user
+  const assignActiveCouponsToNewUser = async (newUserId) => {
+    try {
+      // Fetch all active coupons
+      const { data: activeCoupons, error } = await supabase
+        .from('coupons')
+        .select('id')
+        .eq('is_active', true);  // Fetch active coupons only
+
+      if (error) {
+        throw new Error('Error fetching active coupons');
+      }
+
+      if (!activeCoupons || activeCoupons.length === 0) {
+        console.log('No active coupons found');
+        return;
+      }
+
+      // Add active coupon IDs to the new user's coupons field
+      const couponIds = activeCoupons.map(coupon => coupon.id); // Extract only the coupon IDs
+      console.log('Coupon IDs to Assign:', couponIds);
+
+      // Update the user's coupons field with the active coupons
+      const { error: updateError } = await supabase
+        .from('auth_users')
+        .update({ coupons: couponIds }) // Update with the list of active coupon IDs
+        .eq('id', newUserId); // Ensure we're updating the right user
+
+      if (updateError) {
+        throw new Error('Error assigning coupons to new user');
+      }
+
+      console.log(`Assigned ${couponIds.length} active coupons to user ${newUserId}`);
+    } catch (error) {
+      console.error('Error assigning active coupons to new user:', error);
+    }
+  };
+
+  // Handle form submission to create or update a coupon
   const handleSubmit = async (couponData) => {
     setLoading(true);
     setError(null);
@@ -105,6 +145,7 @@ export default function CouponsPage() {
     }
   };
 
+  // Handle deletion of a coupon
   const handleDelete = async (id) => {
     if (window.confirm('Are you sure you want to delete this coupon?')) {
       setLoading(true);
@@ -113,6 +154,10 @@ export default function CouponsPage() {
         const { error } = await supabase.from('coupons').delete().eq('id', id);
         if (error) throw error;
         alert('Coupon deleted successfully');
+
+        // Remove deleted coupon from all users
+        await removeDeletedCouponFromUsers(id);
+        
         fetchCoupons();
       } catch (error) {
         setError(`Error: ${error.message}`);
@@ -122,6 +167,21 @@ export default function CouponsPage() {
     }
   };
 
+  // Remove coupon from all users when it is deleted
+  const removeDeletedCouponFromUsers = async (couponId) => {
+    try {
+      await supabase
+        .from('auth_users')
+        .update({
+          coupons: supabase.raw('jsonb_array_remove(coupons, ?)', [couponId]),
+        })
+        .contains('coupons', [couponId]); // Check if users have this coupon
+    } catch (error) {
+      console.error('Error removing deleted coupon from users:', error);
+    }
+  };
+
+  // Handle form reset
   const handleAddNew = () => {
     resetForm();
     setCurrentView('form');
@@ -144,6 +204,7 @@ export default function CouponsPage() {
     });
   };
 
+  // Check if coupon is expired
   const isExpired = (coupon) => {
     if (coupon.is_permanent) return false;
     return new Date(coupon.expiry_date) < new Date();

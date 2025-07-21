@@ -241,49 +241,50 @@ setOrderTotals({
   }, [transformedItems, coupon]);
 
   // Recalculate delivery charge when address or cart total changes
-  useEffect(() => {
-    const calculateDeliveryCharge = async () => {
-      const cartValue = orderTotals.subtotal - (orderTotals.discount || 0);
+ useEffect(() => {
+  const calculateDeliveryCharge = async () => {
+    const cartValue = orderTotals.subtotal - (orderTotals.discount || 0);
+    console.log('🛒 Cart value for delivery calculation:', cartValue);
 
-      if (cartValue > 499) {
-        setDeliveryCharge(0);
+    // Free delivery for ₹499 and above
+    if (cartValue >= 499) {
+      setDeliveryCharge(0);
+      return;
+    }
+
+    // No charge until user picks an address
+    if (!selectedShippingAddressId) {
+      setDeliveryCharge(0);
+      return;
+    }
+
+    try {
+      const { data: address, error } = await supabase
+        .from('addresses')
+        .select('state')
+        .eq('id', selectedShippingAddressId)
+        .single();
+
+      if (error || !address) {
+        console.error('Could not fetch address for delivery charge calc:', error);
+        setDeliveryCharge(99);
         return;
       }
 
-      if (!selectedShippingAddressId) {
-        setDeliveryCharge(0); // No address, no charge yet
-        return;
-      }
+      const state = address.state.toLowerCase().trim();
+      const specialStates = ['haryana', 'delhi', 'chandigarh'];
 
-      try {
-        const { data: address, error } = await supabase
-          .from('addresses')
-          .select('state')
-          .eq('id', selectedShippingAddressId)
-          .single();
+      setDeliveryCharge(
+        specialStates.includes(state) ? 59 : 99
+      );
+    } catch (e) {
+      console.error('Exception during delivery charge calc:', e);
+      setDeliveryCharge(99);
+    }
+  };
 
-        if (error || !address) {
-          console.error('Could not fetch address for delivery charge calc:', error);
-          setDeliveryCharge(99); // Default to higher charge on error
-          return;
-        }
-
-        const state = address.state.toLowerCase().trim();
-        const specialStates = ['haryana', 'delhi', 'chandigarh'];
-
-        if (specialStates.includes(state)) {
-          setDeliveryCharge(59);
-        } else {
-          setDeliveryCharge(99);
-        }
-      } catch (e) {
-        console.error('Exception during delivery charge calc:', e);
-        setDeliveryCharge(99); // Default on exception
-      }
-    };
-
-    calculateDeliveryCharge();
-  }, [selectedShippingAddressId, orderTotals.subtotal, orderTotals.discount]);
+  calculateDeliveryCharge();
+}, [selectedShippingAddressId, orderTotals.subtotal, orderTotals.discount]);
 
   const getUser = async () => {
     const { data } = await supabase.auth.getUser();

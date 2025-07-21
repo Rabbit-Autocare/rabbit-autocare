@@ -92,6 +92,8 @@ export class ComboService {
           image_url: comboData.image_url,
           main_image_url: comboData.image_url,
           images: comboData.images || [comboData.image_url].filter(Boolean),
+          sku: comboData.sku,
+          hsn: comboData.hsn,
         })
         .select()
         .single();
@@ -134,6 +136,8 @@ export class ComboService {
         price: comboData.price,
         discount_percent: comboData.discount_percentage,
         inventory,
+        sku: comboData.sku,
+        sn: comboData.hsn,
       };
 
       if (comboData.image_url) {

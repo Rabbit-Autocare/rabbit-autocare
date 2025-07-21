@@ -14,6 +14,8 @@ export default function ShopPage({ initialCategories, initialError }) {
   const { category: categoryParam } = useParams()
   const [currentCategory, setCurrentCategory] = useState(categoryParam)
   const searchParams = useSearchParams()
+  const idsParam = searchParams.get("ids")
+  const idsList = idsParam ? idsParam.split(",").map(id => id.trim()).filter(Boolean) : null
 
   // State for products and loading
   const [products, setProducts] = useState([])
@@ -112,6 +114,99 @@ export default function ShopPage({ initialCategories, initialError }) {
         rating: selectedRating,
         inStock: inStockOnly
       });
+
+      // If ids param is present, fetch all products and filter client-side
+      if (idsList && idsList.length > 0) {
+        const response = await ProductService.getProducts();
+        let products = response?.products || [];
+        products = products.filter(p => idsList.includes(String(p.id)));
+        // Apply filters client-side (same as below)
+        let filteredProducts = products;
+        // Apply size filter
+        if (selectedSize.length > 0) {
+          filteredProducts = filteredProducts.filter(product => {
+            const variants = product.variants || [];
+            return variants.some(variant => selectedSize.includes(variant.size));
+          });
+        }
+        // Apply GSM filter
+        if (selectedGsm.length > 0) {
+          filteredProducts = filteredProducts.filter(product => {
+            const variants = product.variants || [];
+            const matchesGsm = variants.some(variant => selectedGsm.includes(String(variant.gsm)))
+              || selectedGsm.some(gsm => product.name && product.name.toLowerCase().includes(gsm.toLowerCase()));
+            return matchesGsm;
+          });
+        }
+        // Apply quantity filter
+        if (selectedQuantity.length > 0) {
+          filteredProducts = filteredProducts.filter(product => {
+            const variants = product.variants || [];
+            return variants.some(variant => {
+              const variantQuantity = `${variant.quantity}${variant.unit ? ' ' + variant.unit : ''}`.replace(/\s+/g, '').toLowerCase();
+              return selectedQuantity.some(q => q.replace(/\s+/g, '').toLowerCase() === variantQuantity);
+            });
+          });
+        }
+        // Apply price filter
+        if (minPrice || maxPrice) {
+          filteredProducts = filteredProducts.filter(product => {
+            const variants = product.variants || [];
+            return variants.some(variant => {
+              const price = parseFloat(variant.price) || 0;
+              const min = minPrice ? parseFloat(minPrice) : 0;
+              const max = maxPrice ? parseFloat(maxPrice) : Infinity;
+              return price >= min && price <= max;
+            });
+          });
+        }
+        // Apply rating filter
+        if (selectedRating > 0) {
+          filteredProducts = filteredProducts.filter(product => {
+            const avg = product.rating || 0;
+            return avg >= selectedRating;
+          });
+        }
+        // Apply in-stock filter
+        if (inStockOnly) {
+          filteredProducts = filteredProducts.filter(product => {
+            const variants = product.variants || [];
+            return variants.some(variant => (variant.stock || 0) > 0);
+          });
+        }
+        // Sorting
+        let sortedProducts = [...filteredProducts];
+        switch (sort) {
+          case "price-low-high":
+            sortedProducts.sort((a, b) => {
+              const aPrice = Math.min(...(a.variants || []).map(v => parseFloat(v.price) || 0));
+              const bPrice = Math.min(...(b.variants || []).map(v => parseFloat(v.price) || 0));
+              return aPrice - bPrice;
+            });
+            break;
+          case "price-high-low":
+            sortedProducts.sort((a, b) => {
+              const aPrice = Math.max(...(a.variants || []).map(v => parseFloat(v.price) || 0));
+              const bPrice = Math.max(...(b.variants || []).map(v => parseFloat(v.price) || 0));
+              return bPrice - aPrice;
+            });
+            break;
+          case "newest":
+            sortedProducts.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+            break;
+          case "rating":
+            sortedProducts.sort((a, b) => (parseFloat(b.rating) || 0) - (parseFloat(a.rating) || 0));
+            break;
+          case "name":
+            sortedProducts.sort((a, b) => a.name.localeCompare(b.name));
+            break;
+          default: // popularity
+            sortedProducts.sort((a, b) => (parseFloat(b.popularity_score) || 0) - (parseFloat(a.popularity_score) || 0));
+        }
+        setProducts(sortedProducts);
+        setTotalCount(sortedProducts.length);
+        return;
+      }
 
       // Add timeout to prevent infinite loading
       const timeoutPromise = new Promise((_, reject) =>
@@ -404,7 +499,7 @@ export default function ShopPage({ initialCategories, initialError }) {
     } finally {
       setLoading(false);
     }
-  }, [currentCategory, sort, selectedSize, selectedGsm, selectedQuantity, minPrice, maxPrice, selectedRating, inStockOnly]);
+  }, [currentCategory, sort, selectedSize, selectedGsm, selectedQuantity, minPrice, maxPrice, selectedRating, inStockOnly, idsList]);
 
   // Fetch products when dependencies change
   useEffect(() => {

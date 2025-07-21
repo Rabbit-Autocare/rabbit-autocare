@@ -10,33 +10,45 @@ class CartService {
     if (!userId) return { cartItems: [] };
     const supabase = createSupabaseBrowserClient();
 
-    try {
-      // Increase timeout to 30 seconds for better reliability
-      const timeoutPromise = new Promise((_, reject) =>
-        setTimeout(() => reject(new Error('Cart fetch timeout - please try again')), 30000)
-      );
-      const cartPromise = supabase
-        .from('cart_items')
-        .select(
-          `
-            *,
-            product:products(
-              id,
-              name,
-              main_image_url,
-              product_code,
-              images
-            )
-          `
-        )
-        .eq('user_id', userId)
-        .order('created_at', { ascending: false });
-      const { data, error } = await Promise.race([cartPromise, timeoutPromise]);
-      if (error) return { cartItems: [], error: error.message };
-      return { cartItems: data || [] };
-    } catch (error) {
-      console.error('[getCartItems] Error:', error);
-      return { cartItems: [], error: error.message || 'Failed to fetch cart items' };
+    const MAX_RETRIES = 3;
+    const TIMEOUT_MS = 12000;
+    let attempt = 0;
+    let lastError = null;
+
+    while (attempt < MAX_RETRIES) {
+      try {
+        const timeoutPromise = new Promise((_, reject) =>
+          setTimeout(() => reject(new Error('Cart fetch timeout - please try again')), TIMEOUT_MS)
+        );
+        const cartPromise = supabase
+          .from('cart_items')
+          .select(
+            `
+              *,
+              product:products(
+                id,
+                name,
+                main_image_url,
+                product_code,
+                images
+              )
+            `
+          )
+          .eq('user_id', userId)
+          .order('created_at', { ascending: false });
+        const { data, error } = await Promise.race([cartPromise, timeoutPromise]);
+        if (error) return { cartItems: [], error: error.message };
+        return { cartItems: data || [] };
+      } catch (error) {
+        lastError = error;
+        attempt++;
+        if (attempt >= MAX_RETRIES) {
+          console.error('[getCartItems] Error:', error);
+          return { cartItems: [], error: error.message || 'Failed to fetch cart items' };
+        }
+        // Optionally, add a small delay before retrying
+        await new Promise(res => setTimeout(res, 500));
+      }
     }
   }
 

@@ -466,7 +466,9 @@ useEffect(() => {
               razorpay_signature: response.razorpay_signature,
             }),
           });
+          console.log('[Checkout] /api/orders/complete response received:', completeOrderRes);
           const completeOrderData = await completeOrderRes.json();
+          console.log('[Checkout] /api/orders/complete JSON:', completeOrderData);
           if (!completeOrderData.success || !completeOrderData.order_id) {
             setPaymentError('Order creation failed after payment. Please contact support.');
             setPaymentProcessing(false);
@@ -474,18 +476,19 @@ useEffect(() => {
             return;
           }
 
-          // 3. Clear cart (Supabase and context)
-          await supabase.from('cart_items').delete().eq('user_id', userId);
+          // 4. Hard redirect to confirmation page (DO THIS FIRST)
+          const redirectUrl = `/order-confirmation/${completeOrderData.order_id}?success=true`;
+          console.log('[Checkout] Redirecting to:', redirectUrl);
+          window.location.replace(redirectUrl);
+
+          // 3. Clear cart (Supabase and context) in the background
+          supabase.from('cart_items').delete().eq('user_id', userId);
           if (coupon) clearCoupon();
           if (typeof retryCartFetch === 'function') {
             setTimeout(() => {
               retryCartFetch().catch(console.error);
             }, 1000);
           }
-
-          // 4. Hard redirect to confirmation page
-          const redirectUrl = `/order-confirmation/${completeOrderData.order_id}?success=true`;
-          window.location.replace(redirectUrl);
         } catch (error) {
           setPaymentError('An error occurred after payment. Please contact support.');
           setPaymentProcessing(false);
@@ -578,6 +581,7 @@ useEffect(() => {
   }
 
   if (cartLoading || loading) {
+    console.log('[Checkout] Loader shown. cartLoading:', cartLoading, 'loading:', loading);
     return (
       <div className='min-h-screen bg-white'>
         <div className='container mx-auto px-4 py-8'>
@@ -614,6 +618,7 @@ useEffect(() => {
   }
 
   if (!user) {
+    console.log('[Checkout] No user, redirecting to /login');
     router.push('/login');
     return null;
   }

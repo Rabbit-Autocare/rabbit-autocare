@@ -11,11 +11,19 @@ const images = [
   "/assets/about/img/mission.png",
 ]
 
+// Mapping for user-friendly display names
+const categoryDisplayNames = {
+  "microfiber-cloth": "Microfibers",
+  "car-interior": "Interior",
+  "car-exterior": "Exterior",
+  "kits-combos": "Kits & Combos",
+  // Add more as needed
+};
+
 export default function CarInteriorSection({ initialCategories = [], initialError = null }) {
   const { categories: fetchedCategories, loading: isLoading, error } = useCategories(initialCategories, initialError);
 
   const [current, setCurrent] = useState(0)
-  const [displayedTitle, setDisplayedTitle] = useState("")
   const cardRefs = useRef([])
   const containerRef = useRef(null)
   const [isAnimating, setIsAnimating] = useState(false)
@@ -38,18 +46,13 @@ export default function CarInteriorSection({ initialCategories = [], initialErro
   useEffect(() => {
     if (fetchedCategories && fetchedCategories.length > 0) {
       setCategories(fetchedCategories)
-      const categoryNames = fetchedCategories.map((category) => category.name)
+      const categoryNames = fetchedCategories.map((category) => categoryDisplayNames[category.name] || category.name)
       setTitles(categoryNames)
-      setDisplayedTitle(categoryNames[0] || "Interior")
       console.log('[DEBUG] CarInteriorSection: Categories updated from hook:', fetchedCategories)
     }
   }, [fetchedCategories])
 
-  useEffect(() => {
-    if (titles.length > 0 && !displayedTitle) {
-      setDisplayedTitle(titles[0])
-    }
-  }, [titles, displayedTitle])
+  // No need for displayedTitle state, always use titles[current]
 
   // Get the visible cards with infinite loop support
   const getVisibleCards = () => {
@@ -169,7 +172,6 @@ export default function CarInteriorSection({ initialCategories = [], initialErro
     // Update state after animation
     setTimeout(() => {
       setCurrent(newIndex)
-      setDisplayedTitle(titles[newIndex] || "Category")
       setIsAnimating(false)
     }, 500)
   }
@@ -183,16 +185,10 @@ export default function CarInteriorSection({ initialCategories = [], initialErro
     const selectedCategory = categories[categoryIndex]
 
     if (selectedCategory) {
-      const categorySlug = selectedCategory.name.toLowerCase().replace(/\s+/g, "-")
-      router.push(`/shop/${categorySlug}`)
+      // Use backend slug for routing
+      router.push(`/shop/${selectedCategory.name}`)
     } else {
-      const fallbackCategory = titles[categoryIndex]
-      if (fallbackCategory) {
-        const categorySlug = fallbackCategory.toLowerCase().replace(/\s+/g, "-")
-        router.push(`/shop/${categorySlug}`)
-      } else {
-        router.push("/shop")
-      }
+      router.push("/shop")
     }
   }
 
@@ -230,9 +226,9 @@ export default function CarInteriorSection({ initialCategories = [], initialErro
             overflow: "hidden",
             textOverflow: "ellipsis",
           }}
-          title={`Click to shop ${displayedTitle} - Browse all ${displayedTitle} products`}
+          title={`Click to shop ${titles[current] || "Category"} - Browse all ${titles[current] || "Category"} products`}
         >
-          {displayedTitle}
+          {titles[current] || "Category"}
         </div>
 
         {/* Cards Container */}
@@ -256,7 +252,7 @@ export default function CarInteriorSection({ initialCategories = [], initialErro
                   display: 'none', // Initially hidden
                 }}
                 onClick={() => handleCardClick(imageIndex, titles[imageIndex])}
-                title={`Click to shop ${categoryInfo.name} - Direct link to ${categoryInfo.name} products`}
+                title={`Click to shop ${categoryDisplayNames[categoryInfo.name] || categoryInfo.name} - Direct link to ${categoryDisplayNames[categoryInfo.name] || categoryInfo.name} products`}
               >
                 <img
                   src={image || "/placeholder.svg"}
@@ -286,7 +282,7 @@ export default function CarInteriorSection({ initialCategories = [], initialErro
               }}
               onClick={() => handleCardClick(current, titles[current])}
             >
-              {`${titles[current] || "Category"}`}
+              {titles[current] || "Category"}
             </h2>
 
             <button

@@ -80,6 +80,19 @@ export async function POST(req) {
       return NextResponse.json({ success: false, error: 'Failed to create order' }, { status: 500 });
     }
 
+    // ✅ Clear the user's cart in the background. Fire and forget.
+    supabase
+      .from('cart_items')
+      .delete()
+      .eq('user_id', user_id)
+      .then(({ error: cartError }) => {
+        if (cartError) {
+          console.error('❌ Non-blocking cart clearing error:', cartError);
+        } else {
+          console.log(`✅ Cart cleared for user ${user_id}`);
+        }
+      });
+
   // ✅ Remove used coupon from user's auth profile
 if (coupon_id && user_id) {
   const { data: user, error: userError } = await supabase
@@ -128,29 +141,37 @@ if (coupon_id && user_id) {
 
     await processOrderItems(order);
 
-    try {
-      await sendOrderConfirmation(order.user_info?.email, order);
-      await sendAdminNotification(order);
-    } catch (emailError) {
-      console.error('❌ Email sending error:', emailError);
-    }
+    // Don't wait for these to finish. Fire and forget.
+    // This ensures the user gets a fast response.
+    sendOrderConfirmation(order.user_info?.email, order).catch(emailError => {
+      console.error('❌ Non-blocking email sending error (user):', emailError);
+    });
 
-    try {
-      const shiprocketPayload = mapOrderToShiprocket(order);
-      console.log('📦 Shiprocket Payload:', shiprocketPayload);
-      const shiprocketResult = await createShiprocketOrder(shiprocketPayload);
-      console.log('✅ Shiprocket Order Created:', shiprocketResult);
-      // Save awb_code to the order if available
-      if (shiprocketResult?.awb_code) {
-        await supabase
-          .from('orders')
-          .update({ awb_code: shiprocketResult.awb_code })
-          .eq('id', order.id);
+    sendAdminNotification(order).catch(emailError => {
+      console.error('❌ Non-blocking email sending error (admin):', emailError);
+    });
+
+    // Also handle Shiprocket order creation in the background
+    (async () => {
+      try {
+        const shiprocketPayload = mapOrderToShiprocket(order);
+        console.log('📦 Background Shiprocket Payload:', shiprocketPayload);
+        const shiprocketResult = await createShiprocketOrder(shiprocketPayload);
+        console.log('✅ Background Shiprocket Order Created:', shiprocketResult);
+        // Save awb_code to the order if available
+        if (shiprocketResult?.awb_code) {
+          await supabase
+            .from('orders')
+            .update({ awb_code: shiprocketResult.awb_code })
+            .eq('id', order.id);
+        }
+      } catch (shiprocketError) {
+        console.error('❌ Background Shiprocket Order Error:', shiprocketError?.response?.data || shiprocketError.message);
       }
-    } catch (shiprocketError) {
-      console.error('❌ Shiprocket Order Error:', shiprocketError?.response?.data || shiprocketError.message);
-    }
+    })();
 
+
+    // Immediately return success to the user
     return NextResponse.json({
       success: true,
       order_id: order.id,

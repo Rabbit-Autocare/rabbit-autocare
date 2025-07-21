@@ -56,19 +56,33 @@ export default function ShopByConcern() {
                 height={300}
                 className="object-cover w-full h-full transition-transform duration-300 group-hover:scale-105"
               />
-              {/* Always visible heading, left-aligned at bottom, hide on hover */}
-              <div className={`absolute bottom-0 left-0 w-full px-4 pb-8 pt-10 z-10 flex flex-col items-start transition-all duration-400 ${'group-hover:opacity-0 group-hover:pointer-events-none'}`}>
+              {/* Always visible heading at bottom left for desktop, hide on hover */}
+              <div className="hidden lg:block absolute bottom-0 left-0 w-full px-4 pb-8 pt-10 z-10 flex flex-col items-start transition-all duration-300 group-hover:opacity-0 group-hover:pointer-events-none">
                 <h3 className="font-semibold text-lg tracking-wide text-white drop-shadow-lg mb-0">
                   {item.title}
                 </h3>
               </div>
-              {/* Overlay with heading moving up and description appearing below on hover */}
-              <div className="absolute inset-0 pointer-events-none flex items-end">
-                <div className="w-full px-4 pb-8 pt-10 opacity-0 translate-y-8 group-hover:opacity-100 group-hover:translate-y-0 transition-all duration-400 bg-gradient-to-t from-black/90 via-black/60 to-black/10 rounded-xl flex flex-col items-start pointer-events-auto">
+              {/* Overlay: Always visible on mobile, hover on desktop */}
+              <div className="absolute inset-0 flex items-end pointer-events-none">
+                {/* Mobile: Always visible overlay */}
+                <div className="w-full px-4 pb-4 pt-6 rounded-xl flex flex-col items-start pointer-events-auto
+                  bg-gradient-to-t from-black/90 via-black/60 to-black/10
+                  opacity-100 translate-y-0 block lg:hidden transition-all duration-400">
+                  <h3 className="font-semibold text-base sm:text-lg tracking-wide text-white mb-1 text-left">
+                    {item.title}
+                  </h3>
+                  <p className="text-white text-sm sm:text-base text-left whitespace-normal break-words">
+                    {item.description}
+                  </p>
+                </div>
+                {/* Desktop: Overlay with heading and description on hover only */}
+                <div className="w-full px-4 pb-8 pt-10 rounded-xl flex-col items-start pointer-events-auto
+                  bg-gradient-to-t from-black/90 via-black/60 to-black/10
+                  opacity-0 translate-y-8 hidden lg:flex group-hover:opacity-100 group-hover:translate-y-0 transition-all duration-400">
                   <h3 className="font-semibold text-lg tracking-wide text-white mb-2 text-left group-hover:translate-y-0 translate-y-6 transition-all duration-400">
                     {item.title}
                   </h3>
-                  <p className="text-white text-base text-left opacity-100 transition-opacity duration-400">
+                  <p className="text-white text-base text-left whitespace-normal break-words">
                     {item.description}
                   </p>
                 </div>

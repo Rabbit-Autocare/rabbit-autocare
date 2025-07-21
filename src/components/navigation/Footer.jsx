@@ -88,9 +88,7 @@ export default function Footer() {
 							</li>
 							<li>
 								<Link
-									href="https://ubnifppknfszvqkxqbfp.supabase.co/storage/v1/object/public/staticimages/Policys/Rabbitautocare%20Refund,%20return%20and%20exchange%20policy.docx.pdf"
-									target="_blank"
-									rel="noopener noreferrer"
+									href="/shipping-and-returns"
 									className="text-gray-300 text-sm hover:text-white"
 								>
 									Shipping & Returns
@@ -113,9 +111,7 @@ export default function Footer() {
 							</li>
 							<li>
 								<Link
-									href="https://ubnifppknfszvqkxqbfp.supabase.co/storage/v1/object/public/staticimages/Policys/Privacy%20Policy%20for%20Rabbitautocare%20(Pratham).docx.pdf"
-									target="_blank"
-									rel="noopener noreferrer"
+									href="/privacy-policy"
 									className="text-gray-300 text-sm hover:text-white"
 								>
 									Privacy Policy
@@ -123,9 +119,7 @@ export default function Footer() {
 							</li>
 							<li>
 								<Link
-									href="https://ubnifppknfszvqkxqbfp.supabase.co/storage/v1/object/public/staticimages/Policys/Terms%20of%20Use%20Rabbitautocare.docx.pdf"
-									target="_blank"
-									rel="noopener noreferrer"
+									href="/terms-and-conditions"
 									className="text-gray-300 text-sm hover:text-white"
 								>
 									Terms & Conditions

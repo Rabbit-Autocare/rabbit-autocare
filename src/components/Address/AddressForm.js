@@ -33,6 +33,7 @@ export default function AddressForm({ editingAddress, onSuccess, onCancel }) {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+
     const { data, error } = editingAddress
       ? await supabase
           .from("addresses")
@@ -49,6 +50,7 @@ export default function AddressForm({ editingAddress, onSuccess, onCancel }) {
     if (error) return alert("Failed to save address");
 
     onSuccess(data);
+
     setForm({
       full_name: "",
       phone: "",

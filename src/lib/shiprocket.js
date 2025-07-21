@@ -57,17 +57,14 @@ export function mapOrderToShiprocket(order) {
 
   const totalQty = order.items.reduce((sum, item) => sum + item.quantity, 0);
   const discountAmount = order.discount_amount || 0;
-  const discountMeta = order.applied_coupon || {};
 
   const orderItems = [];
 
   for (const item of order.items || []) {
     const quantity = item.quantity || 1;
     const isComboOrKit = item.type === 'combo' || item.type === 'kit';
+    const mrpInclGst = Number(item.base_price || item.compare_at_price || item.price || 0);
 
-    const mrpInclGst = Number(item.original_price || item.base_price || item.compare_at_price || item.price || 0);
-
-    // 👇 Send MRP directly as "selling_price"
     const unitDiscountInclGst = totalQty > 0 && discountAmount > 0
       ? +(discountAmount / totalQty).toFixed(2)
       : 0;
@@ -85,10 +82,10 @@ export function mapOrderToShiprocket(order) {
       name: isComboOrKit ? `${item.name}\nIncludes:\n${comboIncludes}` : item.name || 'Unnamed',
       sku: item.variant?.variant_code || item.product_code || item.sku || `SKU-${item.id}`,
       units: quantity,
-      selling_price: +mrpInclGst.toFixed(2),   // ✅ Send MRP
-      discount: +unitDiscountInclGst.toFixed(2), // ✅ Per unit discount
+      selling_price: +mrpInclGst.toFixed(2),
+      discount: +unitDiscountInclGst.toFixed(2),
       hsn,
-      tax: gstRate                              // ✅ Let Shiprocket add tax
+      tax: gstRate
     });
   }
 
@@ -140,4 +137,3 @@ export function mapOrderToShiprocket(order) {
     comment: `Final: ₹${grandTotal} | Discount: ₹${totalDiscount}`
   };
 }
-////-------------

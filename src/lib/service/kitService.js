@@ -84,6 +84,8 @@ export class KitService {
           image_url: kitData.image_url,
           main_image_url: kitData.image_url,
           images: kitData.images || [kitData.image_url].filter(Boolean),
+          sku: kitData.sku,
+          hsn: kitData.hsn,
         })
         .select()
         .single();
@@ -132,6 +134,8 @@ export class KitService {
         price: kitData.price,
         discount_percent: kitData.discount_percentage,
         inventory,
+        sku: kitData.sku,
+        hsn: kitData.hsn,
       };
 
       if (kitData.image_url) {

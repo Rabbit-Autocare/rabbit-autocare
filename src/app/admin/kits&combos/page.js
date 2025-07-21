@@ -75,6 +75,8 @@ export default function KitsAndCombosPage() {
   const [itemData, setItemData] = useState({
     name: '',
     description: '',
+    sku: '',          // ✅ New
+    hsn: '',          // ✅ New
     image_url: null,
     original_price: 0,
     discounted_price: 0,
@@ -172,6 +174,8 @@ export default function KitsAndCombosPage() {
       name: '',
       description: '',
       image_url: null,
+      sku: '',          // ✅ New
+      hsn: '',          // ✅ New
       original_price: 0,
       discounted_price: 0,
       discount_percentage: 0,
@@ -329,6 +333,8 @@ export default function KitsAndCombosPage() {
       // Ensure image_url from state is passed to formData if available
       const kitOrComboData = {
         ...formData,
+        sku: formData.sku,
+       hsn: formData.hsn,
         image_url: itemData.image_url, // Ensure the image_url from state is included
         products: selectedProducts, // Attach the selectedProducts from state
         inventory: 1, // Default inventory to 1, as no input for it yet
@@ -418,6 +424,8 @@ export default function KitsAndCombosPage() {
     setItemData({
       name: '',
       description: '',
+      sku: '',          // ✅ New
+      hsn: '',          // ✅ New
       image_url: null,
       original_price: 0,
       price: 0,
@@ -434,6 +442,8 @@ export default function KitsAndCombosPage() {
       name: '',
       description: '',
       image_url: null,
+      sku: '',          // ✅ New
+       hsn: '',          // ✅ New
       original_price: 0,
       price: 0,
       discount_percentage: 0,

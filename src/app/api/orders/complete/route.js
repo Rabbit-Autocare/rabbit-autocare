@@ -9,7 +9,7 @@ const supabase = createSupabaseBrowserClient();
 export async function POST(req) {
   try {
     const body = await req.json();
-    const {
+    const { 
       user_id,
       user_info,
       shipping_address_id,

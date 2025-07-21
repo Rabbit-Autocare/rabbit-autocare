@@ -565,60 +565,38 @@ export default function FeaturedProductCard({
 
   const handleAddToCart = async () => {
     if (!isMicrofiber && !selectedVariant) {
-      alert('Please select a variant.');
+      showToast('Please select a variant.', { type: 'error' });
       return;
     }
     if (isMicrofiber && (!selectedSize || !selectedPackSize)) {
-      alert('Please select a size and pack size.');
+      showToast('Please select a size and pack size.', { type: 'error' });
       return;
     }
+
+    const variantToAdd = isMicrofiber
+      ? getVariantForCombination(selectedSize, selectedPackSize)
+      : selectedVariant;
+
+    if (!variantToAdd) {
+      showToast('Selected combination not available.', { type: 'error' });
+      return;
+    }
+
+    if (variantToAdd.stock <= 0) {
+      showToast('This item is currently out of stock.', { type: 'error' });
+      return;
+    }
+
     setIsAddingToCart(true);
     try {
-      const itemToAdd = {
-        productId: product.id,
-        quantity: 1,
-        price: getCurrentPrice(),
-        productName: product.name,
-        productImage:
-          product.main_image_url ||
-          product.image_url ||
-          product.images?.[0] ||
-          '',
-      };
-      if (isMicrofiber) {
-        const variant = getVariantForCombination(selectedSize, selectedPackSize); // REMOVE color
-        if (!variant) {
-          throw new Error('Selected combination not available.');
-        }
-        itemToAdd.variant = {
-          ...variant,
-          // color: selectedColor, // REMOVE for microfiber
-          size: selectedSize,
-          packSize: selectedPackSize,
-          displayText: `${selectedSize} | Pack of ${selectedPackSize}`,
-          variant_code: variant.variant_code || variant.code || '',
-        };
-      } else if (selectedVariant) {
-        itemToAdd.variant = {
-          ...selectedVariant,
-          displayText: getVariantDisplayText(selectedVariant),
-          variant_code: selectedVariant.variant_code || selectedVariant.code || '',
-        };
-      } else {
-        itemToAdd.variant = {
-          id: 'default',
-          price: product.base_price || product.price || product.mrp,
-          displayText: 'Default',
-        };
-      }
-      const success = await addToCart(product, itemToAdd.variant, 1);
+      const success = await addToCart(product, variantToAdd, 1);
       if (success) {
-        openCart();
+        showToast('Item added to cart!', { type: 'success' });
       } else {
-        alert('Failed to add item to cart.');
+        showToast('Failed to add item to cart.', { type: 'error' });
       }
     } catch (error) {
-      alert(`Failed to add item to cart: ${error.message}`);
+      showToast(`Error: ${error.message}`, { type: 'error' });
     } finally {
       setIsAddingToCart(false);
     }

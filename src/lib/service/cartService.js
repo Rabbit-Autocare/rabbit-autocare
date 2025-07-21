@@ -76,30 +76,32 @@ class CartService {
         // Normalize variants for comparison
         const normalizeVariant = (v) => {
           if (!v) return null;
-          const normalized = {};
-          if (v.id) normalized.id = v.id;
-          if (v.size) normalized.size = v.size;
-          if (v.color) normalized.color = v.color;
-          if (v.quantity_value) normalized.quantity_value = v.quantity_value; // Assuming 'quantity_value' is the numeric part of quantity
-          if (v.unit) normalized.unit = v.unit;
-          if (v.gsm) normalized.gsm = v.gsm;
-          if (v.is_package !== undefined) normalized.is_package = v.is_package;
-          if (v.package_quantity) normalized.package_quantity = v.package_quantity;
-          // Add other relevant variant attributes here
+          const normalized = {
+            id: v.id,
+            size: v.size,
+            color: v.color,
+            quantity_value: v.quantity_value,
+            unit: v.unit,
+            gsm: v.gsm,
+            is_package: v.is_package,
+            package_quantity: v.package_quantity,
+            variant_code: v.variant_code || v.code,
+          };
+          // Remove null/undefined properties
+          Object.keys(normalized).forEach(key => (normalized[key] == null) && delete normalized[key]);
           return normalized;
         };
 
         const normalizedItemVariant = normalizeVariant(item.variant);
         const normalizedSearchVariant = normalizeVariant(variant);
 
+        // Deep comparison of normalized variants
         const areVariantsEqual = JSON.stringify(normalizedItemVariant) === JSON.stringify(normalizedSearchVariant);
 
-        console.log('findExistingCartItem: Comparing variants:', {
-          itemVariant: item.variant,
-          searchVariant: variant,
-          normalizedItemVariant,
-          normalizedSearchVariant,
-          areVariantsEqual
+        console.log('Comparing Variants:', {
+          dbVariant: normalizedItemVariant,
+          newVariant: normalizedSearchVariant,
+          isEqual: areVariantsEqual,
         });
 
         return areVariantsEqual;

@@ -1,8 +1,8 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import Image from "next/image"
-import Link from "next/link"
+// import Image from "next/image"
+// import Link from "next/link"
 import { ProductService } from "@/lib/service/productService"
 import { KitsCombosService } from "@/lib/service/kitsCombosService"
 import ProductCard from "@/components/shop/ProductCard";

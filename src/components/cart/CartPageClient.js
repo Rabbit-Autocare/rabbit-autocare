@@ -186,7 +186,7 @@ export default function CartPageClient({
               </div>
 
               {/* Frequently Bought Together */}
-              <FrequentlyBoughtTogether initialCombos={initialCombos} />
+              {/* <FrequentlyBoughtTogether initialCombos={initialCombos} /> */}
             </div>
 
             {/* Sidebar */}

@@ -745,8 +745,8 @@ export default function FeaturedProductCard({
       <div
         className={`flex flex-col max-w-[1440px] mx-auto lg:flex-row gap-4 sm:gap-6 px-4 md:px-[30px] lg:px-4 pt-6 md:pt-16 lg:pt-[30px] items-center ${
           isLastCard
-            ? 'pb-[0px] xs:pb-[0px] sm:pb-[0px] md:pb-[0px] lg:pb-[0px] xl:pb-[50px]'
-            : 'pb-[0px] sm:pb-[160px] md:pb-[180px] lg:pb-[80px] xl:pb-[80px]'
+            ? 'pb-[10px] xs:pb-[0px] sm:pb-[0px] md:pb-[0px] lg:pb-[40px] xl:pb-[50px]'
+            : 'pb-[10px] sm:pb-[160px] md:pb-[180px] lg:pb-[80px] xl:pb-[80px]'
         }`}
       >
         {/* Image Section */}
@@ -780,7 +780,7 @@ export default function FeaturedProductCard({
                 onClick={() => handleImageSwipe('prev')}
                 className='absolute z-20 left-0 cursor-pointer bg-transparent p-1 sm:p-2 transition'
               >
-                <ChevronLeft className='w-8 h-8 sm:w-12 sm:h-12 xl:h-[600px] text-black cursor-pointer' />
+                <ChevronLeft strokeWidth={1} className='w-8 h-8 sm:w-12 sm:h-12 xl:h-[600px] text-[#dddddd] hover:text-[#888888] cursor-pointer' />
               </button>
             )}
 
@@ -827,7 +827,7 @@ export default function FeaturedProductCard({
                 onClick={() => handleImageSwipe('next')}
                 className='absolute right-0 cursor-pointer bg-transparent z-20 p-1 sm:p-2 transition'
               >
-                <ChevronRight className='w-8 h-8 sm:w-12 sm:h-12 xl:h-[600px] text-black cursor-pointer' />
+                <ChevronRight strokeWidth={1} className='w-8 h-8 sm:w-12 sm:h-12 xl:h-[600px] text-[#dddddd] hover:text-[#888888] cursor-pointer' />
               </button>
             )}
           </div>
@@ -856,12 +856,15 @@ export default function FeaturedProductCard({
 
         {/* Product Details */}
         <div className='w-full md:w-[585px] lg:w-[685px] xl:w-1/2 space-y-2 md:space-y-3 lg:space-y-2 xl:space-y-4 flex flex-col'>
-          {/* Product Title and Rating */}
-          <div className="flex items-center gap-2 mb-1">
-            <h2 className="font-semibold text-lg xs:text-xl sm:text-2xl lg:text-3xl xl:text-4xl line-clamp-2 flex-1">{product.name}</h2>
-            <ProductRating ratings={ratings} size={18} showCount={true} />
-          </div>
+  {/* Product Title - 30px font size */}
+  <div className="mb-3 flex">
+    <h2 className="font-semibold text-[30px] leading-tight line-clamp-2">{product.name}: {product.taglines[0]}</h2>
 
+
+  </div>
+  <div className="mb-4">
+    <ProductRating ratings={ratings} size={18} showCount={true} />
+  </div>
           {/* Price */}
           <div className='text-[18px] xs:text-[20px] sm:text-[28px] md:text-[32px] font-medium tracking-wide'>
             <span className='font-extralight'>MRP:</span>
@@ -874,7 +877,7 @@ export default function FeaturedProductCard({
               {product.description}
             </p>
             {/* Only show taglines below description */}
-            {product.taglines && product.taglines.length > 0 && (
+            {/* {product.taglines && product.taglines.length > 0 && (
               <div className='mt-3'>
                 <ul className='list-disc pl-5 text-[13px] sm:text-[14px] xl:text-[15px] text-gray-700'>
                   {product.taglines.map((tag, i) => (
@@ -882,7 +885,7 @@ export default function FeaturedProductCard({
                   ))}
                 </ul>
               </div>
-            )}
+            )} */}
           </div>
 
           {/* Variant Selection (separate logic for microfiber and regular) */}

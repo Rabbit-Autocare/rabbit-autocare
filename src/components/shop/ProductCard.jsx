@@ -14,9 +14,9 @@ export default function ProductCard({ product, index }) {
   const { user } = useAuth();
   const router = useRouter();
   const [hasImageError, setHasImageError] = useState(false);
-  // Remove all wishlist-related state and logic
   const [wishlistLoading, setWishlistLoading] = useState(false);
   const [wishlistItemId, setWishlistItemId] = useState(null);
+  const [isHovered, setIsHovered] = useState(false);
 
   console.log('[ProductCard] user from useCart:', user);
 
@@ -25,12 +25,6 @@ export default function ProductCard({ product, index }) {
     console.error('ProductCard received null/undefined product');
     return null;
   }
-
-  // Remove wishlist imports
-  // Remove wishlist state, useEffect, and handlers
-  // Remove wishlist button and heart icon from the render
-  // Change the main button to 'View in Detail' and make it only navigate to the product detail page
-  // Remove the absolute heart icon button from the card
 
   const handleImageError = () => {
     console.log('Image error for product:', product.name);
@@ -114,6 +108,7 @@ export default function ProductCard({ product, index }) {
       return ((h >>> 0) % 10000) / 10000;
     };
   }
+
   // Generate deterministic ratings array for a product
   function generateDeterministicRatings(product) {
     const seed = String(product.product_code || product.id || product.name || 'default');
@@ -150,13 +145,6 @@ export default function ProductCard({ product, index }) {
     router.push(`/products/${productIdentifier}`);
   };
 
-  // Remove all wishlist-related state and logic
-  // Remove wishlist imports
-  // Remove wishlist state, useEffect, and handlers
-  // Remove wishlist button and heart icon from the render
-  // Change the main button to 'View in Detail' and make it only navigate to the product detail page
-  // Remove the absolute heart icon button from the card
-
   // Format product name with fallback
   const productName = product.name || product.title || `Product ${index + 1}`;
 
@@ -170,19 +158,22 @@ export default function ProductCard({ product, index }) {
 
   return (
     <div
-      className='bg-white overflow-hidden hover:shadow-sm transition-shadow duration-300 flex flex-col cursor-pointer relative border border-gray-200 rounded-sm '
-      style={{ width: '300px', height: '470px' }}
+      className='bg-white overflow-hidden hover:shadow-2xl transition-all duration-300 ease-in-out flex flex-col cursor-pointer relative border border-gray-200 rounded-sm transform hover:-translate-y-1'
+      style={{ width: '300px', height: '480px' }}
       onClick={handleViewProduct}
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
     >
-
-      {/* Product Image - Full width */}
-      <div className='relative h-56 w-full bg-gray-50 flex-shrink-0'>
+      {/* Product Image - Full width with zoom effect */}
+      <div className='relative h-56 w-full bg-gray-50 flex-shrink-0 overflow-hidden'>
         {imageUrl && !hasImageError ? (
           <Image
             src={imageUrl}
             alt={productName}
             fill
-            className='object-cover'
+            className={`object-cover object-top transition-transform duration-500 ease-in-out ${
+              isHovered ? 'scale-110' : 'scale-100'
+            }`}
             onError={handleImageError}
             unoptimized={!imageUrl.startsWith('http')}
             sizes='300px'
@@ -209,45 +200,50 @@ export default function ProductCard({ product, index }) {
         )}
       </div>
 
-      {/* Product Details - Compact layout matching reference */}
-      <div className='px-4 py-3 flex flex-col flex-grow'>
-        {/* Product Title and Rating */}
-        <div className="flex flex-col gap-1 mb-2">
-          <h3 className="font-semibold text-base line-clamp-2">{product.name}</h3>
+      {/* Product Details - Even spacing with flex distribution */}
+      <div className='px-5 py-4 flex flex-col flex-grow justify-between'>
+        {/* Top Section: Title and Rating */}
+        <div className="flex flex-col gap-2 mb-3">
+          <h3 className="font-semibold text-base line-clamp-2 leading-tight">{product.name}</h3>
           <ProductRating ratings={ratings} size={16} showCount={true} />
         </div>
 
-        {/* Description - Single line only */}
-        <p className='text-sm text-gray-600 mb-4 line-clamp-1 leading-relaxed'>
-          {description}
-        </p>
+        {/* Middle Section: Description */}
+        <div className="flex-grow flex items-start mb-4">
+          <p className='text-sm text-gray-600 line-clamp-2 leading-relaxed'>
+            {description}
+          </p>
+        </div>
 
-        {/* Price and Button - Fixed at Bottom */}
-        <div className='mt-auto'>
-          <hr className='border-gray-700 mb-4' />
-          <div className='flex items-center justify-between mb-3'>
-            <div className='flex items-baseline'>
+        {/* Bottom Section: Price and Button - Fixed at Bottom */}
+        <div className='space-y-4'>
+          <hr className='border-gray-200' />
+
+          <div className='flex items-center justify-between'>
+            <div className='flex items-baseline gap-2'>
               <span className='text-xl font-bold text-gray-900'>
                 ₹{maxPrice || 0}
               </span>
               {product.originalPrice && product.originalPrice > maxPrice && (
-                <span className='ml-2 text-sm text-gray-400 line-through'>
+                <span className='text-sm text-gray-400 line-through'>
                   ₹{product.originalPrice}
                 </span>
               )}
             </div>
           </div>
 
-          {/* Add to Shine List Button */}
+          {/* View in Detail Button with purple hover */}
           <button
-            className='w-full bg-gray-900 text-white py-2.5 px-4 rounded-sm text-sm font-medium hover:bg-gray-800 transition-all duration-200 flex items-center justify-center gap-2'
-            onClick={(e) => { e.stopPropagation(); handleViewProduct(); }}
+            className='w-full bg-gray-900 text-white py-3 px-4 rounded-sm text-sm font-medium hover:bg-[#601e8d] hover:text-white transition-all duration-300 ease-in-out flex items-center justify-center gap-2 transform hover:scale-[1.02] active:scale-[0.98]'
+            onClick={(e) => {
+              e.stopPropagation();
+              handleViewProduct();
+            }}
           >
             View in Detail
           </button>
         </div>
       </div>
-      {/* Remove the absolute heart icon button from the card */}
     </div>
   );
 }

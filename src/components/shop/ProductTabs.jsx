@@ -3,81 +3,18 @@
 import { useState } from "react"
 import { Star, ChevronDown } from "lucide-react"
 import ProductRating from "@/components/ui/ProductRating"
+import testimonialsData from '@/data/testimonials.json'
+import faqsData from '@/data/faqs.json'
+
+const { testimonials } = testimonialsData;
+const { faqs: defaultFaqs } = faqsData;
 
 export default function ProductTabs({ product, reviews = [], faqs = [] }) {
   const [activeTab, setActiveTab] = useState("details")
   const [openFaq, setOpenFaq] = useState(null)
 
-  // Generate sample FAQs if none provided
-  const displayFaqs =
-    faqs.length > 0
-      ? faqs
-      : [
-          {
-            question: "What is return policy?",
-            answer:
-              "We offer a 30-day return policy on all our products. If you're not satisfied, you can return the item for a full refund.",
-          },
-          {
-            question: "How is your shipping policy?",
-            answer:
-              "We offer free shipping on all orders above ₹500. Orders are typically processed within 1-2 business days.",
-          },
-          {
-            question: "What is the warranty period?",
-            answer: "All our products come with a standard 1-year warranty against manufacturing defects.",
-          },
-          {
-            question: "Are your products eco-friendly?",
-            answer:
-              "Yes, we strive to make our products as eco-friendly as possible, using sustainable materials and manufacturing processes.",
-          },
-        ]
-
-  // Generate sample reviews if none provided
-  const displayReviews =
-    reviews.length > 0
-      ? reviews
-      : [
-          {
-            id: "1",
-            name: "John D.",
-            rating: 5,
-            date: "August 15, 2023",
-            comment: "I'm really happy with this product. It works exactly as described and the quality is excellent.",
-          },
-          {
-            id: "2",
-            name: "Sarah M.",
-            rating: 4,
-            date: "July 28, 2023",
-            comment: "Good product overall. Shipping was fast and the product works well. Would recommend.",
-          },
-          {
-            id: "3",
-            name: "Michael T.",
-            rating: 5,
-            date: "June 12, 2023",
-            comment: "Excellent quality and great value for money. Will definitely purchase again.",
-          },
-          {
-            id: "4",
-            name: "Emily R.",
-            rating: 4,
-            date: "May 30, 2023",
-            comment: "Very satisfied with my purchase. The product is durable and works as expected.",
-          },
-        ]
-
-  const tabs = [
-    { id: "details", label: "Product Details" },
-    { id: "reviews", label: "Ratings & Reviews" },
-    { id: "faqs", label: "FAQs" },
-  ]
-
-  const toggleFaq = (index) => {
-    setOpenFaq(openFaq === index ? null : index)
-  }
+  // Use provided FAQs or default to the imported ones
+  const displayFaqs = faqs.length > 0 ? faqs : defaultFaqs;
 
   // Deterministic pseudo-random generator based on a string seed
   function seededRandom(seed) {
@@ -93,6 +30,64 @@ export default function ProductTabs({ product, reviews = [], faqs = [] }) {
       return ((h >>> 0) % 10000) / 10000;
     };
   }
+
+  // Generate deterministic dates between July 24-27, 2025
+  const generateDeterministicDate = (seed, index) => {
+    const rand = seededRandom(seed + index);
+    const dates = [
+      "July 24, 2025",
+      "July 25, 2025",
+      "July 26, 2025",
+      "July 27, 2025"
+    ];
+    return dates[Math.floor(rand() * dates.length)];
+  };
+
+  // Shuffle testimonials deterministically based on product
+  const shuffleTestimonials = (product) => {
+    const seed = String(product.product_code || product.id || product.name || 'default');
+    const rand = seededRandom(seed);
+    const shuffled = [...testimonials];
+
+    // Fisher-Yates shuffle with deterministic random
+    for (let i = shuffled.length - 1; i > 0; i--) {
+      const j = Math.floor(rand() * (i + 1));
+      [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+    }
+
+    return shuffled;
+  };
+
+  // Convert testimonials to reviews format for the reviews tab
+  const convertTestimonialsToReviews = () => {
+    const shuffledTestimonials = shuffleTestimonials(product);
+    const productSeed = String(product.product_code || product.id || product.name || 'default');
+
+    return shuffledTestimonials.slice(0, 4).map((testimonial, index) => {
+      const rand = seededRandom(productSeed + testimonial.id);
+      return {
+        id: testimonial.id,
+        name: testimonial.name,
+        rating: Math.floor(rand() * 2) + 4, // Random rating between 4-5
+        date: generateDeterministicDate(productSeed, index),
+        comment: testimonial.text
+      };
+    });
+  };
+
+  // Use provided reviews or convert testimonials
+  const displayReviews = reviews.length > 0 ? reviews.slice(0, 4) : convertTestimonialsToReviews();
+
+  const tabs = [
+    { id: "details", label: "Product Details" },
+    { id: "reviews", label: "Ratings & Reviews" },
+    { id: "faqs", label: "FAQs" },
+  ]
+
+  const toggleFaq = (index) => {
+    setOpenFaq(openFaq === index ? null : index)
+  }
+
   // Generate deterministic ratings array for a product
   function generateDeterministicRatings(product) {
     const seed = String(product.product_code || product.id || product.name || 'default');
@@ -111,40 +106,8 @@ export default function ProductTabs({ product, reviews = [], faqs = [] }) {
     }
     return ratings;
   }
+
   const ratings = generateDeterministicRatings(product);
-  const avgRating = Math.round((ratings.reduce((a, b) => a + b, 0) / ratings.length) * 2) / 2;
-  // Indian-style reviews, ratings spread around avgRating
-  const reviewStars = [avgRating, Math.max(4, avgRating - 0.5), Math.min(5, avgRating + 0.5), avgRating];
-  const indianReviews = [
-    {
-      id: 1,
-      name: "Rahul Sharma",
-      rating: reviewStars[0],
-      date: "April 10, 2024",
-      comment: "Very good product for my car. The shine lasts long and it is easy to use. Value for money! Highly recommended for all car lovers.",
-    },
-    {
-      id: 2,
-      name: "Priya Nair",
-      rating: reviewStars[1],
-      date: "March 28, 2024",
-      comment: "I used this kit before a family road trip. My car interior looks brand new! The fragrance is also pleasant. Will buy again.",
-    },
-    {
-      id: 3,
-      name: "Amitabh Singh",
-      rating: reviewStars[2],
-      date: "March 15, 2024",
-      comment: "Best car care kit I have tried so far. The microfiber cloth is of premium quality and the cleaner works well on tough stains.",
-    },
-    {
-      id: 4,
-      name: "Sneha Patil",
-      rating: reviewStars[3],
-      date: "February 27, 2024",
-      comment: "Excellent results! My car dashboard and seats are shining. Delivery was quick and packaging was good. Go for it!",
-    },
-  ];
 
   return (
     <div className="mt-12">
@@ -235,17 +198,18 @@ export default function ProductTabs({ product, reviews = [], faqs = [] }) {
                 </ol>
               </div>
             )}
-            {/* Warnings */}
+
+            {/* Warnings - Updated to match image style */}
             {product.warnings && product.warnings.length > 0 && (
               <div className="mb-6">
-                <div className="text-base font-bold text-gray-800 mb-2 border-b border-gray-200 pb-1 tracking-wide">Warnings</div>
-                <ul className="list-disc pl-5 space-y-2">
+                <div className="text-base font-bold text-gray-800 mb-3 border-b border-gray-200 pb-1 tracking-wide">Warnings</div>
+                <div className="bg-rose-50 border-l-4 border-red-400 p-4 space-y-3">
                   {product.warnings.map((warn, i) => (
-                    <li key={i} className="bg-red-50 border-l-4 border-red-400 text-red-700 px-3 py-1 rounded flex items-center gap-2 text-[15px]">
-                      <span className="text-red-500 font-bold text-lg">⚠️</span> {warn}
-                    </li>
+                    <p key={i} className="text-red-800 text-[15px] leading-relaxed">
+                      {warn}
+                    </p>
                   ))}
-                </ul>
+                </div>
               </div>
             )}
           </div>
@@ -256,7 +220,7 @@ export default function ProductTabs({ product, reviews = [], faqs = [] }) {
             <h3 className="text-lg font-semibold mb-4">Customer Reviews</h3>
             <ProductRating ratings={ratings} size={20} showCount={true} />
             <div className="grid gap-6 md:grid-cols-2">
-              {indianReviews.map((review) => (
+              {displayReviews.map((review) => (
                 <div key={review.id} className="border rounded-lg p-4">
                   <div className="flex items-center justify-between mb-2">
                     <div className="flex items-center gap-0.5">
@@ -283,7 +247,7 @@ export default function ProductTabs({ product, reviews = [], faqs = [] }) {
 
             <div className="space-y-2">
               {displayFaqs.map((faq, index) => (
-                <div key={index} className="border border-gray-200 rounded-lg">
+                <div key={faq.id || index} className="border border-gray-200 rounded-lg">
                   <button
                     onClick={() => toggleFaq(index)}
                     className="w-full px-4 py-3 text-left flex items-center justify-between hover:bg-gray-50 transition-colors"

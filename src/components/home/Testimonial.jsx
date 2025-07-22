@@ -4,161 +4,9 @@ import React, { useRef, useState, useEffect } from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import gsap from 'gsap';
 import Image from 'next/image';
-const testimonials = [
-  {
-    id: 1,
-    name: 'Mridul Prabhakar',
-    city: 'Delhi',
-    text: 'I have been personally using it for my car and the results are very appreciative.',
-    avatar: '/assets/testimonial1.svg',
-    quote: '/assets/testimonial2.svg',
-  },
-  {
-    id: 2,
-    name: 'Vansh Arora',
-    city: 'Noida',
-    text: 'Wow! Loved the branding, the colour of the bottles and the logo grabs all my eyes. Truly loved the branding. And product quality is also premium. I am using it on my car, activa and even in home.',
-    avatar: '/assets/testimonial1.svg',
-    quote: '/assets/testimonial2.svg',
-  },
-  {
-    id: 3,
-    name: 'Rohit Grover',
-    city: 'Mumbai',
-    text: 'Nice products, premium packaging, though my order delayed by a day but completely worth waiting.',
-    avatar: '/assets/testimonial1.svg',
-    quote: '/assets/testimonial2.svg',
-  },
-  {
-    id: 4,
-    name: 'Saumya Chauhan',
-    city: 'Jaipur',
-    text: 'Amazing branding, India is growing crazily. Premium car care products by an Indian. Feel so proud.',
-    avatar: '/assets/testimonial1.svg',
-    quote: '/assets/testimonial2.svg',
-  },
-  {
-    id: 5,
-    name: 'Khushi Chaudhary',
-    city: 'Kolkata',
-    text: 'I tried their silicone glaze for my bike and car. Amazing results, all the black parts restored and shine is not even greasy.',
-    avatar: '/assets/testimonial1.svg',
-    quote: '/assets/testimonial2.svg',
-  },
-  {
-    id: 6,
-    name: 'Prachi Tiwari',
-    city: 'Hyderabad',
-    text: 'I am a car lover, so I tried them as I loved their packaging. Products are good and feel premium. I bought the kit so get everything at a best price. Other brands are too expensive but I can say they offer somewhat same quality at a very affordable price according to indian market.',
-    avatar: '/assets/testimonial1.svg',
-    quote: '/assets/testimonial2.svg',
-  },
-  {
-    id: 7,
-    name: 'Ojasvi Pawar',
-    city: 'Pune',
-    text: 'I bought their product as their logo catch my eye. It brings the black shine back. It feels like I get a new activa. I am also using that dresser for my black nike shoes and it’s perfect.',
-    avatar: '/assets/testimonial1.svg',
-    quote: '/assets/testimonial2.svg',
-  },
-  {
-    id: 8,
-    name: 'Himanshi Saharan',
-    city: 'Chandigarh',
-    text: 'Microfibres are so confusing to buy. They have so many varieties. So, I bought 3 diff ones 380, 800, 1200. The quality is really good. Leaves no water marks behind. Much better than the one I was using earlier.',
-    avatar: '/assets/testimonial1.svg',
-    quote: '/assets/testimonial2.svg',
-  },
-  {
-    id: 9,
-    name: 'Sukriti Mann',
-    city: 'Delhi',
-    text: 'Bought Car shampoo and silicon glaze dresser. Shampoo works really good, cleans effectively and makes thick foam. Dresser is also premium and gives black shiny finish. My black Kia Seltos looks new again now. Loved there products.',
-    avatar: '/assets/testimonial1.svg',
-    quote: '/assets/testimonial2.svg',
-  },
-  {
-    id: 10,
-    name: 'Manan Madan',
-    city: 'Gurugram',
-    text: 'I ordered microfibre, glass cleaner. But my home is using it instead to clean the home. Turned it into home care instead😂.',
-    avatar: '/assets/testimonial1.svg',
-    quote: '/assets/testimonial2.svg',
-  },
-  {
-    id: 11,
-    name: 'Sahil Mittal',
-    city: 'Kurukshetra',
-    text: 'My car looked better than ever after using these products. Love them.',
-    avatar: '/assets/testimonial1.svg',
-    quote: '/assets/testimonial2.svg',
-  },
-  {
-    id: 12,
-    name: 'Himanshu Singla',
-    city: 'Chandigarh',
-    text: 'Seeing my car all glossy and shiny after the foam washed off has to be the most satisfying thing ever🫧',
-    avatar: '/assets/testimonial1.svg',
-    quote: '/assets/testimonial2.svg',
-  },
-  {
-    id: 13,
-    name: 'Deepanshu Singla',
-    city: 'Karnal',
-    text: 'My car smelled so good on the inside after using them, for once I didn\'t feel the need to use an air freshener🙂‍↕',
-    avatar: '/assets/testimonial1.svg',
-    quote: '/assets/testimonial2.svg',
-  },
-  {
-    id: 14,
-    name: 'Ridham Singla',
-    city: 'Kurukshetra',
-    text: 'I’ve tried a bunch of car shampoos over the years, but this one really stands out — not just because of how well it cleans, but because of cleaning satisfaction, thick foam and amazing fragrance.',
-    avatar: '/assets/testimonial1.svg',
-    quote: '/assets/testimonial2.svg',
-  },
-  {
-    id: 15,
-    name: 'Dev Mittal',
-    city: 'Chandigarh',
-    text: 'Super easy to use with no mess, no hassle. Foams well, smells fresh, and rinses off without streaks. Perfect for quick, effortless car washes every day!',
-    avatar: '/assets/testimonial1.svg',
-    quote: '/assets/testimonial2.svg',
-  },
-  // {
-  //   id: 16,
-  //   name: 'Shivangi Gupta',
-  //   city: 'Pune',
-  //   text: '',
-  //   avatar: '/assets/testimonial1.svg',
-  //   quote: '/assets/testimonial2.svg',
-  // },
-  // {
-  //   id: 17,
-  //   name: 'Nikita Negi',
-  //   city: 'Pune',
-  //   text: '',
-  //   avatar: '/assets/testimonial1.svg',
-  //   quote: '/assets/testimonial2.svg',
-  // },
-  // {
-  //   id: 18,
-  //   name: 'Yashika Atreja',
-  //   city: 'Gurugram',
-  //   text: '',
-  //   avatar: '/assets/testimonial1.svg',
-  //   quote: '/assets/testimonial2.svg',
-  // },
-  // {
-  //   id: 19,
-  //   name: 'Janmanshi',
-  //   city: 'Mumbai',
-  //   text: '',
-  //   avatar: '/assets/testimonial1.svg',
-  //   quote: '/assets/testimonial2.svg',
-  // },
-];
+import testimonialsData from '@/data/testimonials.json';
 
+const { testimonials } = testimonialsData;
 
 export default function Testimonial() {
   const containerRef = useRef(null);
@@ -276,8 +124,8 @@ export default function Testimonial() {
       <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center mb-8 gap-4">
         <h2 className="text-[28px] md:text-[42px] tracking-wide font-bold">Our Testimonials</h2>
         <p className="max-w-md tracking-wide text-[14px] md:text-[16px] font-normal text-black leading-relaxed">
-        We don’t like to brag — so we let our detailers do it for us.
-From driveway flexes to Sunday show-offs, they’re loving the Rabbit touch.✨
+        We don't like to brag — so we let our detailers do it for us.
+From driveway flexes to Sunday show-offs, they're loving the Rabbit touch.✨
 Real results. Real obsession. Real clean.
         </p>
       </div>

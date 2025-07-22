@@ -1,0 +1,64 @@
+{
+    "faqs": [
+      {
+        "id": 1,
+        "question": "What is your return policy?",
+        "answer": "We offer returns on eligible products. The return period is individually mentioned on each product's description page. Returns are only accepted if the 'VOID' sticker is intact and the product is sealed. Microfibers are strictly non-returnable and non-exchangeable."
+      },
+      {
+        "id": 2,
+        "question": "How long does shipping take?",
+        "answer": "For prepaid orders, we usually ship within 1-2 days of order confirmation. For COD orders, shipment may take 2-3 days. We ship through trusted courier partners like Shiprocket, and delivery timing varies by location and pincode."
+      },
+      {
+        "id": 3,
+        "question": "What payment methods do you accept?",
+        "answer": "We accept payments through Razorpay payment gateway, which supports various payment modes including cards, UPI, net banking, and wallets. We also offer Cash on Delivery (COD) option. All transactions are in Indian Rupees."
+      },
+      {
+        "id": 4,
+        "question": "Can I cancel my order?",
+        "answer": "You can cancel your order before shipment. For prepaid orders, you'll receive a full refund. We also reserve the right to cancel any order at our discretion, with refund provided for prepaid orders."
+      },
+      {
+        "id": 5,
+        "question": "How do exchanges work?",
+        "answer": "Exchanges are allowed for eligible products within the specified period. If the exchange product has different pricing, we'll either refund the difference or you'll need to pay the balance amount. Exchange costs are borne by the customer."
+      },
+      {
+        "id": 6,
+        "question": "What if my product arrives damaged?",
+        "answer": "If you receive a damaged product, please contact us at help@rabbitautocare.com with photographs. We'll assist with returns or exchanges as per our policy. Our courier partners may decline damaged returns if tampering is suspected."
+      },
+      {
+        "id": 7,
+        "question": "Do you offer bulk or B2B pricing?",
+        "answer": "Yes, we offer our products to both commercial and non-commercial users - business to business (B2B) and direct to consumer. Contact us for bulk pricing and commercial arrangements."
+      },
+      {
+        "id": 8,
+        "question": "What are your business hours?",
+        "answer": "We're available from 10 AM to 5 PM, Monday to Friday. Saturday and Sunday are non-working days. You can reach us at help@rabbitautocare.com or use the chatbox on our website. We typically respond within 1-5 working days."
+      },
+      {
+        "id": 9,
+        "question": "How is my personal information protected?",
+        "answer": "We use modern encryption techniques to protect your information. Personal data is shared only on a need-to-know basis with our team, logistics partners, and payment processors. We comply with applicable data protection laws."
+      },
+      {
+        "id": 10,
+        "question": "Are there any age restrictions?",
+        "answer": "Our website is intended for users above 18 years of age. We are not directed towards minors. If minor's information is inadvertently collected, please notify us immediately for deletion within 7 working days."
+      },
+      {
+        "id": 11,
+        "question": "What happens if I order above ₹2 lakh?",
+        "answer": "For transactions above ₹2 lakh, you need to provide a copy of your PAN card within 3 business days. The order will only be dispatched after PAN card verification. The PAN details must match your provided information."
+      },
+      {
+        "id": 12,
+        "question": "Can I change my delivery address after placing order?",
+        "answer": "Address changes after shipping are generally not possible. However, we may entertain address change requests at our sole discretion if the order hasn't been shipped yet. Contact us immediately if needed."
+      }
+    ]
+  }

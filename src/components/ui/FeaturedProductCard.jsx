@@ -17,6 +17,8 @@ export default function FeaturedProductCard({
   isLastCard = false,
 }) {
   // Only use user from useCart context
+  const LOW_STOCK_THRESHOLD = 20; // Define what constitutes "low stock"
+
   const { addToCart, openCart } = useCart();
   const { user } = useAuth();
   const router = useRouter();
@@ -957,65 +959,58 @@ export default function FeaturedProductCard({
               )}
             </div>
           )}
-          {isMicrofiber && selectedSize && selectedPackSize && (
-            <div className='text-xs text-gray-600'>
-              {(() => {
-                const variant = getVariantForCombination(selectedSize, selectedPackSize); // REMOVE color
-                if (variant && variant.stock > 0) {
-                  return (
-                    <span className='text-green-600'>
-                      {variant.stock} in stock
-                    </span>
-                  );
-                } else {
-                  return <span className='text-red-600'>Out of stock</span>;
-                }
-              })()}
-            </div>
-          )}
+         {isMicrofiber && selectedSize && selectedPackSize && (
+  <div className='text-xs text-gray-600'>
+    {(() => {
+      const variant = getVariantForCombination(selectedSize, selectedPackSize);
+      if (variant && variant.stock > 0) {
+        if (variant.stock <= LOW_STOCK_THRESHOLD) {
+          return (
+            <span className='text-orange-600 font-medium'>
+              Only {variant.stock} left in stock
+            </span>
+          );
+        } else {
+          return (
+            <span className='text-green-600'>
+              In Stock
+            </span>
+          );
+        }
+      } else {
+        return <span className='text-red-600'>Out of stock</span>;
+      }
+    })()}
+  </div>
+)}
+
 
           {/* Stock indicator for non-microfiber selected variant */}
-          {!isMicrofiber && allVariants.length > 0 && (
-            <div className='space-y-2 sm:space-y-3'>
-              <h4 className='font-medium text-xs xs:text-sm'>Choose Quantity:</h4>
-              <div className='flex flex-wrap gap-1 xs:gap-2'>
-                {allVariants.map((variant, index) => {
-                  const isOutOfStock = variant.stock === 0;
-                  const isSelected = selectedVariant?.id === variant.id;
-                  const quantity = variant.quantity || variant.size || '';
-                  const unit = variant.unit || '';
-                  return (
-                    <div key={variant.id || index} className='relative group'>
-                      <button
-                        onClick={() => handleVariantSelect(variant)}
-                        disabled={isOutOfStock}
-                        className={`
-                          px-2 py-1 xs:px-3 xs:py-2 sm:px-4 sm:py-2 text-xs xs:text-sm font-medium transition-all duration-200 rounded-full
-                          ${
-                            isSelected
-                              ? 'bg-white text-black border-2 border-black'
-                              : isOutOfStock
-                              ? 'bg-gray-100 text-gray-400 cursor-not-allowed border border-gray-200'
-                              : 'bg-gray-100 text-gray-600 hover:bg-gray-200 border border-transparent'
-                          }
-                        `}
-                      >
-                        <span>{`${quantity}${unit}`}</span>
-                      </button>
-                      {isOutOfStock && (
-                        <div className='absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none'>
-                          <div className='bg-red-500 text-white rounded-full p-1'>
-                            <X className='w-2 h-2 xs:w-3 xs:h-3' />
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          )}
           {!isMicrofiber && selectedVariant && (
+  <div className='text-xs text-gray-600'>
+    {(() => {
+      if (selectedVariant.stock > 0) {
+        if (selectedVariant.stock <= LOW_STOCK_THRESHOLD) {
+          return (
+            <span className='text-orange-600 font-medium'>
+              Only {selectedVariant.stock} left in stock
+            </span>
+          );
+        } else {
+          return (
+            <span className='text-green-600'>
+              In Stock
+            </span>
+          );
+        }
+      } else {
+        return <span className='text-red-600'>Out of stock</span>;
+      }
+    })()}
+  </div>
+)}
+
+          {/* {!isMicrofiber && selectedVariant && (
             <div className='text-xs text-gray-600'>
               {selectedVariant.stock > 0 ? (
                 <span className='text-green-600'>
@@ -1025,7 +1020,7 @@ export default function FeaturedProductCard({
                 <span className='text-red-600'>Out of stock</span>
               )}
             </div>
-          )}
+          )} */}
 
           {/* Action Buttons */}
           <div className='space-y-2 xl:space-y-4 relative z-10 mt-4 sm:mt-6'>

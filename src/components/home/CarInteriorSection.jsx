@@ -16,9 +16,12 @@ const categoryDisplayNames = {
   "microfiber-cloth": "Microfibers",
   "car-interior": "Car Interior",
   "car-exterior": "Car Exterior",
-  "kits-combos": "Kits & Combos",
+  "kits&combos": "Kits & Combos",
   // Add more as needed
 };
+
+// Default titles that match the display names
+const defaultTitles = ["Car Interior", "Car Exterior", "Microfibers", "Kits & Combos"];
 
 export default function CarInteriorSection({ initialCategories = [], initialError = null }) {
   const { categories: fetchedCategories, loading: isLoading, error } = useCategories(initialCategories, initialError);
@@ -28,7 +31,8 @@ export default function CarInteriorSection({ initialCategories = [], initialErro
   const containerRef = useRef(null)
   const [isAnimating, setIsAnimating] = useState(false)
   const [isMobile, setIsMobile] = useState(false)
-  const [titles, setTitles] = useState(["Interior", "Exterior", "Fiber Cloth", "Kits & Combos"])
+  // Fixed: Use consistent default titles with proper spacing
+  const [titles, setTitles] = useState(defaultTitles)
   const [categories, setCategories] = useState([])
 
   const router = useRouter()
@@ -46,13 +50,19 @@ export default function CarInteriorSection({ initialCategories = [], initialErro
   useEffect(() => {
     if (fetchedCategories && fetchedCategories.length > 0) {
       setCategories(fetchedCategories)
-      const categoryNames = fetchedCategories.map((category) => categoryDisplayNames[category.name] || category.name)
+      // Fixed: Ensure proper display names are always used
+      const categoryNames = fetchedCategories.map((category) => {
+        return categoryDisplayNames[category.name] ||
+               category.displayName ||
+               category.name
+      })
       setTitles(categoryNames)
       console.log('[DEBUG] CarInteriorSection: Categories updated from hook:', fetchedCategories)
+    } else {
+      // Fixed: Fallback to default titles with proper spacing
+      setTitles(defaultTitles)
     }
   }, [fetchedCategories])
-
-  // No need for displayedTitle state, always use titles[current]
 
   // Get the visible cards with infinite loop support
   const getVisibleCards = () => {
@@ -270,13 +280,13 @@ export default function CarInteriorSection({ initialCategories = [], initialErro
             <button
               onClick={prev}
               disabled={isAnimating || isLoading}
-              className="absolute left-0 text-4xl w-10 h-10 flex items-center justify-center md:mt-10 xl:mt-10 cursor-pointer  "
+              className="absolute left-0 text-4xl w-10 h-10 flex items-center justify-center md:mt-10 xl:mt-10 cursor-pointer"
             >
               ‹
             </button>
 
             <p
-              className="text-2xl  tracking-wider md:mt-10 xl:mt-10 font-bold text-black text-center mx-12 whitespace-nowrap overflow-hidden text-ellipsis cursor-pointer hover:text-[#601e8d]"
+              className="text-2xl tracking-wider md:mt-10 xl:mt-10 font-bold text-black text-center mx-12 whitespace-nowrap overflow-hidden text-ellipsis cursor-pointer hover:text-[#601e8d]"
               style={{
                 maxWidth: isMobile ? "292px" : "558px",
               }}
@@ -288,7 +298,7 @@ export default function CarInteriorSection({ initialCategories = [], initialErro
             <button
               onClick={next}
               disabled={isAnimating || isLoading}
-              className="absolute right-0 text-4xl w-10 h-10 flex items-center justify-center md:mt-10 xl:mt-10 cursor-pointer  "
+              className="absolute right-0 text-4xl w-10 h-10 flex items-center  justify-center md:mt-10 xl:mt-10 cursor-pointer"
             >
               ›
             </button>
@@ -296,7 +306,7 @@ export default function CarInteriorSection({ initialCategories = [], initialErro
         </div>
 
         {/* Position Indicator */}
-        <div className="flex justify-center mt-4 space-x-2">
+        {/* <div className="flex justify-center mt-4 space-x-2">
           {images.map((_, index) => (
             <div
               key={index}
@@ -305,7 +315,7 @@ export default function CarInteriorSection({ initialCategories = [], initialErro
               }`}
             />
           ))}
-        </div>
+        </div> */}
       </div>
     </LoadingErrorBoundary>
   )

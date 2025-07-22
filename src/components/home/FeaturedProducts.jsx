@@ -300,6 +300,12 @@ export default function FeaturedProducts() {
     }
   };
 
+  // NEW: Handle card click to navigate to product detail page
+  const handleCardClick = (product) => {
+    // Navigate to product detail page using product ID or slug
+    router.push(`/product/${product.id}`); // or `/products/${product.slug}` if you use slugs
+  };
+
   if (loading) {
     return (
       <div className='w-full min-h-[600px] flex items-center justify-center'>
@@ -357,8 +363,12 @@ export default function FeaturedProducts() {
             onAddToCart={handleAddToCart}
             onBuyNow={handleBuyNow}
             onAddToWishlist={handleAddToWishlist}
+            // NEW: Add the card click handler - only for home page
+            onCardClick={handleCardClick}
             className='w-full'
             isLastCard={idx === products.length - 1}
+            // NEW: Pass a flag to indicate this is on the home page
+            showClickableArea={true}
           />
         </div>
       ))}

@@ -4,7 +4,7 @@ import { useCart } from '@/hooks/useCart';
 import CartItem from './CartItem';
 import CouponSection from './CouponSection';
 import PriceSummary from './PriceSummary';
-import FrequentlyBoughtTogether from './FrequentlyBoughtTogether';
+// import FrequentlyBoughtTogether from './FrequentlyBoughtTogether';
 import Link from 'next/link';
 import { ShoppingCart, ChevronLeft } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -172,7 +172,7 @@ export default function CartDrawer() {
               )}
             </div>
 
-            <div
+            {/* <div
               style={{
                 flexShrink: 0,
                 backgroundColor: '#9333ea',
@@ -186,7 +186,7 @@ export default function CartDrawer() {
               }}
             >
               Save extra 5% on prepaid orders
-            </div>
+            </div> */}
 
             <div
               style={{
@@ -248,7 +248,7 @@ export default function CartDrawer() {
                     </div>
                   </div>
 
-                  <FrequentlyBoughtTogether />
+                  {/* <FrequentlyBoughtTogether /> */}
 
                   <CouponSection />
 

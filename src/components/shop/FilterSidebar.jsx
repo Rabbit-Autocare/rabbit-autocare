@@ -128,7 +128,7 @@ const FilterSidebar = ({
       <div className="space-y-4">
         {/* Categories */}
         <div>
-          <h3 className="text-lg md:text-xs font-medium text-gray-900 mb-2 uppercase">CATEGORY</h3>
+          <h3 className="text-lg md:text-sm  font-medium text-gray-900 mb-2 uppercase">CATEGORY</h3>
           <div className="space-y-1">
             {filterOptions.categories.map((cat) => {
               // Normalize both the current category and the category value for comparison
@@ -158,7 +158,7 @@ const FilterSidebar = ({
                     className="h-5 w-5 md:h-3 md:w-3 border-gray-300 focus:ring-purple-500"
                     style={{ accentColor: '#601e8d' }}
                   />
-                  <span className="ml-2 text-lg md:text-xs text-gray-700">{cat.label}</span>
+                  <span className="ml-2 text-lg md:text-sm  text-gray-700">{cat.label}</span>
                 </label>
               );
             })}
@@ -167,9 +167,9 @@ const FilterSidebar = ({
 
         {/* Rating */}
         <div>
-          <h3 className="text-lg md:text-xs font-medium text-gray-900 mb-2 uppercase">RATING</h3>
+          <h3 className="text-lg md:text-sm  font-medium text-gray-900 mb-2 uppercase">RATING</h3>
           <div className="space-y-1">
-            {[5, 4, 3, 2, 1].map((rating) => (
+            {[ 4, 3, 2, 1].map((rating) => (
               <label key={rating} className="ml-2 flex items-center">
                 <input
                   type="radio"
@@ -186,7 +186,7 @@ const FilterSidebar = ({
                       className={`h-5 w-5 md:h-3 md:w-3 ${i < rating ? "fill-yellow-400 text-yellow-400" : "text-gray-300"}`}
                     />
                   ))}
-                  <span className="ml-1 text-lg md:text-xs text-gray-700">& up</span>
+                  <span className="ml-1 text-lg md:text-sm  text-gray-700">& up</span>
                 </div>
               </label>
             ))}
@@ -195,7 +195,7 @@ const FilterSidebar = ({
 
         {/* Availability */}
         <div>
-          <h3 className="text-lg md:text-xs font-medium text-gray-900 mb-2 uppercase">AVAILABILITY</h3>
+          <h3 className="text-lg md:text-sm  font-medium text-gray-900 mb-2 uppercase">AVAILABILITY</h3>
           <label className="ml-2 flex items-center">
             <input
               type="checkbox"
@@ -204,15 +204,15 @@ const FilterSidebar = ({
               className="h-5 w-5 md:h-3 md:w-3 border-gray-300 focus:ring-purple-500"
               style={{ accentColor: '#601e8d' }}
             />
-            <span className="ml-2 text-lg md:text-xs text-gray-700">In Stock Only</span>
+            <span className="ml-2 text-lg md:text-sm  text-gray-700">In Stock Only</span>
           </label>
         </div>
 
         {/* Price Range */}
         <div>
-          <h3 className="text-sm md:text-xs font-medium text-gray-900 mb-2 uppercase">PRICE</h3>
+          <h3 className="text-sm md:text-sm  font-medium text-gray-900 mb-2 uppercase">PRICE</h3>
           <div className="space-y-2">
-            <div className="text-sm md:text-xs text-gray-600">
+            <div className="text-sm md:text-sm  text-gray-600">
               ₹{filterOptions.priceRange[0]} to ₹{priceRange[1]}
             </div>
             <div className="relative">
@@ -238,7 +238,7 @@ const FilterSidebar = ({
         {/* Size (for microfiber products) */}
         {showMicrofiberFilters && filterOptions.sizes.length > 0 && (
           <div>
-            <h3 className="text-lg md:text-xs font-medium text-gray-900 mb-2 uppercase">SIZE</h3>
+            <h3 className="text-lg md:text-sm  font-medium text-gray-900 mb-2 uppercase">SIZE</h3>
             <div className="space-y-1">
               {filterOptions.sizes.map((size) => (
                 <label key={size.id} className="ml-2 flex items-center">
@@ -255,7 +255,7 @@ const FilterSidebar = ({
                     className="h-5 w-5 md:h-3 md:w-3 border-gray-300 focus:ring-purple-500"
                     style={{ accentColor: '#601e8d' }}
                   />
-                  <span className="ml-2 text-lg md:text-xs text-gray-700">{size.name} cm</span>
+                  <span className="ml-2 text-lg md:text-sm  text-gray-700">{size.name} cm</span>
                 </label>
               ))}
             </div>
@@ -265,7 +265,7 @@ const FilterSidebar = ({
         {/* GSM (for microfiber products) */}
         {showMicrofiberFilters && filterOptions.gsmValues.length > 0 && (
           <div>
-            <h3 className="text-lg md:text-xs font-medium text-gray-900 mb-2 uppercase">GSM</h3>
+            <h3 className="text-lg md:text-sm  font-medium text-gray-900 mb-2 uppercase">GSM</h3>
             <div className="space-y-1">
               {filterOptions.gsmValues.map((gsm) => (
                 <label key={gsm.id} className="ml-2 flex items-center">
@@ -282,7 +282,7 @@ const FilterSidebar = ({
                     className="h-5 w-5 md:h-3 md:w-3 border-gray-300 focus:ring-purple-500"
                     style={{ accentColor: '#601e8d' }}
                   />
-                  <span className="ml-2 text-lg md:text-xs text-gray-700">{gsm.value} GSM</span>
+                  <span className="ml-2 text-lg md:text-sm  text-gray-700">{gsm.value} GSM</span>
                 </label>
               ))}
             </div>
@@ -292,7 +292,7 @@ const FilterSidebar = ({
         {/* Quantity (for non-microfiber products) */}
         {showCarCareFilters && filterOptions.quantities.length > 0 && (
           <div>
-            <h3 className="text-lg md:text-xs font-medium text-gray-900 mb-2 uppercase">QUANTITY</h3>
+            <h3 className="text-lg md:text-sm  font-medium text-gray-900 mb-2 uppercase">QUANTITY</h3>
             <div className="space-y-1">
               {filterOptions.quantities.map((quantity) => (
                 <label key={quantity.id} className="ml-2 flex items-center">
@@ -309,7 +309,7 @@ const FilterSidebar = ({
                     className="h-5 w-5 md:h-3 md:w-3 border-gray-300 focus:ring-purple-500"
                     style={{ accentColor: '#601e8d' }}
                   />
-                  <span className="ml-2 text-lg md:text-xs text-gray-700">{quantity.value}</span>
+                  <span className="ml-2 text-lg md:text-sm  text-gray-700">{quantity.value}</span>
                 </label>
               ))}
             </div>

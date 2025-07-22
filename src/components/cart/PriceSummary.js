@@ -72,15 +72,15 @@ export default function PriceSummary({ formatPrice }) {
 					<span>{formatPrice(subtotal)}</span>
 				</div>
 
-				<div className="flex justify-between">
+				{/* <div className="flex justify-between">
 					<span className="text-gray-600">GST Removed</span>
 					<span>{formatPrice(gstRemoved)}</span>
-				</div>
+				</div> */}
 
-				<div className="flex justify-between">
+				{/* <div className="flex justify-between">
 					<span className="text-gray-600">Base Price</span>
 					<span>{formatPrice(basePrice)}</span>
-				</div>
+				</div> */}
 
 				{discount > 0 && (
 					<div className="flex justify-between text-green-600">
@@ -89,15 +89,15 @@ export default function PriceSummary({ formatPrice }) {
 					</div>
 				)}
 
-				<div className="flex justify-between">
+				{/* <div className="flex justify-between">
 					<span className="text-gray-600">Discounted Base Price</span>
 					<span>{formatPrice(discountedBase)}</span>
-				</div>
+				</div> */}
 
-				<div className="flex justify-between">
+				{/* <div className="flex justify-between">
 					<span className="text-gray-600">Add GST Back</span>
 					<span>+{formatPrice(gstRemoved)}</span>
-				</div>
+				</div> */}
 
 				<div className="border-t pt-2 mt-2 flex justify-between font-medium">
 					<span>Total</span>

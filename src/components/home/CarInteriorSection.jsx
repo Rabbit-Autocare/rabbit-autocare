@@ -1,6 +1,7 @@
 "use client"
 import { useEffect, useRef, useState } from "react"
 import { useCategories } from "@/hooks/useCategories"
+import {ChevronLeft, ChevronRight} from "lucide-react"
 import { useRouter } from "next/navigation"
 import LoadingErrorBoundary from "@/components/ui/LoadingErrorBoundary"
 
@@ -282,7 +283,7 @@ export default function CarInteriorSection({ initialCategories = [], initialErro
               disabled={isAnimating || isLoading}
               className="absolute left-0 text-4xl w-10 h-10 flex items-center justify-center md:mt-10 xl:mt-10 cursor-pointer"
             >
-              ‹
+              <ChevronLeft strokeWidth={2} />
             </button>
 
             <p
@@ -300,7 +301,7 @@ export default function CarInteriorSection({ initialCategories = [], initialErro
               disabled={isAnimating || isLoading}
               className="absolute right-0 text-4xl w-10 h-10 flex items-center  justify-center md:mt-10 xl:mt-10 cursor-pointer"
             >
-              ›
+              <ChevronRight strokeWidth={2} />
             </button>
           </div>
         </div>

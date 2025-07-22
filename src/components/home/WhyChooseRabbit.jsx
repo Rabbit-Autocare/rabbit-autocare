@@ -8,19 +8,19 @@ export default function WhyChooseRabbit() {
       title: "Intentional Design",
       description:
         "Every bottle, cloth, and box is curated to flex — built for performance, styled for the shelf and socials.",
-      icon: "/assets/chooserabbit.svg",
+      icon: "/assets/about/img/1.png",
     },
     {
       title: "Premium Inside",
       description:
         "High-performance formulas and pro-level materials give your ride the glow-up it deserves — luxe feel, real results, no gimmicks.",
-      icon: "/assets/chooserabbit.svg",
+      icon: "/assets/about/img/2.png",
     },
     {
       title: "Detail Culture",
       description:
         "We're not just car care. We're an aesthetic. From drip to dashboard, it's about the vibe, the vision, the finish.",
-      icon: "/assets/chooserabbit.svg",
+      icon: "/assets/about/img/3.png",
     },
   ];
 

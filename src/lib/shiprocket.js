@@ -50,25 +50,27 @@ export async function createShiprocketOrder(orderData) {
   }
 }
 
+
 // 🔁 Convert internal order → Shiprocket format
 export function mapOrderToShiprocket(order) {
   const shipping = order.user_info?.shipping_address || {};
   const gstRate = 18;
+  const gstDecimal = gstRate / 100;
 
-  const totalQty = order.items.reduce((sum, item) => sum + item.quantity, 0);
-  const discountAmount = order.discount_amount || 0;
+  const deliveryCharge = Number(order.delivery_charge || 0);
+  const totalPaidByUser = Number(order.total || 0);
+  const totalProductValue = +(totalPaidByUser - deliveryCharge).toFixed(2);
+
+  const regularItems = order.items.filter(item => item.type !== 'combo' && item.type !== 'kit');
+  const totalQty = regularItems.reduce((sum, item) => sum + (item.quantity || 1), 0);
+
+  const perUnitPrice = totalQty > 0 ? +(totalProductValue / totalQty).toFixed(2) : 0;
 
   const orderItems = [];
 
   for (const item of order.items || []) {
     const quantity = item.quantity || 1;
     const isComboOrKit = item.type === 'combo' || item.type === 'kit';
-    const mrpInclGst = Number(item.base_price || item.compare_at_price || item.price || 0);
-
-    const unitDiscountInclGst = totalQty > 0 && discountAmount > 0
-      ? +(discountAmount / totalQty).toFixed(2)
-      : 0;
-
     const hsn = item.hsn || item.hsn_code || '34053000';
 
     let comboIncludes = '';
@@ -78,26 +80,30 @@ export function mapOrderToShiprocket(order) {
         .join('\n');
     }
 
+    const sellingPrice = isComboOrKit
+      ? Number(item.base_price || item.compare_at_price || item.price || 0)
+      : perUnitPrice;
+
     orderItems.push({
-      name: isComboOrKit ? `${item.name}\nIncludes:\n${comboIncludes}` : item.name || 'Unnamed',
-      sku: item.variant?.variant_code || item.product_code || item.sku || `SKU-${item.id}`,
+      name: isComboOrKit
+        ? `${item.name}\nIncludes:\n${comboIncludes}`
+        : item.name || 'Unnamed',
+      sku:
+        item.variant?.variant_code ||
+        item.product_code ||
+        item.sku ||
+        `SKU-${item.id}`,
       units: quantity,
-      selling_price: +mrpInclGst.toFixed(2),
-      discount: +unitDiscountInclGst.toFixed(2),
+      selling_price: +sellingPrice.toFixed(2),
+      discount: 0,
       hsn,
-      tax: gstRate
+      tax: gstRate,
     });
   }
 
-  const deliveryCharge = Number(order.delivery_charge || 0);
-
+  // 🧮 Subtotal is sum of (price × quantity)
   const subTotal = orderItems.reduce(
-    (sum, i) => sum + ((i.selling_price - i.discount) * i.units),
-    0
-  );
-
-  const totalDiscount = orderItems.reduce(
-    (sum, i) => sum + (i.discount * i.units),
+    (sum, i) => sum + i.selling_price * i.units,
     0
   );
 
@@ -123,7 +129,6 @@ export function mapOrderToShiprocket(order) {
     payment_method: 'Prepaid',
 
     sub_total: +subTotal.toFixed(2),
-    total_discount: +totalDiscount.toFixed(2),
     total: grandTotal,
     shipping_charges: deliveryCharge,
 
@@ -134,6 +139,6 @@ export function mapOrderToShiprocket(order) {
 
     invoice_number: order.order_number,
     invoice_date: new Date(order.created_at).toISOString().split('T')[0],
-    comment: `Final: ₹${grandTotal} | Discount: ₹${totalDiscount}`
+    comment: `Final: ₹${grandTotal}`,
   };
 }

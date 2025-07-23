@@ -6,7 +6,6 @@ import CouponService from '@/lib/service/couponService';
 
 const supabase = createSupabaseBrowserClient();
 
-
 export async function POST(req) {
   try {
     const body = await req.json();
@@ -156,7 +155,6 @@ if (coupon_id && user_id) {
       }
     })();
 
-
     // Immediately return success to the user
     return NextResponse.json({
       success: true,
@@ -199,21 +197,27 @@ async function processOrderItems(order) {
           }
         }
 
+        // ✅ Fix: Extract correct fields from item
+        const productCode = item.variant_code || item.product_code || item.variant?.variant_code || '';
+        const categoryName = item.category || item.category_name || null;
+        const variantDetails = item.variant_display_text || null;
+
         await supabase.from('sales_records').insert({
           order_id: order.id,
           order_number: orderNumber,
           product_name: item.name,
-          product_code: item.product_code || '',
-          variant_details: item.variant_display_text || null,
+          product_code: productCode,
+          variant_details: variantDetails,
           quantity: item.quantity,
           unit_price: item.price,
           total_price: item.total_price,
           taxable_value,
           gst_amount,
           sale_type: 'direct',
-          category_name: item.category_name || null,
+          category_name: categoryName,
           sale_date: new Date().toISOString().split('T')[0],
         });
+
       } else if (item.type === 'kit' || item.type === 'combo') {
         const sourceTable = item.type === 'kit' ? 'kit_products' : 'combo_products';
         const sourceIdColumn = item.type === 'kit' ? 'kit_id' : 'combo_id';
@@ -242,11 +246,15 @@ async function processOrderItems(order) {
           }
         }
 
+        // ✅ Fix: Extract correct fields for kit/combo
+        const productCode = item.variant_code || item.product_code || '';
+        const categoryName = item.category || item.category_name || null;
+
         await supabase.from('sales_records').insert({
           order_id: order.id,
           order_number: orderNumber,
           product_name: item.name,
-          product_code: item.product_code || '',
+          product_code: productCode,
           variant_details: `${item.type.toUpperCase()} - ${item.included_products?.length || 0} items`,
           quantity: item.quantity,
           unit_price: item.price,
@@ -254,7 +262,7 @@ async function processOrderItems(order) {
           taxable_value,
           gst_amount,
           sale_type: item.type,
-          category_name: item.category_name || null,
+          category_name: categoryName,
           sale_date: new Date().toISOString().split('T')[0],
         });
       }

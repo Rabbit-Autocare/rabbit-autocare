@@ -1,6 +1,7 @@
 'use client';
 
 import Image from 'next/image';
+import { Facebook, Instagram, Linkedin } from 'lucide-react';
 
 export default function MeetFounder() {
   return (
@@ -31,12 +32,21 @@ export default function MeetFounder() {
             <p className="text-[16px] text-[#1A1A1A] leading-relaxed max-w-xl">
             From handwritten thank-you notes to GSM-marked microfiber, nothing at Rabbit is random. The founder’s vision? Create products that car lovers actually want to show off. Built with precision, styled with intent, and engineered to perform — this isn’t just a brand, it’s their personal rebellion against boring car care.
             </p>
+            <div className='flex gap-4' >
+              <a href='https://www.linkedin.com/in/pratham-goel-43ba9b1a8?utm_source=share&utm_campaign=share_via&utm_content=profile&utm_medium=ios_app' target="_blank" rel="noopener noreferrer">
+                <Linkedin className="hover:text-[#0A66C2] transition-colors" />
+              </a>
+              <a href='https://www.instagram.com/purplexed.goel?igsh=bjkwcDFpdm45cmJn&utm_source=qr' target="_blank" rel="noopener noreferrer">
+                <Instagram className="hover:text-[#E4405F] transition-colors" />
+              </a>
+            </div>
+
           </div>
 
           {/* Right: Founder Image */}
           <div className="flex-1 flex justify-center">
             <Image
-              src="/assets/about/img/founder.png" // Replace with your actual path
+              src="/assets/about/img/founderimage.png" // Replace with your actual path
               alt="Founder"
               width={400}
               height={400}

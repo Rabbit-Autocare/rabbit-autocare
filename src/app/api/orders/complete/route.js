@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { createSupabaseBrowserClient } from '@/lib/supabase/browser-client';
 import { sendOrderConfirmation, sendAdminNotification } from '@/lib/service/emailService';
 import { createShiprocketOrder, mapOrderToShiprocket } from '@/lib/shiprocket';
+import CouponService from '@/lib/service/couponService';
 
 const supabase = createSupabaseBrowserClient();
 
@@ -9,7 +10,7 @@ const supabase = createSupabaseBrowserClient();
 export async function POST(req) {
   try {
     const body = await req.json();
-    const { 
+    const {
       user_id,
       user_info,
       shipping_address_id,
@@ -94,29 +95,14 @@ export async function POST(req) {
       });
 
   // ✅ Remove used coupon from user's auth profile
-if (coupon_id && user_id) {
-  const { data: user, error: userError } = await supabase
-    .from('auth_users')
-    .select('coupons')
-    .eq('id', user_id)
-    .single();
-
-  if (userError || !user) {
-    console.error('❌ Failed to fetch user for coupon removal:', userError);
-  } else {
-    const updatedCoupons = (user.coupons || []).filter((id) => id !== coupon_id);
-    const { error: updateError } = await supabase
-      .from('auth_users')
-      .update({ coupons: updatedCoupons })
-      .eq('id', user_id);
-
-    if (updateError) {
-      console.error('❌ Failed to update user coupons:', updateError);
-    } else {
-      console.log(`✅ Used coupon ${coupon_id} removed from user ${user_id}`);
+  if (coupon_id && user_id) {
+    try {
+      await CouponService.removeUsedCoupon(coupon_id, user_id);
+      console.log(`✅ Used coupon ${coupon_id} removed from user ${user_id} and usage count incremented.`);
+    } catch (err) {
+      console.error('❌ Failed to remove coupon and increment usage count:', err);
     }
   }
-}
 
     const { data: address, error: addressError } = await supabase
       .from('addresses')

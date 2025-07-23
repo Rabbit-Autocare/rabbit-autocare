@@ -3,12 +3,12 @@ import { Suspense } from "react";
 import Image from "next/image";
 
 import { CategoryService } from "@/lib/service/microdataService";
-// import HeroBannerSlider from "@/components/home/HeroBannerSlider";
+import HeroBannerSlider from "@/components/home/HeroBannerSlider";
 import VideoHeroSection from "@/components/home/VideoHeroSection";
 import FeaturedProducts from "@/components/home/FeaturedProducts";
 import Shop from "@/components/home/ShopByConcern";
 import WhyChooseRabbit from "@/components/home/WhyChooseRabbit";
-import Customer from "@/components/home/Customer";
+// import Customer from "@/components/home/Customer";
 import Testimonial from "@/components/home/Testimonial";
 import CarInteriorSection from "@/components/home/CarInteriorSection";
 
@@ -48,7 +48,7 @@ export default async function Home() {
     <main>
       {/* <HeroBannerSlider /> */}
       <Suspense fallback={<SectionLoading />}>
-        <VideoHeroSection/>
+      <HeroBannerSlider />
       </Suspense>
 
       <Suspense fallback={<SectionLoading />}>
@@ -67,9 +67,9 @@ export default async function Home() {
         <WhyChooseRabbit />
       </Suspense>
 
-      <Suspense fallback={<SectionLoading />}>
+      {/* <Suspense fallback={<SectionLoading />}>
         <Customer />
-      </Suspense>
+      </Suspense> */}
 
       <Suspense fallback={<SectionLoading />}>
         <Testimonial />

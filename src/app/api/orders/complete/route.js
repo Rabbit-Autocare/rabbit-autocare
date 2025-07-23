@@ -2,14 +2,14 @@ import { NextResponse } from 'next/server';
 import { createSupabaseBrowserClient } from '@/lib/supabase/browser-client';
 import { sendOrderConfirmation, sendAdminNotification } from '@/lib/service/emailService';
 import { createShiprocketOrder, mapOrderToShiprocket } from '@/lib/shiprocket';
-import CouponService from '@/lib/service/couponService';
 
 const supabase = createSupabaseBrowserClient();
+
 
 export async function POST(req) {
   try {
     const body = await req.json();
-    const {
+    const { 
       user_id,
       user_info,
       shipping_address_id,
@@ -95,11 +95,26 @@ export async function POST(req) {
 
   // ✅ Remove used coupon from user's auth profile
 if (coupon_id && user_id) {
-    try {
-      await CouponService.removeUsedCoupon(coupon_id, user_id);
-      console.log(`✅ Used coupon ${coupon_id} removed from user ${user_id} and usage count incremented.`);
-    } catch (err) {
-      console.error('❌ Failed to remove coupon and increment usage count:', err);
+  const { data: user, error: userError } = await supabase
+    .from('auth_users')
+    .select('coupons')
+    .eq('id', user_id)
+    .single();
+
+  if (userError || !user) {
+    console.error('❌ Failed to fetch user for coupon removal:', userError);
+  } else {
+    const updatedCoupons = (user.coupons || []).filter((id) => id !== coupon_id);
+    const { error: updateError } = await supabase
+      .from('auth_users')
+      .update({ coupons: updatedCoupons })
+      .eq('id', user_id);
+
+    if (updateError) {
+      console.error('❌ Failed to update user coupons:', updateError);
+    } else {
+      console.log(`✅ Used coupon ${coupon_id} removed from user ${user_id}`);
+    }
   }
 }
 
@@ -155,6 +170,7 @@ if (coupon_id && user_id) {
       }
     })();
 
+
     // Immediately return success to the user
     return NextResponse.json({
       success: true,
@@ -197,27 +213,21 @@ async function processOrderItems(order) {
           }
         }
 
-        // ✅ Fix: Extract correct fields from item
-        const productCode = item.variant_code || item.product_code || item.variant?.variant_code || '';
-        const categoryName = item.category || item.category_name || null;
-        const variantDetails = item.variant_display_text || null;
-
         await supabase.from('sales_records').insert({
           order_id: order.id,
           order_number: orderNumber,
           product_name: item.name,
-          product_code: productCode,
-          variant_details: variantDetails,
+          product_code: item.product_code || '',
+          variant_details: item.variant_display_text || null,
           quantity: item.quantity,
           unit_price: item.price,
           total_price: item.total_price,
           taxable_value,
           gst_amount,
           sale_type: 'direct',
-          category_name: categoryName,
+          category_name: item.category_name || null,
           sale_date: new Date().toISOString().split('T')[0],
         });
-
       } else if (item.type === 'kit' || item.type === 'combo') {
         const sourceTable = item.type === 'kit' ? 'kit_products' : 'combo_products';
         const sourceIdColumn = item.type === 'kit' ? 'kit_id' : 'combo_id';
@@ -246,15 +256,11 @@ async function processOrderItems(order) {
           }
         }
 
-        // ✅ Fix: Extract correct fields for kit/combo
-        const productCode = item.variant_code || item.product_code || '';
-        const categoryName = item.category || item.category_name || null;
-
         await supabase.from('sales_records').insert({
           order_id: order.id,
           order_number: orderNumber,
           product_name: item.name,
-          product_code: productCode,
+          product_code: item.product_code || '',
           variant_details: `${item.type.toUpperCase()} - ${item.included_products?.length || 0} items`,
           quantity: item.quantity,
           unit_price: item.price,
@@ -262,7 +268,7 @@ async function processOrderItems(order) {
           taxable_value,
           gst_amount,
           sale_type: item.type,
-          category_name: categoryName,
+          category_name: item.category_name || null,
           sale_date: new Date().toISOString().split('T')[0],
         });
       }

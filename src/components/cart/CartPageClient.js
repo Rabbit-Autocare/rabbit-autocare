@@ -9,6 +9,9 @@ import PriceSummary from './PriceSummary';
 import FrequentlyBoughtTogether from './FrequentlyBoughtTogether';
 import Link from 'next/link';
 import { ShoppingCart, ArrowLeft } from 'lucide-react';
+import { createSupabaseBrowserClient } from '@/lib/supabase/browser-client';
+
+const supabase = createSupabaseBrowserClient();
 
 export default function CartPageClient({
   initialCartItems = [],
@@ -17,10 +20,12 @@ export default function CartPageClient({
   initialError = null,
 }) {
   const { user, sessionChecked } = useAuth();
-  const { cartItems, loading, cartCount } = useCart();
-
+  const { cartItems, loading, cartCount, coupon } = useCart();
   const [isInitialized, setIsInitialized] = useState(false);
   const [showInitialData, setShowInitialData] = useState(true);
+  
+  // ✅ Add delivery charge state
+  const [deliveryCharge, setDeliveryCharge] = useState(0);
 
   // Use initial data until cart context is properly loaded
   useEffect(() => {
@@ -29,6 +34,62 @@ export default function CartPageClient({
       setShowInitialData(false);
     }
   }, [sessionChecked, loading]);
+
+  // ✅ Calculate delivery charges based on cart total
+  useEffect(() => {
+    const calculateDeliveryCharge = () => {
+      const currentCartItems = showInitialData ? initialCartItems : cartItems;
+      
+      if (!currentCartItems?.length) {
+        setDeliveryCharge(0);
+        return;
+      }
+
+      // Calculate cart subtotal
+      let cartSubtotal = 0;
+      currentCartItems.forEach(item => {
+        const qty = item.quantity || 1;
+        if (item.kit_id && item.kit_price) {
+          cartSubtotal += Number(item.kit_price) * qty;
+        } else if (item.combo_id && item.combo_price) {
+          cartSubtotal += Number(item.combo_price) * qty;
+        } else if (Array.isArray(item.variant)) {
+          item.variant.forEach(v => {
+            cartSubtotal += Number(v.base_price || 0) * qty;
+          });
+        } else {
+          const v = item.variant || {};
+          cartSubtotal += Number(v.base_price || 0) * qty;
+        }
+      });
+
+      // Apply coupon discount if exists
+      let discount = 0;
+      if (coupon?.percent) {
+        discount = Math.round((cartSubtotal / 1.18) * (coupon.percent / 100) * 1.18);
+      } else if (coupon?.discount) {
+        discount = Number(coupon.discount);
+      }
+
+      const netCartValue = cartSubtotal - discount;
+      
+      console.log('🛒 Cart delivery calculation:', {
+        cartSubtotal,
+        discount,
+        netCartValue,
+        freeDeliveryThreshold: 499
+      });
+
+      // ✅ Free delivery for ₹499 and above
+      if (netCartValue >= 499) {
+        setDeliveryCharge(0);
+      } else {
+        setDeliveryCharge(99); // Set ₹99 for orders below ₹499
+      }
+    };
+
+    calculateDeliveryCharge();
+  }, [cartItems, initialCartItems, showInitialData, coupon]);
 
   const formatPrice = (price) => {
     return new Intl.NumberFormat('en-IN', {
@@ -59,8 +120,7 @@ export default function CartPageClient({
 
   // Determine which data to show
   const currentCartItems = showInitialData ? initialCartItems : cartItems;
-  const isLoading =
-    !sessionChecked || (sessionChecked && loading && !isInitialized);
+  const isLoading = !sessionChecked || (sessionChecked && loading && !isInitialized);
 
   if (initialError) {
     return (
@@ -186,7 +246,7 @@ export default function CartPageClient({
               </div>
 
               {/* Frequently Bought Together */}
-              {/* <FrequentlyBoughtTogether initialCombos={initialCombos} /> */}
+              <FrequentlyBoughtTogether initialCombos={initialCombos} />
             </div>
 
             {/* Sidebar */}
@@ -194,8 +254,11 @@ export default function CartPageClient({
               {/* Coupon Section */}
               <CouponSection initialCoupons={initialCoupons} />
 
-              {/* Price Summary */}
-              <PriceSummary formatPrice={formatPrice} />
+              {/* ✅ Updated PriceSummary with delivery charges */}
+              <PriceSummary 
+                formatPrice={formatPrice}
+                deliveryCharge={deliveryCharge}
+              />
 
               {/* Checkout Button */}
               <div className='bg-white rounded-lg shadow-sm p-4'>

@@ -147,39 +147,52 @@ export default function CouponsPage() {
 
   // Handle deletion of a coupon
   const handleDelete = async (id) => {
-    if (window.confirm('Are you sure you want to delete this coupon?')) {
-      setLoading(true);
-      setError(null);
-      try {
-        const { error } = await supabase.from('coupons').delete().eq('id', id);
-        if (error) throw error;
-        alert('Coupon deleted successfully');
-
-        // Remove deleted coupon from all users
-        await removeDeletedCouponFromUsers(id);
-        
-        fetchCoupons();
-      } catch (error) {
-        setError(`Error: ${error.message}`);
-      } finally {
-        setLoading(false);
+  if (window.confirm('Are you sure you want to delete this coupon?')) {
+    setLoading(true);
+    setError(null);
+    
+    try {
+      // Call API instead of direct Supabase
+      const response = await fetch(`/api/coupons?id=${id}`, {
+        method: 'DELETE',
+      });
+      
+      const result = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(result.error || 'Failed to delete coupon');
       }
+      
+      alert('Coupon deleted successfully');
+      fetchCoupons();
+    } catch (error) {
+      setError(`Error: ${error.message}`);
+      console.error('Delete error:', error);
+    } finally {
+      setLoading(false);
     }
-  };
+  }
+};
+
 
   // Remove coupon from all users when it is deleted
-  const removeDeletedCouponFromUsers = async (couponId) => {
-    try {
-      await supabase
-        .from('auth_users')
-        .update({
-          coupons: supabase.raw('jsonb_array_remove(coupons, ?)', [couponId]),
-        })
-        .contains('coupons', [couponId]); // Check if users have this coupon
-    } catch (error) {
-      console.error('Error removing deleted coupon from users:', error);
+const removeDeletedCouponFromUsers = async (couponId) => {
+  try {
+    // Use the custom database function
+    const { error } = await supabase.rpc('remove_coupon_from_users', {
+      coupon_id_to_remove: couponId
+    });
+
+    if (error) {
+      console.error('Error removing coupon from users:', error);
+    } else {
+      console.log(`Successfully removed coupon ${couponId} from all users`);
     }
-  };
+  } catch (error) {
+    console.error('Error removing deleted coupon from users:', error);
+  }
+};
+
 
   // Handle form reset
   const handleAddNew = () => {

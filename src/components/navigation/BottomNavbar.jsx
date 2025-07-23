@@ -11,19 +11,14 @@ import { ClientUserService } from "@/lib/service/client-userService"
 import { SEARCH_MAP } from "@/utils/searchKeywords";
 
 // Category image mapping from ExtraNavbar
-const categoryImageMap = {
-  "car-interior": "/assets/images/carinterior.png",
-  "car-exterior": "/assets/images/banner2.png",
-  "kits&combos": "/assets/images/banner.png",
-  "microfiber-cloth": "/assets/images/mission.png",
-}
+
 
 // Use static categories for shop dropdown
 const STATIC_CATEGORIES = [
-  { name: "Car Interior", href: "/shop/car-interior", image: "/assets/images/carinterior.png" },
-  { name: "Car Exterior", href: "/shop/car-exterior", image: "/assets/images/banner2.png" },
-  { name: "Microfiber Cloth", href: "/shop/microfiber-cloth", image: "/assets/images/mission.png" },
-  { name: "Kits & Combos", href: "/shop/kits-combos", image: "/assets/images/banner.png" },
+  { name: "Car Interior", href: "/shop/car-interior", image: "/assets/images/banner.png" },
+  { name: "Car Exterior", href: "/shop/car-exterior", image: "/assets/images/banner3.png" },
+  { name: "Microfiber Cloth", href: "/shop/microfiber-cloth", image: "/assets/images/microfiber.png" },
+  { name: "Kits & Combos", href: "/shop/kits-combos", image: "/assets/images/kitcombobanner.png" },
 ];
 
 export default function BottomNavbar() {

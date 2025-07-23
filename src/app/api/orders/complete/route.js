@@ -95,14 +95,14 @@ export async function POST(req) {
       });
 
   // ✅ Remove used coupon from user's auth profile
-  if (coupon_id && user_id) {
+if (coupon_id && user_id) {
     try {
       await CouponService.removeUsedCoupon(coupon_id, user_id);
       console.log(`✅ Used coupon ${coupon_id} removed from user ${user_id} and usage count incremented.`);
     } catch (err) {
       console.error('❌ Failed to remove coupon and increment usage count:', err);
-    }
   }
+}
 
     const { data: address, error: addressError } = await supabase
       .from('addresses')

@@ -4,211 +4,61 @@ import React, { useState, useEffect } from "react"
 import { motion, AnimatePresence } from "framer-motion"
 import { ChevronLeft, ChevronRight } from "lucide-react"
 
-// Sample Banner Component 1
+// Simple Banner Component 1
 const CarCareBanner = () => (
   <div className="relative w-full h-screen overflow-hidden">
-    {/* Background with gradient fallback and image overlay */}
-    <div className="absolute inset-0 w-full h-full">
-      {/* Gradient background as fallback */}
-      <div className="absolute inset-0 bg-[#E1DEDA]" />
-
-      {/* Image overlay */}
-      <div
-        className="absolute inset-0 w-full h-full"
-        style={{
-          backgroundImage: `url('https://ubnifppknfszvqkxqbfp.supabase.co/storage/v1/object/public/staticimages/banner/firstbanner.png')`,
-          backgroundSize: "fill",
-          backgroundPosition: "center",
-          backgroundRepeat: "no-repeat",
-        }}
-      />
-    </div>
-
-    {/* Content */}
-    <div className="relative z-10 flex items-center justify-start h-full">
-      <div className="container mx-auto px-4 sm:px-6 lg:px-8 max-w-7xl">
-        <motion.div
-          initial={{ opacity: 0, x: -50 }}
-          animate={{ opacity: 1, x: 0 }}
-          transition={{ delay: 0.3, duration: 0.6 }}
-          className="text-black space-y-6 max-w-2xl"
-        >
-          <motion.div
-            initial={{ scale: 0 }}
-            animate={{ scale: 1 }}
-            transition={{ delay: 0.5, type: "spring" }}
-            className="inline-flex items-center justify-center w-24 h-24 border-2 border-black text-black rounded-full text-lg font-bold shadow-lg"
-          >
-            <span className="text-2xl text-center font-bold">30% OFF</span>
-          </motion.div>
-
-          <motion.h1
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.4, duration: 0.6 }}
-            className="text-4xl sm:text-5xl lg:text-6xl font-bold leading-tight drop-shadow-lg"
-          >
-            Premium car care essentials
-          </motion.h1>
-
-          <motion.p
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.5, duration: 0.6 }}
-            className="text-xl sm:text-2xl  drop-shadow-md"
-          >
-            Elevate your ride with pro-grade detailing.
-          </motion.p>
-
-          <motion.button
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.6, duration: 0.6 }}
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-            className="bg-[#601E8D] text-white px-8 py-4 rounded-full text-lg font-semibold hover:bg-[#9E72BB] transition-colors duration-300 shadow-lg"
-          >
-            Shop now
-          </motion.button>
-        </motion.div>
-      </div>
-    </div>
+    <div
+      className="absolute inset-0 w-full h-full"
+      style={{
+        backgroundImage: "url('/assets/images/banner.png')",
+        backgroundSize: "cover",
+        backgroundPosition: "center",
+        backgroundRepeat: "no-repeat",
+      }}
+    />
   </div>
 )
-// Sample Banner Component 2
+// Simple Banner Component 2
 const DetailingToolsBanner = () => (
   <div className="relative w-full h-screen overflow-hidden">
-    {/* Background with gradient fallback and image overlay */}
-    <div className="absolute inset-0 w-full h-full">
-      {/* Gradient background as fallback */}
-      <div className="absolute inset-0 bg-gradient-to-r from-blue-500 to-purple-600" />
-
-      {/* Image overlay */}
-      <div
-        className="absolute inset-0 w-full h-full"
-        style={{
-          backgroundImage: `url('https://ubnifppknfszvqkxqbfp.supabase.co/storage/v1/object/public/staticimages/banner/banner2.png')`,
-          backgroundSize: "cover",
-          backgroundPosition: "center",
-          backgroundRepeat: "no-repeat",
-        }}
-      />
-    </div>
-
-    {/* Optional overlay for better text readability */}
-
-    {/* Content positioned at top */}
-    <div className="relative z-10 flex items-start justify-center h-full pt-16">
-      <div className="container mx-auto px-4 sm:px-6 lg:px-8 max-w-7xl">
-        <motion.div
-          initial={{ opacity: 0, y: -50 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.3, duration: 0.6 }}
-          className="text-white space-y-6 max-w-2xl text-center mx-auto"
-        >
-          <motion.div
-            initial={{ scale: 0 }}
-            animate={{ scale: 1 }}
-            transition={{ delay: 0.5, type: "spring" }}
-            className="inline-flex items-center justify-center w-20 h-20 bg-blue-500 text-white rounded-full text-lg font-bold shadow-lg"
-          >
-            25% OFF
-          </motion.div>
-
-          <motion.h1
-            initial={{ opacity: 0, scale: 0.8 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ delay: 0.4, duration: 0.6 }}
-            className="text-4xl sm:text-5xl lg:text-6xl font-bold leading-tight drop-shadow-lg"
-          >
-            Professional detailing tools
-          </motion.h1>
-
-          <motion.p
-            initial={{ opacity: 0, scale: 0.8 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ delay: 0.5, duration: 0.6 }}
-            className="text-xl sm:text-2xl text-gray-100 drop-shadow-md"
-          >
-            Transform your car with expert-grade equipment.
-          </motion.p>
-
-          <motion.button
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.6, duration: 0.6 }}
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-            className="bg-blue-500 text-white px-8 py-4 rounded-full text-lg font-semibold hover:bg-blue-600 transition-colors duration-300 shadow-lg"
-          >
-            Explore
-          </motion.button>
-        </motion.div>
-      </div>
-    </div>
+    <div
+      className="absolute inset-0 w-full h-full"
+      style={{
+        backgroundImage: "url('/assets/images/banner2.png')",
+        backgroundSize: "cover",
+        backgroundPosition: "center",
+        backgroundRepeat: "no-repeat",
+      }}
+    />
+  </div>
+)
+// Simple Banner Component 3
+const LuxuryAccessoriesBanner = () => (
+  <div className="relative w-full h-screen overflow-hidden">
+    <div
+      className="absolute inset-0 w-full h-full"
+      style={{
+        backgroundImage: "url('/assets/images/banner3.png')",
+        backgroundSize: "cover",
+        backgroundPosition: "center",
+        backgroundRepeat: "no-repeat",
+      }}
+    />
   </div>
 )
 
-// Sample Banner Component 3
-const LuxuryAccessoriesBanner = () => (
-  <div
-    className="absolute inset-0 w-full h-full"
-    style={{
-      backgroundImage: `url('https://images.unsplash.com/photo-1503376780353-7e6692767b70?ixlib=rb-4.0.3&auto=format&fit=crop&w=1920&q=80')`,
-      backgroundSize: "cover",
-      backgroundPosition: "center",
-      backgroundRepeat: "no-repeat",
-    }}
-  >
-    <div className="absolute inset-0 bg-black bg-opacity-30"></div>
-    <div className="relative z-10 flex items-center justify-end h-full">
-      <div className="container mx-auto px-4 sm:px-6 lg:px-8 max-w-7xl">
-        <motion.div
-          initial={{ opacity: 0, x: 50 }}
-          animate={{ opacity: 1, x: 0 }}
-          transition={{ delay: 0.3, duration: 0.6 }}
-          className="text-white space-y-6 max-w-2xl text-right ml-auto"
-        >
-          <motion.div
-            initial={{ scale: 0 }}
-            animate={{ scale: 1 }}
-            transition={{ delay: 0.5, type: "spring" }}
-            className="inline-flex items-center justify-center w-20 h-20 bg-emerald-500 text-white rounded-full text-lg font-bold shadow-lg"
-          >
-            40% OFF
-          </motion.div>
-
-          <motion.h1
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.4, duration: 0.6 }}
-            className="text-4xl sm:text-5xl lg:text-6xl font-bold leading-tight"
-          >
-            Luxury car accessories
-          </motion.h1>
-
-          <motion.p
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.5, duration: 0.6 }}
-            className="text-xl sm:text-2xl text-gray-100"
-          >
-            Premium products for the ultimate driving experience.
-          </motion.p>
-
-          <motion.button
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.6, duration: 0.6 }}
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-            className="bg-emerald-500 text-white px-8 py-4 rounded-full text-lg font-semibold hover:bg-emerald-600 transition-colors duration-300 shadow-lg"
-          >
-            Discover
-          </motion.button>
-        </motion.div>
-      </div>
-    </div>
+// Mobile Video Banner
+const MobileVideoBanner = () => (
+  <div className="relative top-[-80px]  w-full h-[700px] sm:h-[700px] md:hidden overflow-hidden">
+    <video
+      className="absolute inset-0 w-full h-full object-cover"
+      src="https://ubnifppknfszvqkxqbfp.supabase.co/storage/v1/object/public/staticimages//rabbit%20launch%20video1%20.mp4"
+      autoPlay
+      loop
+      muted
+      playsInline
+      poster="/assets/images/banner.png"
+    />
   </div>
 )
 
@@ -282,7 +132,7 @@ const BannerSlider = ({ children, autoSlideInterval = 5000, showControls = true,
 
   return (
     <div
-      className="relative w-full h-[800px] overflow-hidden bg-gray-100"
+      className="relative w-full h-[800px] overflow-hidden bg-gray-100 hidden md:block"
       style={{
         position: "fixed",
         top: "0",
@@ -321,64 +171,6 @@ const BannerSlider = ({ children, autoSlideInterval = 5000, showControls = true,
           {slides[currentSlide]}
         </motion.div>
       </AnimatePresence>
-
-      {/* Navigation Controls */}
-      {showControls && totalSlides > 1 && (
-        <>
-          {/* Navigation Arrows */}
-          {/* <button
-            onClick={prevSlide}
-            className="absolute left-4 top-1/2 transform -translate-y-1/2 z-20 bg-white bg-opacity-20 hover:bg-opacity-30 backdrop-blur-sm rounded-full p-3 transition-all duration-300 text-white hover:scale-110"
-          >
-            <ChevronLeft size={24} />
-          </button> */}
-
-          {/* <button
-            onClick={nextSlide}
-            className="absolute right-4 top-1/2 transform -translate-y-1/2 z-20 bg-white bg-opacity-20 hover:bg-opacity-30 backdrop-blur-sm rounded-full p-3 transition-all duration-300 text-white hover:scale-110"
-          >
-            <ChevronRight size={24} />
-          </button> */}
-
-          {/* Auto-play toggle */}
-          <div className="absolute top-4 right-4 z-20">
-            {/* <button
-              onClick={() => setIsAutoPlaying(!isAutoPlaying)}
-              className={`px-3 py-1 rounded-full text-sm font-medium transition-all duration-300 ${
-                isAutoPlaying ? "bg-green-500 text-white" : "bg-white bg-opacity-20 text-white hover:bg-opacity-30"
-              }`}
-            >
-              {isAutoPlaying ? "Auto" : "Manual"}
-            </button> */}
-          </div>
-        </>
-      )}
-
-      {/* Dot Indicators */}
-      {showDots && totalSlides > 1 && (
-        <div className="absolute bottom-8 left-1/2 transform -translate-x-1/2 z-20 flex space-x-3">
-          {slides.map((_, index) => (
-            <button
-              key={index}
-              onClick={() => goToSlide(index)}
-              className={`w-3 h-3 rounded-full transition-all duration-300 ${
-                index === currentSlide ? "bg-white scale-125" : "bg-white bg-opacity-50 hover:bg-opacity-75"
-              }`}
-            />
-          ))}
-        </div>
-      )}
-
-      {/* Progress Bar */}
-      {isAutoPlaying && totalSlides > 1 && (
-        <motion.div
-          key={currentSlide}
-          className="absolute bottom-0 left-0 h-1 bg-white bg-opacity-60 z-20"
-          initial={{ width: 0 }}
-          animate={{ width: "100%" }}
-          transition={{ duration: autoSlideInterval / 1000, ease: "linear" }}
-        />
-      )}
     </div>
   )
 }
@@ -387,12 +179,15 @@ const BannerSlider = ({ children, autoSlideInterval = 5000, showControls = true,
 const HeroBannerSlider = () => {
   return (
     <>
-      <BannerSlider autoSlideInterval={5000} showControls={true} showDots={true}>
+      {/* Desktop banners */}
+      <BannerSlider autoSlideInterval={5000} showControls={false} showDots={false}>
         <CarCareBanner />
         <DetailingToolsBanner />
-        <LuxuryAccessoriesBanner />
+        {/* <LuxuryAccessoriesBanner /> */}
       </BannerSlider>
-      <div style={{ height: "700px" }}></div>
+      {/* Mobile video */}
+      <MobileVideoBanner />
+      <div className="  md:h-[800px]"></div>
     </>
   )
 }

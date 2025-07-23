@@ -6,10 +6,10 @@ import { useRouter } from "next/navigation"
 import LoadingErrorBoundary from "@/components/ui/LoadingErrorBoundary"
 
 const images = [
-  "/assets/images/carinterior.png",
-  "/assets/about/img/mission.png",
-  "/assets/images/carinterior.png",
-  "/assets/about/img/mission.png",
+  "/assets/images/banner.png",
+  "/assets/images/banner3.png",
+  "/assets/images/banner2.png",
+  "/assets/images/microfiber.png",
 ]
 
 // Mapping for user-friendly display names
@@ -214,7 +214,7 @@ export default function CarInteriorSection({ initialCategories = [], initialErro
       onRetry={() => window.location.reload()}
       timeout={10000}
       loadingComponent={
-        <div className="relative w-full h-[450px] md:h-[500px] lg:h-[550px] xl:h-[600px] py-16 flex flex-col items-center overflow-hidden bg-white">
+        <div className="relative w-full h-[450px] md:h-[500px] lg:h-[550px] xl:h-[600px] md:py-16 flex flex-col items-center overflow-hidden bg-white">
           <div className="absolute inset-0 flex items-center justify-center bg-white bg-opacity-75 z-50">
             <div className="text-lg font-semibold">Loading categories...</div>
           </div>

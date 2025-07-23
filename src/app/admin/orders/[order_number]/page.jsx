@@ -1,8 +1,7 @@
 // src/app/admin/orders/[order_number]/invoice/page.jsx
-import InvoiceTemplate from '@/components/InvoiceTemplate';
+import AdminOrderDetails from '@/components/admin/AdminOrderDetails';
 
-export default function InvoicePage({ params }) {
+export default function AdminOrderPage({ params }) {
   const { order_number } = params;
-
-  return <InvoiceTemplate orderNumber={order_number} />;
+  return <AdminOrderDetails orderNumber={order_number} />;
 }

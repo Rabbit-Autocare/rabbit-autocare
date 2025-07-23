@@ -13,17 +13,17 @@ import { ClientUserService } from "@/lib/service/client-userService"
 import { SEARCH_MAP } from "@/utils/searchKeywords";
 
 const categoryImageMap = {
-  "car-interior": "/assets/images/carinterior.png",
-  "car-exterior": "/assets/images/banner2.png",
-  "kits&combos": "/assets/images/banner.png",
-  "microfiber-cloth": "/assets/images/mission.png",
+  "car-interior": "/assets/images/banner.png",
+  "car-exterior": "/assets/images/banner3.png",
+  "kits&combos": "/assets/images/kitcombobanner.png",
+  "microfiber-cloth": "/assets/images/microfiber.png",
 }
 
 const STATIC_CATEGORIES = [
-  { name: "Car Interior", href: "/shop/car-interior", image: "/assets/images/carinterior.png" },
-  { name: "Car Exterior", href: "/shop/car-exterior", image: "/assets/images/banner2.png" },
-  { name: "Microfiber Cloth", href: "/shop/microfiber-cloth", image: "/assets/images/mission.png" },
-  { name: "Kits & Combos", href: "/shop/kits-combos", image: "/assets/images/banner.png" },
+  { name: "Car Interior", href: "/shop/car-interior", image: "/assets/images/banner.png" },
+  { name: "Car Exterior", href: "/shop/car-exterior", image: "/assets/images/banner3.png" },
+  { name: "Microfiber Cloth", href: "/shop/microfiber-cloth", image: "/assets/images/microfiber.png" },
+  { name: "Kits & Combos", href: "/shop/kits-combos", image: "/assets/images/kitcombobanner.png" },
 ];
 
 function MobileCouponDropdown({ availableCoupons, authLoading, user, isCouponsOpen, setIsCouponsOpen, isHomePage }) {

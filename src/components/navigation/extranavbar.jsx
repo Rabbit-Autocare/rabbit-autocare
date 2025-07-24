@@ -20,10 +20,10 @@ const categoryImageMap = {
 }
 
 const STATIC_CATEGORIES = [
-  { name: "Car Interior", href: "/shop/car-interior", image: "/assets/images/banner.png" },
-  { name: "Car Exterior", href: "/shop/car-exterior", image: "/assets/images/banner3.png" },
+  { name: "Car Interior", href: "/shop/car-interior", image: "/assets/images/interiorCat.webp" },
+  { name: "Car Exterior", href: "/shop/car-exterior", image: "/assets/images/EXTERIORcat.webp" },
   { name: "Microfiber Cloth", href: "/shop/microfiber-cloth", image: "/assets/images/microfiber.png" },
-  { name: "Kits & Combos", href: "/shop/kits-combos", image: "/assets/images/kitcombobanner.png" },
+  { name: "Kits & Combos", href: "/shop/kits-combos", image: "/assets/images/kitCat.webp" },
 ];
 
 function MobileCouponDropdown({ availableCoupons, authLoading, user, isCouponsOpen, setIsCouponsOpen, isHomePage }) {
@@ -321,11 +321,11 @@ export default function ExtraNavbar() {
           >
             <button
               ref={couponsButtonRef}
-              className="h-auto w-auto p-0 hover:bg-transparent bg-transparent border-none cursor-pointer transition-colors"
+              className="h-auto w-auto pt-2 hover:bg-transparent bg-transparent border-none cursor-pointer transition-colors"
               onClick={() => isMobile ? setShowMobileCoupons((v) => !v) : undefined}
               aria-label="Coupons"
             >
-              <svg viewBox="0 0 25 26" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-[20px] h-[20px] md:w-[20px] md:h-[20px]">
+              <svg viewBox="0 0 25 26" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-[20px] h-[20px] md:w-[20px] md:h-20px]">
                 <path
                   d="M2.08301 9.87498C2.91181 9.87498 3.70667 10.2042 4.29272 10.7903C4.87877 11.3763 5.20801 12.1712 5.20801 13C5.20801 13.8288 4.87877 14.6236 4.29272 15.2097C3.70667 15.7957 2.91181 16.125 2.08301 16.125V18.2083C2.08301 18.7608 2.3025 19.2908 2.6932 19.6815C3.0839 20.0722 3.61381 20.2916 4.16634 20.2916H20.833C21.3855 20.2916 21.9154 20.0722 22.3061 19.6815C22.6968 19.2908 22.9163 18.7608 22.9163 18.2083V16.125C22.0875 16.125 21.2927 15.7957 20.7066 15.2097C20.1206 14.6236 19.7913 13.8288 19.7913 13C19.7913 12.1712 20.1206 11.3763 20.7066 10.7903C21.2927 10.2042 22.0875 9.87498 22.9163 9.87498V7.79165C22.9163 7.23911 22.6968 6.70921 22.3061 6.31851C21.9154 5.92781 21.3855 5.70831 20.833 5.70831H4.16634C3.61381 5.70831 3.0839 5.92781 2.6932 6.31851C2.3025 6.70921 2.08301 7.23911 2.08301 7.79165V9.87498Z"
                   stroke={iconStroke}
@@ -405,7 +405,7 @@ export default function ExtraNavbar() {
           </div>
 
           {/* Wishlist icon - Hidden on mobile, visible on desktop */}
-          <button className="hidden md:block h-auto w-auto p-0 hover:bg-transparent bg-transparent border-none cursor-pointer transition-colors">
+          <button className="hidden md:block h-auto w-auto pt-1 hover:bg-transparent bg-transparent border-none cursor-pointer transition-colors">
             <Link
               href="/wishlist"
               className="hidden md:block h-auto w-auto p-0 hover:bg-transparent bg-transparent border-none cursor-pointer transition-colors"
@@ -427,14 +427,14 @@ export default function ExtraNavbar() {
           <div className="flex items-center space-x-6 md:space-x-6">
             {isLoggedIn ? (
               <Link href="/profile">
-                <button className="h-auto w-auto p-0 hover:bg-transparent bg-transparent border-none cursor-pointer transition-colors">
+                <button className="h-auto w-auto p-1 hover:bg-transparent bg-transparent border-none cursor-pointer transition-colors">
                   <User className={`w-[20px] h-[20px] md:w-5 md:h-5 ${textColor}`} />
                   <span className="sr-only">User Profile</span>
                 </button>
               </Link>
             ) : (
               <Link href="/login">
-                <button className="h-auto w-auto p-0 hover:bg-transparent bg-transparent border-none cursor-pointer transition-colors">
+                <button className="h-auto w-auto pt-2 hover:bg-transparent bg-transparent border-none cursor-pointer transition-colors">
                   <User className={`w-[20px] h-[20px] md:w-5 md:h-5 ${textColor}`} />
                   <span className="sr-only">User account</span>
                 </button>
@@ -444,7 +444,7 @@ export default function ExtraNavbar() {
             {/* Cart Icon - Always visible */}
             <button
               onClick={openCart}
-              className="relative h-auto w-auto p-0 hover:bg-transparent bg-transparent border-none cursor-pointer transition-colors"
+              className="relative h-auto w-auto pt-1 hover:bg-transparent bg-transparent border-none cursor-pointer transition-colors"
             >
               <svg
                 xmlns="http://www.w3.org/2000/svg"

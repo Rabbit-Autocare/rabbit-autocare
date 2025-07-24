@@ -15,10 +15,10 @@ import { SEARCH_MAP } from "@/utils/searchKeywords";
 
 // Use static categories for shop dropdown
 const STATIC_CATEGORIES = [
-  { name: "Car Interior", href: "/shop/car-interior", image: "/assets/images/banner.png" },
-  { name: "Car Exterior", href: "/shop/car-exterior", image: "/assets/images/banner3.png" },
+  { name: "Car Interior", href: "/shop/car-interior", image: "/assets/images/interiorCat.webp" },
+  { name: "Car Exterior", href: "/shop/car-exterior", image: "/assets/images/EXTERIORcat.webp" },
   { name: "Microfiber Cloth", href: "/shop/microfiber-cloth", image: "/assets/images/microfiber.png" },
-  { name: "Kits & Combos", href: "/shop/kits-combos", image: "/assets/images/kitcombobanner.png" },
+  { name: "Kits & Combos", href: "/shop/kits-combos", image: "/assets/images/kitCat.webp" },
 ];
 
 export default function BottomNavbar() {

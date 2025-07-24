@@ -35,7 +35,7 @@ export default function ProductDetail({ product }) {
           {isKitOrCombo ? (
             <KitComboCard product={product} />
           ) : (
-            <FeaturedProductCard product={product} />
+            <FeaturedProductCard product={product}  navigateOnClick={false} />
           )}
         </div>
       </div>

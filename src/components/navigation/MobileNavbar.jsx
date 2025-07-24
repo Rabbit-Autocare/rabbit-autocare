@@ -44,12 +44,12 @@ const STATIC_CATEGORIES = [
   {
     name: 'Car Interior',
     href: '/shop/car-interior',
-    image: '/assets/images/banner.png',
+    image: '/assets/images/interiorCat.webp',
   },
   {
     name: 'Car Exterior',
     href: '/shop/car-exterior',
-    image: '/assets/images/banner3.png',
+    image: '/assets/images/EXTERIORcat.webp',
   },
   {
     name: 'Microfiber Cloth',
@@ -59,7 +59,7 @@ const STATIC_CATEGORIES = [
   {
     name: 'Kits & Combos',
     href: '/shop/kits-combos',
-    image: '/assets/images/kitcombobanner.png',
+    image: '/assets/images/kitCat.webp',
   },
 ];
 

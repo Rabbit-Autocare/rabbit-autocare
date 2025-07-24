@@ -52,7 +52,7 @@ const MobileVideoBanner = () => (
   <div className="relative top-[-80px]  w-full h-[700px] sm:h-[700px] md:hidden overflow-hidden">
     <video
       className="absolute inset-0 w-full h-full object-cover"
-      src="https://ubnifppknfszvqkxqbfp.supabase.co/storage/v1/object/public/staticimages//rabbit%20launch%20video1%20.mp4"
+      src="https://ubnifppknfszvqkxqbfp.supabase.co/storage/v1/object/public/staticimages//website%20video.mp4"
       autoPlay
       loop
       muted

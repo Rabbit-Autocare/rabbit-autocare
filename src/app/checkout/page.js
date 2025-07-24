@@ -691,9 +691,9 @@ useEffect(() => {
               </div>
             </div>
           ) : (
-            <div className='max-w-7xl mx-auto'>
+            <div className='max-w-7xl mx-auto '>
               {/* Progress Indicator */}
-              <div className='mb-8 mt-8'>
+              <div className='mb-8 mt-8 hidden md:block '>
                 <div className='bg-white rounded-[4px] p-6 shadow-sm border border-gray-200'>
                   <div className='flex items-center justify-center gap-8'>
                     <div className='flex items-center gap-3'>

@@ -20,7 +20,7 @@ export default function FeaturedProductCard({
   // ... existing state and hooks ...
   const router = useRouter();
   const LOW_STOCK_THRESHOLD = 20; // Define what constitutes "low stock"
-
+  const isOnProductPage = !navigateOnClick;
   const { addToCart, openCart } = useCart();
   const { user } = useAuth();
 
@@ -725,16 +725,49 @@ const handleWishlistButtonClick = async (e) => {
           </div>
 
           {/* Price */}
-          <div className='text-[18px] xs:text-[20px] sm:text-[28px] md:text-[32px] font-medium tracking-wide'>
+          <div className='text-[18px] xs:text-[20px] m-0 sm:text-[28px] md:text-[32px] font-medium tracking-wide'>
             <span className='font-extralight'>MRP:</span>
             <span> {formatPrice(getCurrentPrice())}</span>
           </div>
 
+
+          {isMicrofiber && selectedSize && selectedPackSize && (
+            <div className='text-xs  text-gray-600'>
+              {(() => {
+                const variant = getVariantForCombination(selectedSize, selectedPackSize);
+                if (variant && variant.stock > 0) {
+                  if (variant.stock <= LOW_STOCK_THRESHOLD) {
+                    return (
+                      <span className='text-orange-600 font-medium'>
+                        Only {variant.stock} left in stock
+                      </span>
+                    );
+                  } else {
+                    return (
+                      <span className='text-green-600'>
+                        In Stock
+                      </span>
+                    );
+                  }
+                } else {
+                  return <span className='text-red-600'>Out of stock</span>;
+                }
+              })()}
+            </div>
+          )}
+
           {/* Description */}
           <div className='xl:flex-grow'>
-            <p className='text-[13px] xs:text-[14px] sm:text-[15px] xl:text-[16px] text-black font-light tracking-wider whitespace-pre-line line-clamp-2 xs:line-clamp-2 sm:line-clamp-3 md:line-clamp-4 lg:line-clamp-4 xl:line-clamp-none'>
-              {product.description}
-            </p>
+            {/* ✨ NEW: DESCRIPTION – unclamped on PDP */}
+          <p
+            className={`
+              text-[13px] xs:text-[14px] sm:text-[15px] xl:text-[16px]
+              text-black font-light tracking-wider whitespace-pre-line
+              ${isOnProductPage ? '' : 'line-clamp-2 xs:line-clamp-2 sm:line-clamp-3 md:line-clamp-4 lg:line-clamp-4 xl:line-clamp-none'}
+            `}
+          >
+            {product.description}
+          </p>
           </div>
 
           {/* Variant Selection for Microfiber Products */}
@@ -867,30 +900,7 @@ const handleWishlistButtonClick = async (e) => {
 )}
 
           {/* Stock indicator for microfiber selected combination */}
-          {isMicrofiber && selectedSize && selectedPackSize && (
-            <div className='text-xs text-gray-600'>
-              {(() => {
-                const variant = getVariantForCombination(selectedSize, selectedPackSize);
-                if (variant && variant.stock > 0) {
-                  if (variant.stock <= LOW_STOCK_THRESHOLD) {
-                    return (
-                      <span className='text-orange-600 font-medium'>
-                        Only {variant.stock} left in stock
-                      </span>
-                    );
-                  } else {
-                    return (
-                      <span className='text-green-600'>
-                        In Stock
-                      </span>
-                    );
-                  }
-                } else {
-                  return <span className='text-red-600'>Out of stock</span>;
-                }
-              })()}
-            </div>
-          )}
+
 
           {/* Stock indicator for non-microfiber selected variant */}
           {!isMicrofiber && selectedVariant && (
@@ -916,7 +926,15 @@ const handleWishlistButtonClick = async (e) => {
               })()}
             </div>
           )}
-
+  {isOnProductPage && (
+  <div className="mt-1 flex items-center gap-2 text-sm text-green-600">
+    <ShoppingCart size={16} className="stroke-current" />
+    <span>
+      🎉 Free delivery on orders above&nbsp;
+      <span className="font-semibold">₹499</span>
+    </span>
+  </div>
+)}
           {/* Action Buttons */}
 <div className='space-y-2 xl:space-y-4 relative z-10 mt-4 sm:mt-6'>
   {/* Mobile: Single row layout */}

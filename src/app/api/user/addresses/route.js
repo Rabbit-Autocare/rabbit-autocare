@@ -34,7 +34,7 @@ export async function POST(request) {
       return NextResponse.json({ error: result.error }, { status: 400 });
     }
     return NextResponse.json(result.data);
-  } catch (error) {
+  } catch (error) { 
     console.error('Error in POST /api/user/addresses:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }

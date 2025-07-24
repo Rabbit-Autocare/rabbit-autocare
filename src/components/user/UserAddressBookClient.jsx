@@ -148,7 +148,7 @@ export default function UserAddressBookClient({ initialAddresses, userId }) {
     } finally {
       setLoading(false);
     }
-  };
+  }; 
 
   const getAddressTypeIcon = (type) => {
     switch (type) {

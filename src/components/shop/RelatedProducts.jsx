@@ -97,7 +97,7 @@ export default function RelatedProducts({ categoryName, currentProductId, limit 
 
   if (loading) {
     return (
-      <div className="mt-8 md:mt-12 lg:mt-16">
+      <div className="my-8  md:my-12 lg:my-16">
         <h2 className="text-xl md:text-2xl font-bold mb-4 md:mb-6 text-center md:text-left">
           You might also like
         </h2>
@@ -137,7 +137,7 @@ export default function RelatedProducts({ categoryName, currentProductId, limit 
   products.forEach((p, i) => console.log(`Product ${i} variants:`, p.variants));
 
   return (
-    <div className="mt-8 md:mt-12 lg:mt-16">
+    <div className="my-8 md:my-12 lg:my-16">
     <h2 className="text-xl md:text-2xl font-bold mb-4 md:mb-6 text-center md:text-left">
       You might also like
     </h2>

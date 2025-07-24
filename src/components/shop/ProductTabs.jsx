@@ -4,17 +4,34 @@ import { useState } from "react"
 import { Star, ChevronDown } from "lucide-react"
 import ProductRating from "@/components/ui/ProductRating"
 import testimonialsData from '@/data/testimonials.json'
-import faqsData from '@/data/faqs.json'
+import productSpecificFaqsData from '@/data/product-faqs.json'
 
 const { testimonials } = testimonialsData;
-const { faqs: defaultFaqs } = faqsData;
+const { productFaqs } = productSpecificFaqsData;
 
 export default function ProductTabs({ product, reviews = [], faqs = [] }) {
   const [activeTab, setActiveTab] = useState("details")
   const [openFaq, setOpenFaq] = useState(null)
 
-  // Use provided FAQs or default to the imported ones
-  const displayFaqs = faqs.length > 0 ? faqs : defaultFaqs;
+  // Function to get FAQs for the current product
+  const getProductFaqs = () => {
+    // If FAQs are passed as props, use them first
+    if (faqs.length > 0) {
+      return faqs;
+    }
+
+    // Try to find product-specific FAQs using product ID
+    const productId = product.id || product.product_code;
+    const specificFaqs = productFaqs?.filter(faq =>
+      faq.product_id === productId ||
+      faq.product_ids?.includes(productId)
+    ) || [];
+
+    // Return specific FAQs or empty array if none found
+    return specificFaqs;
+  };
+
+  const displayFaqs = getProductFaqs();
 
   // Deterministic pseudo-random generator based on a string seed
   function seededRandom(seed) {

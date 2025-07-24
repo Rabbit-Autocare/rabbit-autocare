@@ -1,0 +1,154 @@
+{
+    "productFaqs": [
+      {
+        "id": 1,
+        "product_id": 8,
+        "question": "Is this shampoo safe for ceramic-coated or matte finish cars?",
+        "answer": "Yes! Rabbit Car Shampoo is pH balanced and specially formulated to be safe on all finishes including ceramic-coated, matte, wrapped, and PPF-covered surfaces."
+      },
+      {
+        "id": 2,
+        "product_id": 8,
+        "question": "Does it strip wax or sealant from the car?",
+        "answer": "Not at all. It cleans effectively without removing existing wax layers, making it ideal for regular maintenance washes."
+      },
+      {
+        "id": 3,
+        "product_id": 8,
+        "question": "Can I use this with a foam cannon or pressure washer?",
+        "answer": "Yes! It's compatible with bucket wash, foam cannons, and pressure washers. Just dilute accordingly for rich, clinging foam."
+      },
+      {
+        "id": 4,
+        "product_id": 8,
+        "question": "What is the fragrance like?",
+        "answer": "It comes with a refreshing Fresh Cool Water scent that makes your car wash experience more pleasant without being overpowering."
+      },
+      {
+        "id": 5,
+        "product_id": 8,
+        "question": "How much product should I use per wash?",
+        "answer": "Use about 50–60ml in a 5-liter bucket of water or as per your foam cannon's dilution ratio. A little goes a long way!"
+      },
+      {
+        "id": 6,
+        "product_id": 10,
+        "question": "What surfaces can I clean with this product?",
+        "answer": "Rabbit PLVR Cleaner is safe for Plastic, Leather, Vinyl, and Rubber surfaces—ideal for dashboards, door panels, seats, and trims."
+      },
+      {
+        "id": 7,
+        "product_id": 10,
+        "question": "Does it leave a shine or greasy residue?",
+        "answer": "No. It cleans effectively and leaves a natural, non-greasy finish. Perfect for maintaining a clean OEM look."
+      },
+      {
+        "id": 8,
+        "product_id": 10,
+        "question": "Is it safe for daily or frequent use?",
+        "answer": "Yes! It's a pH-balanced formula, gentle enough for regular interior cleaning without drying or damaging surfaces."
+      },
+      {
+        "id": 9,
+        "product_id": 10,
+        "question": "Can I use it on leather seats and steering wheels?",
+        "answer": "Absolutely. It gently lifts grime from leather while preserving softness and texture. Just spray and wipe."
+      },
+      {
+        "id": 10,
+        "product_id": 10,
+        "question": "Does it have a strong chemical smell?",
+        "answer": "Not at all. It has a light, pleasant scent that refreshes the cabin without overpowering it."
+      },
+      {
+        "id": 11,
+        "product_id": 6,
+        "question": "What surfaces can I use this on?",
+        "answer": "It's designed for tyres, plastic trims, bumpers, mudguards, and rubber parts—perfect for all exterior detailing."
+      },
+      {
+        "id": 12,
+        "product_id": 6,
+        "question": "Will it make the tyres look overly shiny or greasy?",
+        "answer": "No. It delivers a deep black satin finish—not too glossy, not oily—just a clean, rich look."
+      },
+      {
+        "id": 13,
+        "product_id": 6,
+        "question": "Is it safe for daily drivers in harsh weather?",
+        "answer": "Yes! The formula is water-resistant and helps protect against fading, and cracking."
+      },
+      {
+        "id": 14,
+        "product_id": 6,
+        "question": "Will it sling off while driving?",
+        "answer": "Not if applied correctly. Let it sit for a few minutes after wiping, and it gives a sling-free, dry finish."
+      },
+      {
+        "id": 15,
+        "product_id": 6,
+        "question": "How do I apply it for best results?",
+        "answer": "Use a foam applicator or microfiber pad. Apply a small amount, spread evenly, and let it absorb—buff off any excess if needed."
+      },
+      {
+        "id": 16,
+        "product_id": 9,
+        "question": "Can I use this on tinted windows or aftermarket films?",
+        "answer": "Yes! It's an ammonia-free, tint-safe formula—completely safe for factory and aftermarket window films."
+      },
+      {
+        "id": 17,
+        "product_id": 9,
+        "question": "Does it leave streaks or residue behind?",
+        "answer": "No. It's a fast-drying, streak-free formula that leaves glass crystal clear with no smudges."
+      },
+      {
+        "id": 18,
+        "product_id": 9,
+        "question": "Can it remove hard water spots and oily film?",
+        "answer": "Yes! It cuts through water spots, road film, grease, bird droppings, and fingerprints effectively."
+      },
+      {
+        "id": 19,
+        "product_id": 9,
+        "question": "Is it safe to use on interior glass and mirrors?",
+        "answer": "Absolutely. It works great on windshields, side and rear windows, sunroofs, and even rearview mirrors—inside and out."
+      },
+      {
+        "id": 20,
+        "product_id": 9,
+        "question": "Does it have a strong smell or chemical odor?",
+        "answer": "No harsh smell. It has a mild, refreshing scent that won't irritate while cleaning."
+      },
+      {
+        "id": 21,
+        "product_id": 4,
+        "question": "What all can I use this on?",
+        "answer": "This product works perfectly on dashboards, plastic trims, tyres, rubber surfaces, vinyl, and leather—inside and out."
+      },
+      {
+        "id": 22,
+        "product_id": 4,
+        "question": "Does it leave a wet, greasy look?",
+        "answer": "No. It gives a clean, satin-like finish without making the surface oily or sticky."
+      },
+      {
+        "id": 23,
+        "product_id": 4,
+        "question": "Can it restore dull tyres and trims?",
+        "answer": "Yes! It enhances the look of faded or dull rubber and plastic, making them appear darker and well-maintained."
+      },
+      {
+        "id": 24,
+        "product_id": 4,
+        "question": "Is it safe for leather and vinyl seats?",
+        "answer": "Yes, it gently dresses leather and vinyl without cracking or discoloration—just apply sparingly and wipe off excess."
+      },
+      {
+        "id": 25,
+        "product_id": 4,
+        "question": "How often should I use it?",
+        "answer": "You can use it weekly or as needed to keep surfaces looking clean and refreshed."
+      }
+    ]
+  }

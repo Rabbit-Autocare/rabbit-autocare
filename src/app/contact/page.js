@@ -1,6 +1,7 @@
 'use client';
 import React, { useState } from 'react';
 import Link from 'next/link';
+import FaqSection from '@/components/FaqSection';
 
 export default function ContactPage() {
   const [form, setForm] = useState({ name: '', email: '', phone: '', subject: '', message: '' });
@@ -144,6 +145,11 @@ export default function ContactPage() {
           {status === 'error' && <p className='text-red-600'>Failed to send. Try again.</p>}
         </form>
       </div>
+
+      <FaqSection />
     </div>
+
+
+
   );
 }

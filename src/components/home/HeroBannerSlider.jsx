@@ -8,11 +8,11 @@ import { ChevronLeft, ChevronRight } from "lucide-react"
 const CarCareBanner = () => (
   <div className="relative w-full h-screen overflow-hidden">
     <div
-      className="absolute inset-0 w-full h-full"
+      className="absolute inset-0 w-full h-[900px]"
       style={{
-        backgroundImage: "url('/assets/images/banner.png')",
+        backgroundImage: "url('/assets/images/EXTERIORcat.webp')",
         backgroundSize: "cover",
-        backgroundPosition: "center",
+        backgroundPosition: "top",
         backgroundRepeat: "no-repeat",
       }}
     />
@@ -24,9 +24,9 @@ const DetailingToolsBanner = () => (
     <div
       className="absolute inset-0 w-full h-full"
       style={{
-        backgroundImage: "url('/assets/images/banner2.png')",
+        backgroundImage: "url('/assets/images/kitCat.webp')",
         backgroundSize: "cover",
-        backgroundPosition: "center",
+        backgroundPosition: "top",
         backgroundRepeat: "no-repeat",
       }}
     />

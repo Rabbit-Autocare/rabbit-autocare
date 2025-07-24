@@ -6,9 +6,9 @@ import { useRouter } from "next/navigation"
 import LoadingErrorBoundary from "@/components/ui/LoadingErrorBoundary"
 
 const images = [
-  "/assets/images/banner.png",
-  "/assets/images/banner3.png",
-  "/assets/images/banner2.png",
+  "/assets/images/EXTERIORcat.webp",
+  "/assets/images/interiorCat.webp",
+  "/assets/images/kitCat.webp",
   "/assets/images/microfiber.png",
 ]
 
@@ -115,24 +115,24 @@ export default function CarInteriorSection({ initialCategories = [], initialErro
 
       if (isMobile) {
         if (cardInfo.position === 'left') {
-          card.style.transform = "translateX(-100%) scale(0.85)"
+          card.style.transform = "translateX(-100%) scale(0.70)"
           card.style.opacity = '0.6'
         } else if (cardInfo.position === 'center') {
           card.style.transform = "translateX(0%) scale(1)"
           card.style.opacity = '1'
         } else if (cardInfo.position === 'right') {
-          card.style.transform = "translateX(100%) scale(0.85)"
+          card.style.transform = "translateX(100%) scale(0.70)"
           card.style.opacity = '0.6'
         }
       } else {
         if (cardInfo.position === 'left') {
-          card.style.transform = "translateX(-120%) scale(0.85)"
+          card.style.transform = "translateX(-120%) scale(0.70)"
           card.style.opacity = '0.6'
         } else if (cardInfo.position === 'center') {
           card.style.transform = "translateX(0%) scale(1)"
           card.style.opacity = '1'
         } else if (cardInfo.position === 'right') {
-          card.style.transform = "translateX(120%) scale(0.85)"
+          card.style.transform = "translateX(120%) scale(0.70)"
           card.style.opacity = '0.6'
         }
       }
@@ -162,19 +162,19 @@ export default function CarInteriorSection({ initialCategories = [], initialErro
       if (direction === 1) {
         // Moving to next
         if (isMobile) {
-          card.style.transform = `translateX(${cardInfo.position === 'left' ? -200 : cardInfo.position === 'center' ? -100 : 0}%) scale(${cardInfo.position === 'right' ? 1 : 0.85})`
+          card.style.transform = `translateX(${cardInfo.position === 'left' ? -200 : cardInfo.position === 'center' ? -100 : 0}%) scale(${cardInfo.position === 'right' ? 1 : 0.70})`
           card.style.opacity = `${cardInfo.position === 'center' ? '0.6' : cardInfo.position === 'right' ? '1' : '0'}`
         } else {
-          card.style.transform = `translateX(${cardInfo.position === 'left' ? -240 : cardInfo.position === 'center' ? -120 : 0}%) scale(${cardInfo.position === 'right' ? 1 : 0.85})`
+          card.style.transform = `translateX(${cardInfo.position === 'left' ? -240 : cardInfo.position === 'center' ? -120 : 0}%) scale(${cardInfo.position === 'right' ? 1 : 0.70})`
           card.style.opacity = `${cardInfo.position === 'center' ? '0.6' : cardInfo.position === 'right' ? '1' : '0'}`
         }
       } else {
         // Moving to previous
         if (isMobile) {
-          card.style.transform = `translateX(${cardInfo.position === 'left' ? 0 : cardInfo.position === 'center' ? 100 : 200}%) scale(${cardInfo.position === 'left' ? 1 : 0.85})`
+          card.style.transform = `translateX(${cardInfo.position === 'left' ? 0 : cardInfo.position === 'center' ? 100 : 200}%) scale(${cardInfo.position === 'left' ? 1 : 0.70})`
           card.style.opacity = `${cardInfo.position === 'center' ? '0.6' : cardInfo.position === 'left' ? '1' : '0'}`
         } else {
-          card.style.transform = `translateX(${cardInfo.position === 'left' ? 0 : cardInfo.position === 'center' ? 120 : 240}%) scale(${cardInfo.position === 'left' ? 1 : 0.85})`
+          card.style.transform = `translateX(${cardInfo.position === 'left' ? 0 : cardInfo.position === 'center' ? 120 : 240}%) scale(${cardInfo.position === 'left' ? 1 : 0.70})`
           card.style.opacity = `${cardInfo.position === 'center' ? '0.6' : cardInfo.position === 'left' ? '1' : '0'}`
         }
       }
@@ -230,7 +230,7 @@ export default function CarInteriorSection({ initialCategories = [], initialErro
 
         {/* Dynamic Background Text */}
         <div
-          className="absolute bottom-[130px] md:bottom-[125px] lg:bottom-30 xl:bottom-30 font-extrabold text-gray-100 uppercase pointer-events-none select-none z-0 text-center w-full px-4 tracking-wider"
+          className="absolute bottom-[130px] md:bottom-[125px] lg:bottom-10 xl:bottom-10 font-extrabold text-gray-100 uppercase pointer-events-none select-none z-0 text-center w-full px-4 tracking-wider"
           style={{
             fontSize: "clamp(24px, 10vw, 136px)",
             whiteSpace: "nowrap",
@@ -245,7 +245,7 @@ export default function CarInteriorSection({ initialCategories = [], initialErro
         {/* Cards Container */}
         <div
           ref={containerRef}
-          className={`relative flex justify-center items-center w-full h-[350px] z-10 ${
+          className={`relative flex justify-center items-center w-full h-[500px] z-10 ${
             isMobile ? 'px-4' : 'md:px-0 px-4 xl:px-4'
           }`}
         >
@@ -258,8 +258,8 @@ export default function CarInteriorSection({ initialCategories = [], initialErro
                 ref={(el) => (cardRefs.current[imageIndex] = el)}
                 className="absolute overflow-hidden shadow-xl cursor-pointer"
                 style={{
-                  width: isMobile ? 'calc(100vw - 32px)' : '400px',
-                  height: isMobile ? '200px' : '250px',
+                  width: isMobile ? 'calc(100vw - 32px)' : '600px',
+                  height: isMobile ? '300px' : '350px',
                   display: 'none', // Initially hidden
                 }}
                 onClick={() => handleCardClick(imageIndex, titles[imageIndex])}
@@ -276,7 +276,7 @@ export default function CarInteriorSection({ initialCategories = [], initialErro
         </div>
 
         {/* Controls */}
-        <div className="relative mt-10 z-10 w-full flex justify-center">
+        <div className="relative mt-20 md:mt-20 lg:mt-10 z-10 w-full flex justify-center">
           <div className="relative flex items-center justify-center w-[350px]">
             <button
               onClick={prev}

@@ -369,6 +369,7 @@ export default function FeaturedProducts() {
             isLastCard={idx === products.length - 1}
             // NEW: Pass a flag to indicate this is on the home page
             showClickableArea={true}
+            navigateOnClick={true}
           />
         </div>
       ))}

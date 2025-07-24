@@ -32,59 +32,71 @@ export default function RelatedProducts({ categoryName, currentProductId, limit 
   };
 
   useEffect(() => {
-    async function fetchAllRelated() {
-      setLoading(true)
-      try {
-        // If includedProducts (for kits/combos) is present, just show those
-        if (includedProducts && includedProducts.length > 0) {
-          const mapped = includedProducts.map((item) => {
-            const prod = item.product || item;
-            return normalizeProduct(prod);
-          });
-          setProducts(mapped);
-          setLoading(false);
-          return;
-        }
-
-        // For normal products: fetch category products and kits/combos that include this product
-        const [categoryResp, kitsCombosResp] = await Promise.all([
-          ProductService.getProductsByCategory(
-            categoryName || "all",
-            { limit: limit + 4 }
-          ),
-          KitsCombosService.getRelatedProducts(currentProductId)
-        ]);
-
-        // Extract products from category
-        const categoryProducts = ProductService.extractProducts(categoryResp)
-          .filter((product) => product.product_code !== currentProductId && product.id !== currentProductId)
-          .map(normalizeProduct)
-          .slice(0, limit);
-
-        // Extract kits and combos
-        const kits = (kitsCombosResp?.kits || []).map(kit => normalizeProduct(kit));
-        const combos = (kitsCombosResp?.combos || []).map(combo => normalizeProduct(combo));
-
-        // Merge and deduplicate by id
-        const all = [...categoryProducts, ...kits, ...combos];
-        const seen = new Set();
-        const unique = all.filter(item => {
-          if (!item || !item.id) return false;
-          if (seen.has(item.id)) return false;
-          seen.add(item.id);
-          return true;
-        }).slice(0, limit);
-
-        setProducts(unique);
-      } catch (error) {
-        console.error("Error fetching related products:", error)
-      } finally {
-        setLoading(false)
+  async function fetchAllRelated() {
+    setLoading(true);
+    try {
+      if (includedProducts && includedProducts.length > 0) {
+        const mapped = includedProducts.map((item) => {
+          const prod = item.product || item;
+          return normalizeProduct(prod);
+        });
+        setProducts(mapped);
+        setLoading(false);
+        return;
       }
-    }
 
-    fetchAllRelated();
-  }, [categoryName, currentProductId, limit, includedProducts])
+      const [categoryResp, kitsCombosResp] = await Promise.all([
+        ProductService.getProductsByCategory(categoryName || "all", { limit: 20 }),
+        KitsCombosService.getRelatedProducts(currentProductId),
+      ]);
+
+      // Normalize and filter
+      const kits = (kitsCombosResp?.kits || [])
+        .map(normalizeProduct)
+        .filter(item => item.id !== currentProductId);
+      const combos = (kitsCombosResp?.combos || [])
+        .map(normalizeProduct)
+        .filter(item => item.id !== currentProductId);
+
+      const allProducts = ProductService.extractProducts(categoryResp)
+        .map(normalizeProduct)
+        .filter(item => item.id !== currentProductId);
+
+      // Microfiber: based on category name or tag
+      const microfibers = allProducts.filter(p =>
+        (p.category || "").toLowerCase().includes("micro") ||
+        (p.name || "").toLowerCase().includes("micro")
+      );
+
+      // General products (excluding microfibers)
+      const generalProducts = allProducts.filter(p => !microfibers.includes(p));
+
+      // Random helper
+      const getRandomItem = (arr) => arr[Math.floor(Math.random() * arr.length)];
+
+      const selected = [];
+
+      if (kits.length > 0) selected.push(getRandomItem(kits));
+      if (combos.length > 0) selected.push(getRandomItem(combos));
+      if (microfibers.length > 0) selected.push(getRandomItem(microfibers));
+      if (generalProducts.length > 0) selected.push(getRandomItem(generalProducts));
+
+      // Shuffle the selected items
+      const shuffled = selected
+        .filter(Boolean)
+        .sort(() => 0.5 - Math.random())
+        .slice(0, limit); // Ensure only `limit` items
+
+      setProducts(shuffled);
+    } catch (error) {
+      console.error("Error fetching related products:", error);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  fetchAllRelated();
+}, [categoryName, currentProductId, limit, includedProducts]);
 
   // Format price with currency
   const formatPrice = (price) => {

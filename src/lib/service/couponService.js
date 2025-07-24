@@ -261,57 +261,28 @@ class CouponService {
  // ✅ Full production-safe coupon usage handler
 static async removeUsedCoupon(couponId, userId) {
   try {
-    // 1. Fetch user's current coupons
-    const { data: userData, error: userError } = await supabase
+    // Remove coupon from user's coupons
+    const { error: userError } = await supabase
       .from('auth_users')
-      .select('coupons')
-      .eq('id', userId)
-      .single();
+      .update({
+        coupons: supabase.raw('array_remove(coupons, ?)', [couponId])
+      })
+      .eq('id', userId);
 
     if (userError) throw userError;
 
-    let userCoupons = userData.coupons || [];
+    // Increment usage count safely using DB function
+    const { error: couponError } = await supabase.rpc('increment_coupon_usage', { coupon_id: couponId });
 
-    if (!Array.isArray(userCoupons)) {
-      try {
-        userCoupons = JSON.parse(userCoupons);
-      } catch (e) {
-        console.error('Coupon JSON parse error:', e);
-        userCoupons = [];
-      }
-    }
-
-    // 2. Remove the coupon from the user's list
-    const updatedCoupons = userCoupons.filter((c) => c.id !== couponId && c !== couponId); // Handles both formats
-
-    // 3. Update user's coupon list
-    const { error: updateUserError } = await supabase
-      .from('auth_users')
-      .update({ coupons: updatedCoupons })
-      .eq('id', userId);
-
-    if (updateUserError) throw updateUserError;
-
-    // 4. Increment usage_count
-    const { error: updateCouponError } = await supabase.rpc('increment_coupon_usage', {
-      coupon_id: couponId,
-    });
-
-    if (updateCouponError) throw updateCouponError;
-
-    // 5. Log coupon usage
-    const { error: logError } = await supabase.from('used_coupons_log').insert([
-      { user_id: userId, coupon_id: couponId },
-    ]);
-
-    if (logError) throw logError;
+    if (couponError) throw couponError;
 
     return { success: true };
   } catch (error) {
-    console.error('Error using/removing coupon:', error);
+    console.error('Error removing used coupon:', error);
     return { success: false, error: error.message };
   }
 }
+
 
   // Check coupon validity
   static async validateCoupon(couponCode) {

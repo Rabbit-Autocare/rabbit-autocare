@@ -30,6 +30,7 @@ export default function CartDrawer() {
   } = useCart();
 
   const [mounted, setMounted] = useState(false);
+  const [deliveryCharge, setDeliveryCharge] = useState(59);
 
   useEffect(() => {
     setMounted(true);
@@ -51,6 +52,61 @@ export default function CartDrawer() {
       };
     }
   }, [isCartOpen]);
+
+  // Calculate cart total for free delivery message
+  const calculateCartTotal = () => {
+    let subtotal = 0;
+    let basePrice = 0;
+
+    cartItems.forEach(item => {
+      const qty = item.quantity || 1;
+      
+      const getPrice = (incl, excl) => {
+        const priceIncl = Number(incl) || 0;
+        const priceExcl = excl ?? priceIncl / 1.18;
+        return [priceIncl * qty, priceExcl * qty];
+      };
+
+      if (item.kit_id && item.kit_price) {
+        const [incl, excl] = getPrice(item.kit_price, item.kit_price_excluding_gst);
+        subtotal += incl;
+        basePrice += excl;
+      } else if (item.combo_id && item.combo_price) {
+        const [incl, excl] = getPrice(item.combo_price, item.combo_price_excluding_gst);
+        subtotal += incl;
+        basePrice += excl;
+      } else if (Array.isArray(item.variant)) {
+        item.variant.forEach(v => {
+          const [incl, excl] = getPrice(v.base_price, v.base_price_excluding_gst);
+          subtotal += incl;
+          basePrice += excl;
+        });
+      } else {
+        const v = item.variant || {};
+        const [incl, excl] = getPrice(v.base_price, v.base_price_excluding_gst);
+        subtotal += incl;
+        basePrice += excl;
+      }
+    });
+
+    // Calculate discount
+    let discount = 0;
+    if (coupon?.percent) {
+      discount = Math.round(basePrice * (coupon.percent / 100));
+    } else if (coupon?.discount) {
+      const discountIncl = Number(coupon.discount);
+      discount = Math.round(discountIncl / 1.18);
+    }
+
+    const gstRemoved = subtotal - basePrice;
+    const discountedBase = basePrice - discount;
+    const netAmount = discountedBase + gstRemoved;
+
+    return netAmount;
+  };
+
+  const cartTotal = calculateCartTotal();
+  const remainingForFreeDelivery = cartTotal < 499 ? 499 - cartTotal : 0;
 
   const formatPrice = (price) => {
     return new Intl.NumberFormat('en-IN', {
@@ -172,21 +228,27 @@ export default function CartDrawer() {
               )}
             </div>
 
-            {/* <div
-              style={{
-                flexShrink: 0,
-                backgroundColor: '#9333ea',
-                color: 'white',
-                textAlign: 'center',
-                padding: '8px 0',
-                fontSize: '14px',
-                fontWeight: '500',
-                position: 'relative',
-                zIndex: 1000001,
-              }}
-            >
-              Save extra 5% on prepaid orders
-            </div> */}
+            {/* Free delivery banner */}
+            {cartItems.length > 0 && (
+              <div
+                style={{
+                  flexShrink: 0,
+                  backgroundColor: cartTotal >= 499 ? '#10b981' : '#f59e0b',
+                  color: 'white',
+                  textAlign: 'center',
+                  padding: '8px 12px',
+                  fontSize: '13px',
+                  fontWeight: '500',
+                  position: 'relative',
+                  zIndex: 1000001,
+                }}
+              >
+                {cartTotal >= 499 
+                  ? '🎉 You get FREE delivery on this order!' 
+                  : `Add ${formatPrice(remainingForFreeDelivery)} more for FREE delivery`
+                }
+              </div>
+            )}
 
             <div
               style={{
@@ -252,7 +314,7 @@ export default function CartDrawer() {
 
                   <CouponSection />
 
-                  <PriceSummary formatPrice={formatPrice} />
+                  <PriceSummary formatPrice={formatPrice} deliveryCharge={deliveryCharge} />
 
                   <div className='h-4'></div>
                 </div>

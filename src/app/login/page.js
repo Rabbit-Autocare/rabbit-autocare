@@ -62,21 +62,20 @@ export default function LoginPage() {
   }, [checkUser]);
 
   const handleGoogleSignIn = async () => {
-  try {
-    console.log('[LoginPage] Starting Google OAuth sign in...');
-    const { error } = await supabase.auth.signInWithOAuth({
-      provider: 'google',
-      options: {
-        redirectTo: `${window.location.origin}/auth/callback`, // Ensure this uses production URL
-      },
-    });
+    try {
+      console.log('[LoginPage] Starting Google OAuth sign in...');
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: `${window.location.origin}/auth/callback`,
+        },
+      });
 
-    if (error) throw error;
-  } catch (error) {
-    console.error('Error signing in:', error);
-  }
-};
-
+      if (error) throw error;
+    } catch (error) {
+      console.error('Error signing in:', error);
+    }
+  };
 
   const handleLogout = async () => {
     try {

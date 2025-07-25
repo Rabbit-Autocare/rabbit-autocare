@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from 'react';
 import { useCart } from '@/hooks/useCart';
-import { useAuth } from '@/hooks/useAuth';
 import CartItem from './CartItem';
 import CouponSection from './CouponSection';
 import PriceSummary from './PriceSummary';
@@ -19,27 +18,26 @@ export default function CartPageClient({
   initialCoupons = [],
   initialError = null,
 }) {
-  const { user, sessionChecked } = useAuth();
   const { cartItems, loading, cartCount, coupon } = useCart();
   const [isInitialized, setIsInitialized] = useState(false);
   const [showInitialData, setShowInitialData] = useState(true);
-  
+
   // ✅ Add delivery charge state
   const [deliveryCharge, setDeliveryCharge] = useState(0);
 
   // Use initial data until cart context is properly loaded
   useEffect(() => {
-    if (sessionChecked && !loading) {
+    if (!loading) {
       setIsInitialized(true);
       setShowInitialData(false);
     }
-  }, [sessionChecked, loading]);
+  }, [loading]);
 
   // ✅ Calculate delivery charges based on cart total
   useEffect(() => {
     const calculateDeliveryCharge = () => {
       const currentCartItems = showInitialData ? initialCartItems : cartItems;
-      
+
       if (!currentCartItems?.length) {
         setDeliveryCharge(0);
         return;
@@ -72,7 +70,7 @@ export default function CartPageClient({
       }
 
       const netCartValue = cartSubtotal - discount;
-      
+
       console.log('🛒 Cart delivery calculation:', {
         cartSubtotal,
         discount,
@@ -120,7 +118,7 @@ export default function CartPageClient({
 
   // Determine which data to show
   const currentCartItems = showInitialData ? initialCartItems : cartItems;
-  const isLoading = !sessionChecked || (sessionChecked && loading && !isInitialized);
+  const isLoading = loading && !isInitialized;
 
   if (initialError) {
     return (
@@ -255,7 +253,7 @@ export default function CartPageClient({
               <CouponSection initialCoupons={initialCoupons} />
 
               {/* ✅ Updated PriceSummary with delivery charges */}
-              <PriceSummary 
+              <PriceSummary
                 formatPrice={formatPrice}
                 deliveryCharge={deliveryCharge}
               />

@@ -166,17 +166,27 @@ export function AuthProvider({ children }) {
   const signIn = async () => {
     try {
       console.log('[AuthContext] Starting Google OAuth sign in...');
-      const { error } = await supabase.auth.signInWithOAuth({
+      const { data, error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          // Use the auth callback route
-          redirectTo: `${window.location.origin}/auth/callback`
+          redirectTo: `${window.location.origin}/auth/callback`,
+          queryParams: {
+            access_type: 'offline',
+            prompt: 'consent'
+          },
+          scopes: 'email profile',
         }
-      })
-      if (error) throw error
+      });
+      if (error) throw error;
+      
+      // Store sign-in attempt in localStorage
+      localStorage.setItem('auth_in_progress', 'true');
+      localStorage.setItem('auth_start_time', Date.now().toString());
+      
+      return data;
     } catch (error) {
-      console.error('Error signing in:', error)
-      throw error
+      console.error('[AuthContext] Error signing in:', error);
+      throw error;
     }
   }
 

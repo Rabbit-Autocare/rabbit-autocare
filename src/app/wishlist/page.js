@@ -1,22 +1,15 @@
+// app/wishlist/page.js or wherever your wishlist page is located
 'use client';
 import { useEffect, useState, useCallback } from 'react';
-import { createSupabaseBrowserClient } from '@/lib/supabase/browser-client';
-const supabase = createSupabaseBrowserClient();
 import Image from 'next/image';
-import { ShoppingCart, Trash2, Star, Package, Box, Gift } from 'lucide-react';
 import { WishlistService } from '@/lib/service/wishlistService';
 import { useCart } from '@/contexts/CartContext';
+import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/components/ui/CustomToast.jsx';
 import { ProductService } from '@/lib/service/productService';
 import RelatedProducts from '@/components/shop/RelatedProducts';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-
-
-// ...
-
-// Handler for "Continue Shopping" button
-
 
 function extractPackSize(variantCode) {
   const match = typeof variantCode === 'string' ? variantCode.match(/-(\d+)X$/i) : null;
@@ -24,7 +17,6 @@ function extractPackSize(variantCode) {
 }
 
 function getBestImageUrl(product) {
-  // Try all possible image fields in order of priority
   const imageSources = [
     product.main_image_url,
     product.mainImage,
@@ -34,8 +26,9 @@ function getBestImageUrl(product) {
     product.imageUrl,
     product.thumbnails?.[0],
   ].filter(Boolean);
+
   let url = imageSources.length > 0 ? imageSources[0] : '/placeholder.svg?height=400&width=400';
-  // If not absolute, try to build full URL for Supabase storage
+
   try {
     new URL(url);
     return url;
@@ -60,28 +53,28 @@ export default function WishlistPage() {
   const [loading, setLoading] = useState(true);
   const [removingId, setRemovingId] = useState(null);
   const [addingToCartId, setAddingToCartId] = useState(null);
-  const [user, setUser] = useState(null);
+
+  const { user, isAuthenticated, loading: authLoading } = useAuth();
   const { addToCart } = useCart();
   const showToast = useToast();
   const router = useRouter();
 
   const handleContinueShopping = () => {
-    router.push('/'); // Redirect to home page
+    router.push('/');
   };
 
-
-  // Handler for "Move To Cart" button to add all wishlist items
   const handleMoveAllToCart = async () => {
     if (!addToCart) {
       showToast('Unable to add to cart', { type: 'error' });
       return;
     }
+
     try {
+      let successCount = 0;
       for (const item of wishlistItems) {
         let success = false;
-
-        // Prepare product or combo or kit object for addToCart
         let productObj = null;
+
         if (item.product_id) {
           productObj = { id: item.product_id };
         } else if (item.combo_id) {
@@ -90,7 +83,6 @@ export default function WishlistPage() {
           productObj = { kit_id: item.kit_id };
         }
 
-        // variant from wishlist item
         const variant = item.variant;
 
         if (productObj && variant) {
@@ -99,13 +91,14 @@ export default function WishlistPage() {
 
         if (success) {
           await WishlistService.removeFromWishlist(item.id);
+          successCount++;
         } else {
           showToast(`Failed to add ${item.variant?.variant_code || item.id} to cart.`, { type: 'error' });
         }
       }
-      // Refresh wishlist after processing all items
+
       fetchWishlist();
-      showToast('All wishlist items moved to cart', { type: 'success' });
+      showToast(`${successCount} items moved to cart`, { type: 'success' });
     } catch (error) {
       showToast('Error moving items to cart', { type: 'error' });
       console.error('Move all to cart error:', error);
@@ -113,27 +106,41 @@ export default function WishlistPage() {
   };
 
   const fetchWishlist = useCallback(async () => {
+    console.log('🔍 Debug - Auth state:', { isAuthenticated, user: !!user, authLoading });
+
+    // Wait for auth to be ready
+    if (authLoading) {
+      console.log('⏳ Auth still loading, waiting...');
+      return;
+    }
+
+    if (!isAuthenticated || !user) {
+      console.log('❌ Not authenticated');
+      setWishlistItems([]);
+      setLoading(false);
+      return;
+    }
+
+    console.log('✅ Fetching wishlist for user:', user.id);
+    setLoading(true);
+
     try {
-      const { data: { user }, error: userError } = await supabase.auth.getUser();
-      if (userError || !user) {
-        setLoading(false);
-        return;
-      }
-      setUser(user);
       const { data } = await WishlistService.getWishlist();
+      console.log('📦 Wishlist data received:', data);
       setWishlistItems(data || []);
-      showToast(`Fetched ${data?.length || 0} wishlist items for user: ${user.id}`, { type: 'info' });
     } catch (error) {
+      console.error('❌ Wishlist fetch error:', error);
       setWishlistItems([]);
       showToast('Failed to fetch wishlist', { type: 'error' });
-      console.error('Wishlist fetch error:', error);
     }
     setLoading(false);
-  }, [supabase.auth, WishlistService.getWishlist, showToast]);
+  }, [isAuthenticated, user, authLoading, showToast]);
 
   useEffect(() => {
-    fetchWishlist();
-  }, [fetchWishlist]);
+    if (!authLoading) {
+      fetchWishlist();
+    }
+  }, [fetchWishlist, authLoading]);
 
   const handleRemove = async (id) => {
     setRemovingId(id);
@@ -141,8 +148,9 @@ export default function WishlistPage() {
     try {
       await WishlistService.removeFromWishlist(id);
       fetchWishlist();
+      showToast('Item removed from wishlist', { type: 'success' });
     } catch (error) {
-      // handle error
+      showToast('Failed to remove item', { type: 'error' });
     }
     setRemovingId(null);
   };
@@ -162,9 +170,12 @@ export default function WishlistPage() {
       }
       if (success) {
         await handleRemove(item.id);
+        showToast('Item moved to cart', { type: 'success' });
+      } else {
+        showToast('Failed to add to cart', { type: 'error' });
       }
     } catch (error) {
-      // handle error
+      showToast('Failed to add to cart', { type: 'error' });
     }
     setAddingToCartId(null);
   };
@@ -172,7 +183,6 @@ export default function WishlistPage() {
   const getItemDisplayInfo = (item) => {
     if (item.products && item.product_id) {
       const product = ProductService.transformProductData(item.products);
-      // Match variant by id (string)
       let variant = null;
       if (item.variant?.id) {
         variant = product.variants?.find(v => String(v.id) === String(item.variant.id));
@@ -180,16 +190,17 @@ export default function WishlistPage() {
       if (!variant && product.variants?.length) {
         variant = product.variants[0];
       }
-      // For microfiber, extract pack size from variant_code
+
       let packSize;
       if (product.product_type === 'microfiber' && variant?.variant_code) {
         packSize = extractPackSize(variant.variant_code);
       }
-      // Color handling (array or string)
+
       let color = '';
       if (variant?.color) {
         color = Array.isArray(variant.color) ? variant.color.join(', ') : variant.color;
       }
+
       return {
         name: product.name,
         description: product.description || '',
@@ -198,7 +209,6 @@ export default function WishlistPage() {
         category: product.category,
         rating: product.rating || 4.5,
         type: product.product_type,
-        icon: Package,
         variant: {
           size: variant?.size,
           packSize,
@@ -208,8 +218,7 @@ export default function WishlistPage() {
         },
         variant_code: variant?.variant_code || variant?.code || variant?.id || '',
       };
-    }
-    else if (item.combo_id) {
+    } else if (item.combo_id) {
       return {
         name: `Combo Product`,
         description: '',
@@ -218,21 +227,18 @@ export default function WishlistPage() {
         category: 'Combo',
         rating: 4.5,
         type: 'combo',
-        icon: Box,
         variant: item.variant,
         variant_code: item.variant?.variant_code || item.variant?.code || item.variant?.id || '',
       };
-    }
-    else if (item.kit_id) {
+    } else if (item.kit_id) {
       return {
         name: `Kit Product`,
         description: '',
-        price: item.variant?. base_price || '0.00',
+        price: item.variant?.base_price || '0.00',
         image: '/placeholder-kit.png',
         category: 'Kit',
         rating: 4.5,
         type: 'kit',
-        icon: Gift,
         variant: item.variant,
         variant_code: item.variant?.variant_code || item.variant?.code || item.variant?.id || '',
       };
@@ -245,13 +251,13 @@ export default function WishlistPage() {
       category: 'Unknown',
       rating: 0,
       type: 'unknown',
-      icon: Package,
       variant: item.variant,
       variant_code: item.variant?.variant_code || item.variant?.code || item.variant?.id || '',
     };
   };
 
-  if (loading) {
+  // Show loading state
+  if (authLoading || loading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-purple-50">
         <div className="container mx-auto px-6 py-12">
@@ -266,7 +272,8 @@ export default function WishlistPage() {
     );
   }
 
-  if (!user) {
+  // Show login prompt if not authenticated
+  if (!isAuthenticated || !user) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-purple-50">
         <div className="container mx-auto px-6 py-12">
@@ -278,7 +285,10 @@ export default function WishlistPage() {
             </div>
             <h2 className="text-3xl font-bold text-gray-800 mb-4">Please Login</h2>
             <p className="text-gray-600 mb-8">You need to be logged in to view your shine list</p>
-            <button className="bg-gradient-to-r from-black to-purple-600 text-white px-8 py-3 rounded-full font-semibold hover:from-gray-800 hover:to-purple-700 transform hover:scale-105 transition-all duration-300 shadow-lg hover:shadow-xl">
+            <button
+              onClick={() => router.push('/login')}
+              className="bg-gradient-to-r from-black to-purple-600 text-white px-8 py-3 rounded-full font-semibold hover:from-gray-800 hover:to-purple-700 transform hover:scale-105 transition-all duration-300 shadow-lg hover:shadow-xl"
+            >
               Login to Continue
             </button>
           </div>
@@ -287,6 +297,7 @@ export default function WishlistPage() {
     );
   }
 
+  // Show empty wishlist
   if (wishlistItems.length === 0) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-purple-50">
@@ -299,7 +310,10 @@ export default function WishlistPage() {
             </div>
             <h2 className="text-3xl font-bold text-gray-800 mb-4">Your Shine List is Empty</h2>
             <p className="text-gray-600 mb-8">Start adding products you love to your shine list!</p>
-            <button  onClick={handleContinueShopping} className="bg-gradient-to-r from-black to-purple-600 text-white px-8 py-3 rounded-full font-semibold hover:from-gray-800 hover:to-purple-700 transform hover:scale-105 transition-all duration-300 shadow-lg hover:shadow-xl">
+            <button
+              onClick={handleContinueShopping}
+              className="bg-gradient-to-r from-black to-purple-600 text-white px-8 py-3 rounded-full font-semibold hover:from-gray-800 hover:to-purple-700 transform hover:scale-105 transition-all duration-300 shadow-lg hover:shadow-xl"
+            >
               Continue Shopping
             </button>
           </div>
@@ -308,11 +322,24 @@ export default function WishlistPage() {
     );
   }
 
-  // Table style wishlist
+  // Wishlist table display
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-purple-50">
       <div className="container mx-auto px-6 py-12">
-        <h1 className="text-2xl font-bold mb-6">Shinelist</h1>
+        <div className="flex justify-between items-center mb-6">
+          <h1 className="text-2xl font-bold">Shinelist ({wishlistItems.length} items)</h1>
+          {/* Debug button - remove in production */}
+          <button
+            onClick={() => {
+              console.log('🔄 Manual fetch triggered');
+              fetchWishlist();
+            }}
+            className="bg-blue-500 text-white px-4 py-2 rounded text-sm"
+          >
+            Refresh
+          </button>
+        </div>
+
         <div className="overflow-x-auto bg-white rounded-lg shadow border border-gray-200 mb-12">
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
@@ -326,31 +353,42 @@ export default function WishlistPage() {
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {wishlistItems.map((item, idx) => {
+              {wishlistItems.map((item) => {
                 const itemInfo = getItemDisplayInfo(item);
                 const isRemoving = removingId === item.id;
                 const isAddingToCart = addingToCartId === item.id;
+
                 return (
                   <tr key={item.id} className={isRemoving ? 'opacity-50' : ''}>
                     <td className="px-4 py-4 text-center">
                       <input type="checkbox" className="form-checkbox h-5 w-5 text-purple-600" />
                     </td>
-                    <td className="px-4 py-4 flex items-center gap-4">
-                      <div className="relative w-16 h-16 flex-shrink-0">
-                        <Image src={itemInfo.image || '/placeholder.svg?height=400&width=400'} alt={itemInfo.name} fill className="object-cover rounded" />
-                      </div>
-                      <div>
-                        <div className="font-semibold text-gray-800">{itemInfo.name}</div>
-                        <div className="text-gray-500 text-xs line-clamp-1">{itemInfo.description}</div>
-                        {itemInfo.variant && (
-                          <div className="flex flex-wrap gap-2 mt-1 text-xs text-gray-600">
-                            {itemInfo.variant.size && <span>Size: {itemInfo.variant.size}</span>}
-                            {itemInfo.variant.packSize && <span>Pack: {itemInfo.variant.packSize}</span>}
-                            {itemInfo.variant.quantity && <span>Qty: {itemInfo.variant.quantity}</span>}
-                            {itemInfo.variant.unit && <span>Unit: {itemInfo.variant.unit}</span>}
-                            {itemInfo.variant.color && <span>Color: {itemInfo.variant.color}</span>}
-                          </div>
-                        )}
+                    <td className="px-4 py-4">
+                      <div className="flex items-center gap-4">
+                        <div className="relative w-16 h-16 flex-shrink-0">
+                          <Image
+                            src={itemInfo.image || '/placeholder.svg?height=400&width=400'}
+                            alt={itemInfo.name}
+                            fill
+                            className="object-cover rounded"
+                          />
+                        </div>
+                        <div>
+                          <div className="font-semibold text-gray-800">{itemInfo.name}</div>
+                          <div className="text-gray-500 text-xs line-clamp-1">{itemInfo.description}</div>
+                          {itemInfo.variant && (
+                            <div className="flex flex-wrap gap-2 mt-1 text-xs text-gray-600">
+                              {itemInfo.variant.size && <span>Size: {itemInfo.variant.size}</span>}
+                              {itemInfo.variant.packSize && <span>Pack: {itemInfo.variant.packSize}</span>}
+                              {itemInfo.variant.quantity && <span>Qty: {itemInfo.variant.quantity}</span>}
+                              {itemInfo.variant.unit && <span>Unit: {itemInfo.variant.unit}</span>}
+                              {itemInfo.variant.color && <span>Color: {itemInfo.variant.color}</span>}
+                            </div>
+                          )}
+                          {itemInfo.variant_code && (
+                            <div className="text-xs text-gray-500 mt-1">Code: {itemInfo.variant_code}</div>
+                          )}
+                        </div>
                       </div>
                     </td>
                     <td className="px-4 py-4 font-semibold text-gray-900">₹{itemInfo.price}</td>
@@ -363,11 +401,24 @@ export default function WishlistPage() {
                     </td>
                     <td className="px-4 py-4 font-semibold text-gray-900">₹{itemInfo.price}</td>
                     <td className="px-4 py-4">
-                      <button onClick={() => handleRemove(item.id)} disabled={isRemoving} className="text-red-600 hover:text-red-800 transition-colors">
-                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-6 h-6">
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-                        </svg>
-                      </button>
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => handleAddToCart(item)}
+                          disabled={isAddingToCart}
+                          className="text-blue-600 hover:text-blue-800 transition-colors text-sm"
+                        >
+                          {isAddingToCart ? 'Adding...' : 'Add to Cart'}
+                        </button>
+                        <button
+                          onClick={() => handleRemove(item.id)}
+                          disabled={isRemoving}
+                          className="text-red-600 hover:text-red-800 transition-colors"
+                        >
+                          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-6 h-6">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                          </svg>
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 );
@@ -375,10 +426,17 @@ export default function WishlistPage() {
             </tbody>
           </table>
         </div>
+
         <div className="flex justify-between items-center mb-12">
           <Link href="/shop" className="text-purple-700 hover:underline">Continue Shopping</Link>
-          <button  onClick={handleMoveAllToCart} className="bg-black text-white px-6 py-3 rounded font-semibold hover:bg-purple-700 transition-colors">Move To Cart</button>
+          <button
+            onClick={handleMoveAllToCart}
+            className="bg-black text-white px-6 py-3 rounded font-semibold hover:bg-purple-700 transition-colors"
+          >
+            Move All To Cart
+          </button>
         </div>
+
         {/* Related Products Section */}
         <RelatedProducts />
       </div>

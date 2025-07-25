@@ -1,15 +1,31 @@
+// lib/service/attributeService.js (or whatever you're calling this file)
 import { createSupabaseBrowserClient } from '@/lib/supabase/browser-client';
 const supabase = createSupabaseBrowserClient();
 import { fetchWithRetry } from '@/lib/utils/fetchWithRetry';
 
-// API endpoints
-const SIZES_API = "/api/products/size";
-const COLORS_API = "/api/products/colors";
-const GSM_API = "/api/products/gsm";
-const QUANTITY_API = "/api/products/quantity";
-const CATEGORIES_API = "/api/products/category";
+// Helper function for authenticated operations
+const makeAuthenticatedCall = async (endpoint, options = {}) => {
+  const defaultOptions = {
+    credentials: 'include',
+    headers: {
+      'Content-Type': 'application/json',
+      ...options.headers
+    },
+    ...options
+  };
+
+  const response = await fetch(endpoint, defaultOptions);
+
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}));
+    throw new Error(errorData.error || `HTTP ${response.status}`);
+  }
+
+  return await response.json();
+};
 
 export class SizeService {
+  // Read operations - keep direct Supabase for public data
   static async getSizes() {
     try {
       console.log('[DEBUG] Fetching sizes...');
@@ -26,16 +42,14 @@ export class SizeService {
     }
   }
 
+  // Write operations - use API routes for admin authentication
   static async createSize(data) {
     try {
-      const { data: newSize, error } = await supabase
-        .from('sizes')
-        .insert([{ size_cm: data.size_cm }])
-        .select()
-        .single();
-
-      if (error) throw error;
-      return { success: true, data: newSize };
+      const result = await makeAuthenticatedCall('/api/admin/sizes', {
+        method: 'POST',
+        body: JSON.stringify({ size_cm: data.size_cm })
+      });
+      return { success: true, data: result.data };
     } catch (error) {
       console.error('Error creating size:', error);
       return { success: false, error: error.message };
@@ -44,15 +58,11 @@ export class SizeService {
 
   static async updateSize(id, data) {
     try {
-      const { data: updatedSize, error } = await supabase
-        .from('sizes')
-        .update({ size_cm: data.size_cm })
-        .eq('id', id)
-        .select()
-        .single();
-
-      if (error) throw error;
-      return { success: true, data: updatedSize };
+      const result = await makeAuthenticatedCall(`/api/admin/sizes/${id}`, {
+        method: 'PUT',
+        body: JSON.stringify({ size_cm: data.size_cm })
+      });
+      return { success: true, data: result.data };
     } catch (error) {
       console.error('Error updating size:', error);
       return { success: false, error: error.message };
@@ -61,12 +71,9 @@ export class SizeService {
 
   static async deleteSize(id) {
     try {
-      const { error } = await supabase
-        .from('sizes')
-        .delete()
-        .eq('id', id);
-
-      if (error) throw error;
+      await makeAuthenticatedCall(`/api/admin/sizes/${id}`, {
+        method: 'DELETE'
+      });
       return { success: true };
     } catch (error) {
       console.error('Error deleting size:', error);
@@ -93,14 +100,14 @@ export class ColorService {
 
   static async createColor(data) {
     try {
-      const { data: newColor, error } = await supabase
-        .from('colors')
-        .insert([{ color: data.color, hex_code: data.hex_code || null }])
-        .select()
-        .single();
-
-      if (error) throw error;
-      return { success: true, data: newColor };
+      const result = await makeAuthenticatedCall('/api/admin/colors', {
+        method: 'POST',
+        body: JSON.stringify({
+          color: data.color,
+          hex_code: data.hex_code || null
+        })
+      });
+      return { success: true, data: result.data };
     } catch (error) {
       console.error('Error creating color:', error);
       return { success: false, error: error.message };
@@ -109,15 +116,14 @@ export class ColorService {
 
   static async updateColor(id, data) {
     try {
-      const { data: updatedColor, error } = await supabase
-        .from('colors')
-        .update({ color: data.color, hex_code: data.hex_code || null })
-        .eq('id', id)
-        .select()
-        .single();
-
-      if (error) throw error;
-      return { success: true, data: updatedColor };
+      const result = await makeAuthenticatedCall(`/api/admin/colors/${id}`, {
+        method: 'PUT',
+        body: JSON.stringify({
+          color: data.color,
+          hex_code: data.hex_code || null
+        })
+      });
+      return { success: true, data: result.data };
     } catch (error) {
       console.error('Error updating color:', error);
       return { success: false, error: error.message };
@@ -126,12 +132,9 @@ export class ColorService {
 
   static async deleteColor(id) {
     try {
-      const { error } = await supabase
-        .from('colors')
-        .delete()
-        .eq('id', id);
-
-      if (error) throw error;
+      await makeAuthenticatedCall(`/api/admin/colors/${id}`, {
+        method: 'DELETE'
+      });
       return { success: true };
     } catch (error) {
       console.error('Error deleting color:', error);
@@ -158,14 +161,11 @@ export class GsmService {
 
   static async createGsm(data) {
     try {
-      const { data: newGsm, error } = await supabase
-        .from('gsm')
-        .insert([{ gsm: data.gsm }])
-        .select()
-        .single();
-
-      if (error) throw error;
-      return { success: true, data: newGsm };
+      const result = await makeAuthenticatedCall('/api/admin/gsm', {
+        method: 'POST',
+        body: JSON.stringify({ gsm: data.gsm })
+      });
+      return { success: true, data: result.data };
     } catch (error) {
       console.error('Error creating GSM:', error);
       return { success: false, error: error.message };
@@ -174,15 +174,11 @@ export class GsmService {
 
   static async updateGsm(id, data) {
     try {
-      const { data: updatedGsm, error } = await supabase
-        .from('gsm')
-        .update({ gsm: data.gsm })
-        .eq('id', id)
-        .select()
-        .single();
-
-      if (error) throw error;
-      return { success: true, data: updatedGsm };
+      const result = await makeAuthenticatedCall(`/api/admin/gsm/${id}`, {
+        method: 'PUT',
+        body: JSON.stringify({ gsm: data.gsm })
+      });
+      return { success: true, data: result.data };
     } catch (error) {
       console.error('Error updating GSM:', error);
       return { success: false, error: error.message };
@@ -191,12 +187,9 @@ export class GsmService {
 
   static async deleteGsm(id) {
     try {
-      const { error } = await supabase
-        .from('gsm')
-        .delete()
-        .eq('id', id);
-
-      if (error) throw error;
+      await makeAuthenticatedCall(`/api/admin/gsm/${id}`, {
+        method: 'DELETE'
+      });
       return { success: true };
     } catch (error) {
       console.error('Error deleting GSM:', error);
@@ -224,14 +217,14 @@ export class QuantityService {
 
   static async createQuantity(data) {
     try {
-      const { data: newQuantity, error } = await supabase
-        .from('quantity')
-        .insert([{ quantity: data.quantity, unit: data.unit || 'ml' }])
-        .select()
-        .single();
-
-      if (error) throw error;
-      return { success: true, data: newQuantity };
+      const result = await makeAuthenticatedCall('/api/admin/quantities', {
+        method: 'POST',
+        body: JSON.stringify({
+          quantity: data.quantity,
+          unit: data.unit || 'ml'
+        })
+      });
+      return { success: true, data: result.data };
     } catch (error) {
       console.error('Error creating quantity:', error);
       return { success: false, error: error.message };
@@ -240,15 +233,14 @@ export class QuantityService {
 
   static async updateQuantity(id, data) {
     try {
-      const { data: updatedQuantity, error } = await supabase
-        .from('quantity')
-        .update({ quantity: data.quantity, unit: data.unit || 'ml' })
-        .eq('id', id)
-        .select()
-        .single();
-
-      if (error) throw error;
-      return { success: true, data: updatedQuantity };
+      const result = await makeAuthenticatedCall(`/api/admin/quantities/${id}`, {
+        method: 'PUT',
+        body: JSON.stringify({
+          quantity: data.quantity,
+          unit: data.unit || 'ml'
+        })
+      });
+      return { success: true, data: result.data };
     } catch (error) {
       console.error('Error updating quantity:', error);
       return { success: false, error: error.message };
@@ -257,12 +249,9 @@ export class QuantityService {
 
   static async deleteQuantity(id) {
     try {
-      const { error } = await supabase
-        .from('quantity')
-        .delete()
-        .eq('id', id);
-
-      if (error) throw error;
+      await makeAuthenticatedCall(`/api/admin/quantities/${id}`, {
+        method: 'DELETE'
+      });
       return { success: true };
     } catch (error) {
       console.error('Error deleting quantity:', error);
@@ -274,7 +263,7 @@ export class QuantityService {
 export class CategoryService {
   static async getCategories() {
     try {
-      // console.log('[DEBUG] Fetching categories...');
+      console.log('[DEBUG] Fetching categories...');
 
       // Add timeout to prevent infinite loading
       const timeoutPromise = new Promise((_, reject) =>
@@ -288,7 +277,7 @@ export class CategoryService {
 
       const { data, error } = await Promise.race([categoriesPromise, timeoutPromise]);
 
-      // console.log('[DEBUG] Categories fetched:', data, error);
+      console.log('[DEBUG] Categories fetched:', data, error);
       if (error) throw error;
       return { success: true, data };
     } catch (error) {
@@ -299,17 +288,14 @@ export class CategoryService {
 
   static async createCategory(data) {
     try {
-      const { data: newCategory, error } = await supabase
-        .from('categories')
-        .insert([{
+      const result = await makeAuthenticatedCall('/api/admin/categories', {
+        method: 'POST',
+        body: JSON.stringify({
           name: data.name,
           is_microfiber: data.is_microfiber || false
-        }])
-        .select()
-        .single();
-
-      if (error) throw error;
-      return { success: true, data: newCategory };
+        })
+      });
+      return { success: true, data: result.data };
     } catch (error) {
       console.error('Error creating category:', error);
       return { success: false, error: error.message };
@@ -318,18 +304,14 @@ export class CategoryService {
 
   static async updateCategory(id, data) {
     try {
-      const { data: updatedCategory, error } = await supabase
-        .from('categories')
-        .update({
+      const result = await makeAuthenticatedCall(`/api/admin/categories/${id}`, {
+        method: 'PUT',
+        body: JSON.stringify({
           name: data.name,
           is_microfiber: data.is_microfiber || false
         })
-        .eq('id', id)
-        .select()
-        .single();
-
-      if (error) throw error;
-      return { success: true, data: updatedCategory };
+      });
+      return { success: true, data: result.data };
     } catch (error) {
       console.error('Error updating category:', error);
       return { success: false, error: error.message };
@@ -338,12 +320,9 @@ export class CategoryService {
 
   static async deleteCategory(id) {
     try {
-      const { error } = await supabase
-        .from('categories')
-        .delete()
-        .eq('id', id);
-
-      if (error) throw error;
+      await makeAuthenticatedCall(`/api/admin/categories/${id}`, {
+        method: 'DELETE'
+      });
       return { success: true };
     } catch (error) {
       console.error('Error deleting category:', error);

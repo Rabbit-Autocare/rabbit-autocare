@@ -1,15 +1,27 @@
+// lib/service/wishlistService.js
 import { createSupabaseBrowserClient } from '@/lib/supabase/browser-client';
+
 const supabase = createSupabaseBrowserClient();
 
 export class WishlistService {
   // Get current user's wishlist items
   static async getWishlist() {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) throw new Error('Not authenticated');
-    // Use the new API route for fetching wishlist
-    const res = await fetch(`/api/wishlist?user_id=${user.id}`);
+    console.log('🔄 WishlistService: Making API call to /api/wishlist');
+
+    const res = await fetch('/api/wishlist', {
+      credentials: 'include' // Include cookies for authentication
+    });
+
+    console.log('📡 API Response status:', res.status);
+
     const result = await res.json();
-    if (!result.success) throw new Error(result.error || 'Failed to fetch wishlist');
+    console.log('📋 API Response data:', result);
+
+    if (!result.success) {
+      console.error('❌ API Error:', result.error);
+      throw new Error(result.error || 'Failed to fetch wishlist');
+    }
+
     return { data: result.data };
   }
 
@@ -22,6 +34,7 @@ export class WishlistService {
       .eq('product_id', productId);
     if (error) throw error;
     if (!data || data.length === 0) return null;
+
     // Compare variants
     const normalizeVariant = (v) => {
       if (!v) return null;
@@ -36,6 +49,7 @@ export class WishlistService {
       if (v.package_quantity) normalized.package_quantity = v.package_quantity;
       return normalized;
     };
+
     const normalizedSearchVariant = normalizeVariant(variant);
     return data.find(item => {
       const normalizedItemVariant = normalizeVariant(item.variant);
@@ -45,86 +59,59 @@ export class WishlistService {
 
   // Smart add method that handles duplicates
   static async addToWishlistSmart(productOrComboOrKit, variant) {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) throw new Error('Not authenticated');
-    let isCombo = false;
-    let isKit = false;
-    let comboId = null;
-    let kitId = null;
-    let productId = null;
-    let variantToStore = null;
+    try {
+      console.log('🔄 Adding to wishlist:', { productOrComboOrKit, variant });
 
-    if (productOrComboOrKit && productOrComboOrKit.combo_id) {
-      isCombo = true;
-      comboId = productOrComboOrKit.combo_id;
-      variantToStore = Array.isArray(variant) ? variant.map(v => ({ ...v })) : [];
-    } else if (productOrComboOrKit && productOrComboOrKit.kit_id) {
-      isKit = true;
-      kitId = productOrComboOrKit.kit_id;
-      variantToStore = Array.isArray(variant) ? variant.map(v => ({ ...v })) : [];
-    } else if (productOrComboOrKit && productOrComboOrKit.id) {
-      productId = productOrComboOrKit.id;
-      variantToStore = { ...variant };
-    }
+      const res = await fetch('/api/wishlist/add', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include', // Include cookies for authentication
+        body: JSON.stringify({
+          product_id: productOrComboOrKit?.id || null,
+          combo_id: productOrComboOrKit?.combo_id || null,
+          kit_id: productOrComboOrKit?.kit_id || null,
+          variant: variant
+        })
+      });
 
-    // Check if this item already exists in the wishlist
-    let existingItem = null;
-    if (isCombo) {
-      const { data, error } = await supabase
-        .from('wishlist_items')
-        .select('*')
-        .eq('user_id', user.id)
-        .eq('combo_id', comboId)
-        .single();
-      if (!error && data) existingItem = data;
-    } else if (isKit) {
-      const { data, error } = await supabase
-        .from('wishlist_items')
-        .select('*')
-        .eq('user_id', user.id)
-        .eq('kit_id', kitId)
-        .single();
-      if (!error && data) existingItem = data;
-    } else if (productId) {
-      existingItem = await this.findExistingWishlistItem(productId, variantToStore, user.id);
-    }
+      const result = await res.json();
+      console.log('📝 Add wishlist response:', result);
 
-    if (existingItem) {
-      return { success: false, message: 'Item already in wishlist', existing: true };
-    }
+      if (!result.success) {
+        if (result.error === 'Item already in wishlist') {
+          return { success: false, message: 'Item already in wishlist', existing: true };
+        }
+        throw new Error(result.error);
+      }
 
-    // Insert new wishlist item
-    const wishlistItem = {
-      user_id: user.id,
-      product_id: productId || null,
-      variant: (productId && variantToStore) ? variantToStore : ((isCombo || isKit) ? variantToStore : null),
-      combo_id: isCombo ? comboId : null,
-      kit_id: isKit ? kitId : null,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-    };
-    if (wishlistItem.product_id && typeof wishlistItem.product_id !== 'number') {
-      wishlistItem.product_id = null;
+      return { success: true, wishlistItem: result.data, created: true };
+    } catch (error) {
+      console.error('❌ Add to wishlist error:', error);
+      throw error;
     }
-    const { data, error } = await supabase
-      .from('wishlist_items')
-      .insert([wishlistItem])
-      .select()
-      .single();
-    if (error) throw error;
-    return { success: true, wishlistItem: data, created: true };
   }
 
   // Remove item from wishlist
   static async removeFromWishlist(wishlistItemId) {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) throw new Error('Not authenticated');
-    const { error } = await supabase
-      .from('wishlist_items')
-      .delete()
-      .eq('id', wishlistItemId)
-      .eq('user_id', user.id);
-    if (error) throw error;
-    return { success: true };
+    try {
+      console.log('🗑️ Removing from wishlist:', wishlistItemId);
+
+      const res = await fetch(`/api/wishlist/remove?id=${wishlistItemId}`, {
+        method: 'DELETE',
+        credentials: 'include' // Include cookies for authentication
+      });
+
+      const result = await res.json();
+      console.log('🗑️ Remove wishlist response:', result);
+
+      if (!result.success) throw new Error(result.error);
+
+      return { success: true };
+    } catch (error) {
+      console.error('❌ Remove from wishlist error:', error);
+      throw error;
+    }
   }
 }

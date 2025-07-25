@@ -133,6 +133,7 @@ export function AuthProvider({ children }) {
     loading,
     sessionChecked,
     isLoggedIn: !!user,
+    isAuthenticated: !!user, // ADD THIS LINE - This is what WishlistContext needs
     signIn,
     signOut,
     logout,

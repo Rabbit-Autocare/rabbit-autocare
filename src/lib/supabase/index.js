@@ -2,5 +2,5 @@
 export { createSupabaseBrowserClient } from './browser-client';
 export { createSupabaseServerClient } from './server-client';
 
-// For backward compatibility, you can also export a default client
-export const supabase = createSupabaseBrowserClient();
+// Remove this line completely - it's causing the error
+// export const supabase = createSupabaseBrowser();

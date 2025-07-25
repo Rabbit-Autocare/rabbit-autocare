@@ -45,7 +45,7 @@ export default function ContactPage() {
 
           <div className='mb-8'>
             <h2 className='text-2xl font-medium mb-5 pt-4'>Email</h2>
-            <p className='text-gray-800'>beebs@gmail.com</p>
+            <p className='text-gray-800'>support@rabbitautocare.com</p>
           </div>
 
           <div>
@@ -53,26 +53,42 @@ export default function ContactPage() {
             <ul className='space-y-3'>
               <li>
                 <Link
-                  href='https://instagram.com'
+                  href='https://www.instagram.com/rabbitautocare'
                   className='text-blue-600 underline'
+                  target="_blank"
+                  rel="noopener noreferrer"
                 >
                   Instagram
                 </Link>
               </li>
               <li>
                 <Link
-                  href='https://twitter.com'
+                  href='https://x.com/rabbitautocare'
                   className='text-blue-600 underline'
+                  target="_blank"
+                  rel="noopener noreferrer"
                 >
-                  Twitter
+                  Twitter (X)
                 </Link>
               </li>
               <li>
                 <Link
-                  href='https://facebook.com'
+                  href='https://www.facebook.com/rabbitautocare'
                   className='text-blue-600 underline'
+                  target="_blank"
+                  rel="noopener noreferrer"
                 >
                   Facebook
+                </Link>
+              </li>
+              <li>
+                <Link
+                  href='https://www.linkedin.com/company/rabbitautocare'
+                  className='text-blue-600 underline'
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  LinkedIn
                 </Link>
               </li>
             </ul>
@@ -148,8 +164,5 @@ export default function ContactPage() {
 
       <FaqSection />
     </div>
-
-
-
   );
 }

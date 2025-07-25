@@ -5,21 +5,21 @@ import { motion, AnimatePresence } from "framer-motion"
 import { ChevronLeft, ChevronRight } from "lucide-react"
 
 // Simple Banner Component 1
-const CarCareBanner = () => (
+const Banner1 = () => (
   <div className="relative w-full h-screen overflow-hidden">
     <div
       className="absolute inset-0 w-full h-[900px]"
       style={{
-        backgroundImage: "url('/assets/images/EXTERIORcat.webp')",
+        backgroundImage: "url('/assets/images/16.png')",
         backgroundSize: "cover",
-        backgroundPosition: "top",
+        backgroundPosition: "center",
         backgroundRepeat: "no-repeat",
       }}
     />
   </div>
 )
 // Simple Banner Component 2
-const DetailingToolsBanner = () => (
+const Banner2 = () => (
   <div className="relative w-full h-screen overflow-hidden">
     <div
       className="absolute inset-0 w-full h-full"
@@ -32,13 +32,29 @@ const DetailingToolsBanner = () => (
     />
   </div>
 )
+
+
 // Simple Banner Component 3
-const LuxuryAccessoriesBanner = () => (
+const Banner3 = () => (
   <div className="relative w-full h-screen overflow-hidden">
     <div
       className="absolute inset-0 w-full h-full"
       style={{
-        backgroundImage: "url('/assets/images/banner3.png')",
+        backgroundImage: "url('https://ubnifppknfszvqkxqbfp.supabase.co/storage/v1/object/public/staticimages//16.png')",
+        backgroundSize: "cover",
+        backgroundPosition: "center",
+        backgroundRepeat: "no-repeat",
+      }}
+    />
+  </div>
+)
+const Banner4 = () => (
+  <div className="relative w-full h-screen overflow-hidden">
+    <div
+      className="absolute inset-0 w-full h-full"
+      style={{
+        backgroundImage: "url('/assets/images/12.png')",
+        // height: "100%",
         backgroundSize: "cover",
         backgroundPosition: "center",
         backgroundRepeat: "no-repeat",
@@ -47,6 +63,19 @@ const LuxuryAccessoriesBanner = () => (
   </div>
 )
 
+const Banner5 = () => (
+  <div className="relative w-full h-screen overflow-hidden">
+    <div
+      className="absolute inset-0 w-full h-full"
+      style={{
+        backgroundImage: "url('/assets/images/21.png')",
+        backgroundSize: "cover",
+        backgroundPosition: "Bottom",
+        backgroundRepeat: "no-repeat",
+      }}
+    />
+  </div>
+)
 // Mobile Video Banner
 const MobileVideoBanner = () => (
   <div className="relative top-[-80px]  w-full h-[700px] sm:h-[700px] md:hidden overflow-hidden">
@@ -181,9 +210,11 @@ const HeroBannerSlider = () => {
     <>
       {/* Desktop banners */}
       <BannerSlider autoSlideInterval={5000} showControls={false} showDots={false}>
-        <CarCareBanner />
-        <DetailingToolsBanner />
-        {/* <LuxuryAccessoriesBanner /> */}
+        <Banner1 />
+        <Banner2 />
+        <Banner3 />
+        <Banner4 />
+        <Banner5 />
       </BannerSlider>
       {/* Mobile video */}
       <MobileVideoBanner />

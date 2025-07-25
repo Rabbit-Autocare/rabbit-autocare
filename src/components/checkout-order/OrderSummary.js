@@ -18,7 +18,16 @@ function getVariantDisplayText(variant, isMicrofiber) {
   return '';
 }
 
-export default function OrderSummary({ items, updateItemQuantity, coupon, orderTotals, deliveryCharge, loading, onPlaceOrder }) {
+export default function OrderSummary({
+  items,
+  updateItemQuantity,
+  coupon,
+  orderTotals,
+  deliveryCharge,
+  loading,
+  onPlaceOrder,
+  selectedShippingAddressId // Add this prop
+}) {
   const calculatedSubtotal = items.reduce((sum, item) => {
     const unit = item.price || 0;
     const qty = item.quantity || 1;
@@ -27,6 +36,10 @@ export default function OrderSummary({ items, updateItemQuantity, coupon, orderT
   }, 0);
 
   const calculatedGrandTotal = calculatedSubtotal - (orderTotals.discount || 0) + (deliveryCharge || 0);
+
+  // Calculate cart value for delivery message condition
+  const cartValue = orderTotals.subtotal - (orderTotals.discount || 0);
+  const showDeliveryMessage = !selectedShippingAddressId && cartValue < 499;
 
   const renderPrice = (item) => (
     <div className="text-xl font-bold text-black">
@@ -269,14 +282,35 @@ export default function OrderSummary({ items, updateItemQuantity, coupon, orderT
               </div>
             )}
 
-            {deliveryCharge > 0 && (
-              <div className="flex justify-between items-center text-lg">
-                <span className="text-gray-600">Delivery Charges</span>
-                <span className="font-semibold text-black">₹{deliveryCharge.toFixed(2)}</span>
-              </div>
-            )}
+            <div className="flex justify-between items-center text-lg">
+  <span className="text-gray-600">Delivery Charges</span>
+  <span className="font-semibold text-black">
+    {!selectedShippingAddressId ? (
+      <span className="text-gray-500">Select address</span>
+    ) : deliveryCharge === 0 ? (
+      <span className="text-green-600">FREE</span>
+    ) : (
+      `₹${deliveryCharge.toFixed(2)}`
+    )}
+  </span>
+</div>
+
           </div>
         </div>
+
+        {/* Delivery Information Message - Only show when no address selected and cart < 499 */}
+       {showDeliveryMessage && (
+  <div className="mt-4 p-3 bg-amber-50 border border-amber-200 rounded text-sm">
+    <div className="flex items-center gap-2">
+      <span className="text-amber-600">ℹ️</span>
+      <div className="text-amber-800">
+        <span className="font-medium">Delivery: ₹59-99</span> for orders under ₹499.
+        <span className="text-green-700 font-medium ml-1">Free above ₹499!</span>
+      </div>
+    </div>
+  </div>
+)}
+
 
         <div className="p-6 bg-gray-50 border-t-2 border-dashed border-gray-200">
           <div className="flex justify-between items-center">
@@ -298,13 +332,18 @@ export default function OrderSummary({ items, updateItemQuantity, coupon, orderT
               items
             })
           }
-          disabled={loading}
+          disabled={loading || !selectedShippingAddressId}
           className="mt-8 w-full bg-[#601E8D] hover:bg-[#4a1770] text-white py-4 px-6 rounded-[4px] font-bold text-lg shadow-sm hover:shadow-md disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-300"
         >
           {loading ? (
             <div className="flex items-center justify-center gap-3">
               <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
               <span>Placing Order...</span>
+            </div>
+          ) : !selectedShippingAddressId ? (
+            <div className="flex items-center justify-center gap-3">
+              <span>📍</span>
+              <span>Select Address to Continue</span>
             </div>
           ) : (
             <div className="flex items-center justify-center gap-3">

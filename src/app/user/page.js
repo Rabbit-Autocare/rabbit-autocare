@@ -1,57 +1,25 @@
-import { cookies } from 'next/headers'
-import { redirect } from 'next/navigation'
-import jwt from 'jsonwebtoken'
-import { createSupabaseServerClient } from '@/lib/supabase/server-client'
+export const runtime = 'nodejs'
+
+import { requireAuth } from '@/lib/auth/server-auth'
 import UserProfileClient from '@/components/user/UserProfileClient'
+import { redirect } from 'next/navigation'
 
 export default async function UserProfilePage() {
-  try {
-    // Get auth token from cookies
-    const cookieStore = cookies()
-    const authToken = cookieStore.get('auth-token')?.value
+  // 1) Authenticate
+  const { redirect: to, user } = await requireAuth(false)
+  if (to) redirect(to)
+  if (user.is_admin) redirect('/admin')
 
-    if (!authToken) {
-      redirect('/login')
-    }
-
-    // Verify the token
-    const decodedToken = jwt.verify(authToken, process.env.JWT_SECRET)
-
-    // Get user data from database
-    const supabase = createSupabaseServerClient()
-    const { data: user, error } = await supabase
-      .from('auth_users')
-      .select('*')
-      .eq('id', decodedToken.userId)
-      .single()
-
-    if (error || !user) {
-      redirect('/login?error=user_not_found')
-    }
-
-    // Check if user is banned
-    if (user.is_banned) {
-      redirect('/login?error=account_banned')
-    }
-
-    // Redirect admin users to admin page
-    if (user.is_admin) {
-      redirect('/admin')
-    }
-
-    const userData = {
-      id: user.id,
-      name: user.name || '',
-      phone_number: user.phone_number || '',
-      email: user.email || '',
-      picture: user.picture || '',
-      coupons: user.coupons || []
-    }
-
-    return <UserProfileClient initialData={userData} />
-
-  } catch (error) {
-    console.error('User page auth error:', error)
-    redirect('/login?error=auth_failed')
+  // 2) Prepare props
+  const userData = {
+    id: user.id,
+    name: user.name || '',
+    email: user.email || '',
+    phone_number: user.phone_number || '',
+    picture: user.picture || '',
+    coupons: user.coupons || []
   }
+
+  // 3) Render
+  return <UserProfileClient initialData={userData} />
 }

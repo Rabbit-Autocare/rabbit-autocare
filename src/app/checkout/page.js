@@ -838,15 +838,18 @@ useEffect(() => {
                    <div className='lg:col-span-2'>
   <div className='sticky top-6'>
     {/* Existing summary */}
-    <OrderSummary
-      items={transformedItems}
-      updateItemQuantity={updateItemQuantity}
-      coupon={coupon}
-      orderTotals={orderTotals}
-      deliveryCharge={deliveryCharge}
-      loading={loading}
-      onPlaceOrder={handlePlaceOrder}
-    />
+  <OrderSummary
+  items={transformedItems}
+  updateItemQuantity={updateItemQuantity}
+  coupon={coupon}
+  orderTotals={orderTotals}
+  deliveryCharge={deliveryCharge}
+  loading={loading}
+  onPlaceOrder={handlePlaceOrder}
+  // Add these new props
+  selectedShippingAddressId={selectedShippingAddressId}
+  cartValue={orderTotals.subtotal - (orderTotals.discount || 0)}
+/>
 
     {/* Add this: */}
    <div className="mt-6 hidden">

@@ -5,26 +5,26 @@ import { ChevronLeft, ChevronRight } from "lucide-react";
 // Example banner slides (replace with your own)
 const banners = [
   {
-    image: "https://ubnifppknfszvqkxqbfp.supabase.co/storage/v1/object/public/staticimages/banner/firstbanner.png",
+    image: "https://ubnifppknfszvqkxqbfp.supabase.co/storage/v1/object/public/staticimages//2.png",
     title: "Premium Car Care",
-    subtitle: "Get 30% OFF on all essentials!",
+    subtitle: "Get 15% OFF on order above 899!",
     cta: "Shop Now",
     ctaLink: "/shop"
   },
   {
-    image: "https://ubnifppknfszvqkxqbfp.supabase.co/storage/v1/object/public/staticimages/banner/banner2.png",
-    title: "Detailing Tools",
-    subtitle: "Professional tools for your car.",
+    image: "https://ubnifppknfszvqkxqbfp.supabase.co/storage/v1/object/public/staticimages//2.png",
+    title: "Welcom gift to all users",
+    subtitle: "Get 10% OFF on order above 899!",
     cta: "Explore",
     ctaLink: "/shop"
   },
-  {
-    image: "https://images.unsplash.com/photo-1503376780353-7e6692767b70?ixlib=rb-4.0.3&auto=format&fit=crop&w=1440&q=80",
-    title: "Luxury Accessories",
-    subtitle: "Upgrade your driving experience.",
-    cta: "Discover",
-    ctaLink: "/shop"
-  }
+  // {
+  //   image: "https://ubnifppknfszvqkxqbfp.supabase.co/storage/v1/object/public/staticimages//2.png",
+  //   title: "Luxury Accessories",
+  //   subtitle: "Upgrade your driving experience.",
+  //   cta: "Discover",
+  //   ctaLink: "/shop"
+  // }
 ];
 
 const BannerCarousel = ({
@@ -72,14 +72,14 @@ const BannerCarousel = ({
             className="w-full h-full object-cover"
           />
           <div className="absolute inset-0 bg-black/30 flex flex-col justify-center items-start px-8">
-            <h2 className="text-2xl md:text-4xl font-bold text-white mb-2">{banners[current].title}</h2>
+            <h2 className="text-2xl md:text-[56px] font-bold text-white mb-2">{banners[current].title}</h2>
             <p className="text-lg md:text-2xl text-white mb-4">{banners[current].subtitle}</p>
-            <a
+            {/* <a
               href={banners[current].ctaLink}
               className="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-6 rounded-lg shadow transition"
             >
               {banners[current].cta}
-            </a>
+            </a> */}
           </div>
         </motion.div>
       </AnimatePresence>

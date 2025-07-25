@@ -17,7 +17,7 @@ if (typeof window !== 'undefined') {
 }
 
 // Hand-picked featured product IDs
-const FEATURED_PRODUCT_IDS = [4, 6, 11, 13];
+const FEATURED_PRODUCT_IDS = [8,18,4, 16,];
 
 export default function FeaturedProducts() {
   const containerRef = useRef(null);

@@ -161,7 +161,7 @@ export default function Footer() {
                         {/* ISO Certification */}
                         <div className="flex items-center">
                             <Image
-                                src="/assets/icons/iso9001logo1.png"
+                                src="/assets/icons/iso9.svg"
                                 alt="ISO Logo"
                                 width={40}
                                 height={40}

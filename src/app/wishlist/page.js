@@ -10,6 +10,13 @@ import { useToast } from '@/components/ui/CustomToast.jsx';
 import { ProductService } from '@/lib/service/productService';
 import RelatedProducts from '@/components/shop/RelatedProducts';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+
+
+// ...
+
+// Handler for "Continue Shopping" button
+
 
 function extractPackSize(variantCode) {
   const match = typeof variantCode === 'string' ? variantCode.match(/-(\d+)X$/i) : null;
@@ -56,6 +63,54 @@ export default function WishlistPage() {
   const [user, setUser] = useState(null);
   const { addToCart } = useCart();
   const showToast = useToast();
+  const router = useRouter();
+
+  const handleContinueShopping = () => {
+    router.push('/'); // Redirect to home page
+  };
+
+
+  // Handler for "Move To Cart" button to add all wishlist items
+  const handleMoveAllToCart = async () => {
+    if (!addToCart) {
+      showToast('Unable to add to cart', { type: 'error' });
+      return;
+    }
+    try {
+      for (const item of wishlistItems) {
+        let success = false;
+
+        // Prepare product or combo or kit object for addToCart
+        let productObj = null;
+        if (item.product_id) {
+          productObj = { id: item.product_id };
+        } else if (item.combo_id) {
+          productObj = { combo_id: item.combo_id };
+        } else if (item.kit_id) {
+          productObj = { kit_id: item.kit_id };
+        }
+
+        // variant from wishlist item
+        const variant = item.variant;
+
+        if (productObj && variant) {
+          success = await addToCart(productObj, variant, 1);
+        }
+
+        if (success) {
+          await WishlistService.removeFromWishlist(item.id);
+        } else {
+          showToast(`Failed to add ${item.variant?.variant_code || item.id} to cart.`, { type: 'error' });
+        }
+      }
+      // Refresh wishlist after processing all items
+      fetchWishlist();
+      showToast('All wishlist items moved to cart', { type: 'success' });
+    } catch (error) {
+      showToast('Error moving items to cart', { type: 'error' });
+      console.error('Move all to cart error:', error);
+    }
+  };
 
   const fetchWishlist = useCallback(async () => {
     try {
@@ -244,7 +299,7 @@ export default function WishlistPage() {
             </div>
             <h2 className="text-3xl font-bold text-gray-800 mb-4">Your Shine List is Empty</h2>
             <p className="text-gray-600 mb-8">Start adding products you love to your shine list!</p>
-            <button className="bg-gradient-to-r from-black to-purple-600 text-white px-8 py-3 rounded-full font-semibold hover:from-gray-800 hover:to-purple-700 transform hover:scale-105 transition-all duration-300 shadow-lg hover:shadow-xl">
+            <button  onClick={handleContinueShopping} className="bg-gradient-to-r from-black to-purple-600 text-white px-8 py-3 rounded-full font-semibold hover:from-gray-800 hover:to-purple-700 transform hover:scale-105 transition-all duration-300 shadow-lg hover:shadow-xl">
               Continue Shopping
             </button>
           </div>
@@ -322,7 +377,7 @@ export default function WishlistPage() {
         </div>
         <div className="flex justify-between items-center mb-12">
           <Link href="/shop" className="text-purple-700 hover:underline">Continue Shopping</Link>
-          <button className="bg-black text-white px-6 py-3 rounded font-semibold hover:bg-purple-700 transition-colors">Move To Cart</button>
+          <button  onClick={handleMoveAllToCart} className="bg-black text-white px-6 py-3 rounded font-semibold hover:bg-purple-700 transition-colors">Move To Cart</button>
         </div>
         {/* Related Products Section */}
         <RelatedProducts />

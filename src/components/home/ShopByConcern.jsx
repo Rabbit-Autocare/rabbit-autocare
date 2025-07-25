@@ -7,13 +7,13 @@ const concernLinks = [
   {
     title: 'Lost the Spark?',
     description: 'Bring back the deep, dark curves. Faded trims don’t stand a chance.',
-    image: '/assets/about/img/1.jpg',
+    image: '/assets/about/img/1.jpeg',
     ids: '4,6',
   },
   {
     title: 'Feeling a Little Dirty?',
     description: 'A quick rinse or a deep cleanse — let’s get you spotless again.',
-    image: '/assets/about/img/2.jpg',
+    image: '/assets/about/img/2.jpeg',
     ids: '8,9',
   },
   {

@@ -48,6 +48,36 @@ export default async function RootLayout({ children }) {
     initialCartItems = [];
   }
 
+  const metadata = {
+    title: "Rabbit AutoCare – Premium Car Care Products",
+    description:
+      "Discover Rabbit AutoCare – a new standard in car care. From high-performance detailing sprays to advanced interior protection, our products are engineered for results and built for enthusiasts.",
+    openGraph: {
+      title: "Rabbit AutoCare | Engineered for Results",
+      description:
+        "Explore Rabbit AutoCare’s premium car detailing range. Trusted by professionals, loved by enthusiasts. Clean, protect, and shine — with every drive.",
+      url: "https://www.rabbitautocare.com",
+      siteName: "Rabbit AutoCare",
+      images: [
+        {
+          url: "https://www.rabbitautocare.com/assets/images/EXTERIORcat.webp",
+          alt: "Rabbit AutoCare Premium Car Care Products",
+        },
+      ],
+      type: "website",
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: "Rabbit AutoCare | Premium Car Detailing Products",
+      description:
+        "Clean deeper. Shine brighter. Protect longer. Rabbit AutoCare delivers professional-grade products for your car’s interior and exterior care.",
+      images: [
+        "https://www.rabbitautocare.com/assets/images/EXTERIORcat.webp",
+      ],
+    },
+  };
+
+
   return (
     <html lang="en" className={`${montserrat.variable} ${sansation.variable}`} suppressHydrationWarning>
       <body suppressHydrationWarning>

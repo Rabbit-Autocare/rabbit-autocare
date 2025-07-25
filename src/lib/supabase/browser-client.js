@@ -1,62 +1,52 @@
-import { createBrowserClient } from '@supabase/ssr';
+import { createClient } from '@supabase/supabase-js';
 
-let supabaseClient = null;
-
-function storeSessionInLocalStorage(session) {
-  if (typeof window !== 'undefined' && window.localStorage) {
-    if (session) {
-      localStorage.setItem('supabase.session', JSON.stringify(session));
-      console.log('[Supabase] Session stored in localStorage.');
-    } else {
-      localStorage.removeItem('supabase.session');
-      console.log('[Supabase] Session removed from localStorage.');
-    }
+// Custom storage adapter to inject your custom sessions
+class CustomStorageAdapter {
+  constructor() {
+    this.storage = new Map();
   }
-}
 
-export function getSessionFromLocalStorage() {
-  if (typeof window !== 'undefined' && window.localStorage) {
-    try {
-      const sessionStr = localStorage.getItem('supabase.session');
-      if (sessionStr) {
-        return JSON.parse(sessionStr);
+  async getItem(key) {
+    if (key === 'sb-access-token' || key === 'sb-refresh-token') {
+      // Get your custom session
+      try {
+        const response = await fetch('/api/auth/supabase-session');
+        if (response.ok) {
+          const { supabaseSession } = await response.json();
+          if (supabaseSession && key === 'sb-access-token') {
+            return supabaseSession.access_token;
+          }
+          if (supabaseSession && key === 'sb-refresh-token') {
+            return supabaseSession.refresh_token;
+          }
+        }
+      } catch (error) {
+        console.error('Error getting custom session:', error);
       }
-    } catch (e) {
-      console.warn('[Supabase] Failed to parse session from localStorage:', e);
     }
+    return this.storage.get(key) || null;
   }
-  return null;
+
+  async setItem(key, value) {
+    this.storage.set(key, value);
+  }
+
+  async removeItem(key) {
+    this.storage.delete(key);
+  }
 }
 
 export function createSupabaseBrowserClient() {
-  if (!supabaseClient) {
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-    const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-    if (!supabaseUrl || !supabaseAnonKey) {
-      throw new Error('Missing Supabase environment variables');
-    }
-    supabaseClient = createBrowserClient(supabaseUrl, supabaseAnonKey, {
+  return createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+    {
       auth: {
+        storage: new CustomStorageAdapter(),
         persistSession: true,
         autoRefreshToken: true,
-        detectSessionInUrl: true,
-        flowType: 'pkce',
-      },
-      global: {
-        headers: {
-          'x-application-name': 'rabbit-auto-cars',
-        },
-      },
-    });
-    // On client creation, try to store the current session
-    supabaseClient.auth.getSession().then(({ data: { session } }) => {
-      storeSessionInLocalStorage(session);
-    });
-    // Listen for session changes and always store in localStorage
-    supabaseClient.auth.onAuthStateChange((event, session) => {
-      storeSessionInLocalStorage(session);
-    });
-    console.log('[Supabase] Supabase client created and session monitoring enabled.');
-  }
-  return supabaseClient;
+        detectSessionInUrl: false
+      }
+    }
+  );
 }

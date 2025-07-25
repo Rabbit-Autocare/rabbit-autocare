@@ -6,7 +6,7 @@ import Link from "next/link"
 import Image from "next/image"
 import { usePathname } from "next/navigation"
 import { useCart } from "@/hooks/useCart"
-import { useAuth } from "@/hooks/useAuth"
+import { useAuth } from '@/contexts/AuthContext';
 import CouponCard from "@/components/ui/CouponCard"
 import { createSupabaseBrowserClient } from '@/lib/supabase/browser-client'
 import { ClientUserService } from "@/lib/service/client-userService"

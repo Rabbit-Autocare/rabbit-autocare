@@ -1,116 +1,37 @@
-import { createMiddlewareClient } from '@/lib/supabase/index';
-import { NextResponse } from 'next/server';
+import { NextResponse } from 'next/server'
+import jwt from 'jsonwebtoken'
 
-export async function middleware(req) {
-  const res = NextResponse.next();
+export function middleware(request) {
+  // Get the supabase token from cookies
+  const supabaseToken = request.cookies.get('supabase-token')?.value
 
-  // Use the createMiddlewareClient function from our shared index file
-  const supabase = createMiddlewareClient(req, res);
+  if (supabaseToken) {
+    try {
+      // Verify the token is valid
+      jwt.verify(supabaseToken, process.env.SUPABASE_JWT_SECRET)
 
-  // --- START DEBUGGING LOGS ---
-  //   console.log('Middleware Path:', req.nextUrl.pathname);
-  //   console.log('Middleware Request Headers (Cookie):', req.headers.get('cookie'));
-  // --- END DEBUGGING LOGS ---
+      // Add Authorization header to the request
+      const requestHeaders = new Headers(request.headers)
+      requestHeaders.set('Authorization', `Bearer ${supabaseToken}`)
 
-  // Refresh session if expired - required for Server Components
-  // This call will also update the session cookies in the response
-  const {
-    data: { session: initialSession },
-    error: initialSessionError,
-  } = await supabase.auth.getSession();
-
-  // --- START DEBUGGING LOGS ---
-  //   console.log('Middleware Initial Session:', initialSession);
-  //   console.log('Middleware Initial Session Error:', initialSessionError);
-  // --- END DEBUGGING LOGS ---
-
-  // Admin protection logic
-  if (req.nextUrl.pathname.startsWith('/admin')) {
-    const {
-      data: { session },
-      error: sessionError,
-    } = await supabase.auth.getSession();
-
-    // --- START DEBUGGING LOGS (specific to admin path) ---
-    // console.log('Middleware Admin Path Session (after second getSession):', session);
-    // console.log('Middleware Admin Path Session Error (after second getSession):', sessionError);
-    // --- END DEBUGGING LOGS ---
-
-    // If no session, redirect to login
-    if (!session) {
-      const redirectRes = NextResponse.redirect(new URL('/login', req.url));
-      redirectRes.headers.set(
-        'x-middleware-debug',
-        'No-Session-Redirecting-to-Login'
-      );
-      return redirectRes;
+      return NextResponse.next({
+        request: {
+          headers: requestHeaders,
+        },
+      })
+    } catch (error) {
+      console.error('Invalid token:', error.message)
+      // Token is invalid, continue without auth
     }
-
-    // Fetch user role from auth_users table
-    const { data: userData, error: userError } = await supabase
-      .from('auth_users')
-      .select('is_admin')
-      .eq('id', session.user.id)
-      .single();
-
-    // Handle error fetching user data
-    if (userError) {
-      const redirectRes = NextResponse.redirect(
-        new URL('/login?error=auth_data_error', req.url)
-      );
-      redirectRes.headers.set(
-        'x-middleware-debug',
-        'User-Data-Fetch-Error-Redirecting-to-Login'
-      );
-      return redirectRes;
-    }
-
-    // If user is not admin, redirect to home
-    if (!userData?.is_admin) {
-      const redirectRes = NextResponse.redirect(new URL('/', req.url));
-      redirectRes.headers.set(
-        'x-middleware-debug',
-        'Not-Admin-Redirecting-to-Home'
-      );
-      return redirectRes;
-    }
-
-    // If admin, allow access
-    res.headers.set('x-middleware-debug', 'Admin-Access-Granted');
   }
 
-  // User routes protection logic
-  if (req.nextUrl.pathname.startsWith('/user')) {
-    const {
-      data: { session },
-      error: sessionError,
-    } = await supabase.auth.getSession();
-
-    // If no session, redirect to login
-    if (!session) {
-      const redirectRes = NextResponse.redirect(new URL('/login', req.url));
-      redirectRes.headers.set(
-        'x-middleware-debug',
-        'No-User-Session-Redirecting-to-Login'
-      );
-      return redirectRes;
-    }
-
-    // If user has session, allow access
-    res.headers.set('x-middleware-debug', 'User-Access-Granted');
-  }
-
-  return res;
+  return NextResponse.next()
 }
 
-// Only run middleware on specified routes
 export const config = {
   matcher: [
     '/api/:path*',
-    '/dashboard/:path*',
-    '/profile/:path*',
-    '/cart/:path*',
     '/admin/:path*',
-    '/user/:path*',
-  ],
-};
+    '/user/:path*'
+  ]
+}

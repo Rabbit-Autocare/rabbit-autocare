@@ -6,7 +6,7 @@ import Image from 'next/image';
 // import { useTheme } from '@/contexts/ThemeContext';
 import { useCart } from '@/hooks/useCart';
 import { Menu, X } from 'lucide-react';
-import { useAuth } from '@/hooks/useAuth';
+import { useAuth } from '@/contexts/AuthContext';
 import { createSupabaseBrowserClient } from '@/lib/supabase/browser-client';
 import CouponCard from '@/components/ui/CouponCard';
 import { ClientUserService } from '@/lib/service/client-userService';

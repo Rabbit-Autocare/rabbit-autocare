@@ -60,22 +60,25 @@ export default function LoginPage() {
   useEffect(() => {
     checkUser();
   }, [checkUser]);
+  
+const handleGoogleSignIn = async () => {
+  try {
+    const googleClientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID;  // Get the Client ID from env
+    console.log('[LoginPage] Starting Google OAuth sign in...');
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: {
+        redirectTo: `${window.location.origin}/auth/callback`,
+        clientId: googleClientId,  // Passing the Google Client ID from env
+      },
+    });
 
-  const handleGoogleSignIn = async () => {
-    try {
-      console.log('[LoginPage] Starting Google OAuth sign in...');
-      const { error } = await supabase.auth.signInWithOAuth({
-        provider: 'google',
-        options: {
-          redirectTo: `${window.location.origin}/auth/callback`,
-        },
-      });
+    if (error) throw error;
+  } catch (error) {
+    console.error('Error signing in:', error);
+  }
+};
 
-      if (error) throw error;
-    } catch (error) {
-      console.error('Error signing in:', error);
-    }
-  };
 
   const handleLogout = async () => {
     try {

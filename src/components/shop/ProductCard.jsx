@@ -204,7 +204,7 @@ export default function ProductCard({ product, index }) {
       <div className='px-5 py-4 flex flex-col flex-grow justify-between'>
         {/* Top Section: Title and Rating */}
         <div className="flex flex-col gap-2 mb-3">
-          <h3 className="font-semibold text-base line-clamp-2 leading-tight">{product.name}</h3>
+          <h3 className="font-semibold text-base line-clamp-1 leading-tight">{product.name}</h3>
           <ProductRating ratings={ratings} size={16} showCount={true} />
         </div>
 

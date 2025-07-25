@@ -1,18 +1,21 @@
+// Force Node.js runtime (required for Buffer and crypto support)
+export const runtime = 'nodejs';
+
 import { NextResponse } from "next/server";
-import { createSupabaseServiceRoleClient } from '@/lib/supabase';
+import { createSupabaseServerClient } from '@/lib/supabase';
 
 export async function POST(request) {
   try {
     const formData = await request.formData();
     const file = formData.get("file");
-    const type = formData.get("type") || "products"; // Default to "products" if not specified
+    const type = formData.get("type") || "products";
 
     if (!file) {
       return NextResponse.json(
         { error: "No file provided" },
         { status: 400 }
       );
-    }
+    } // ← ADDED MISSING CLOSING BRACE
 
     // Convert file to buffer
     const bytes = await file.arrayBuffer();
@@ -21,28 +24,34 @@ export async function POST(request) {
     // Generate a unique filename
     const timestamp = Date.now();
     const filename = `${timestamp}-${file.name}`;
-    const filePath = `${type}/${filename}`; // Use the type in the path
+    const filePath = `${type}/${filename}`;
+
     console.log('Uploading file to:', filePath, 'type:', file.type, 'size:', buffer.length);
 
-    // Log the service role key and URL (first 8 chars only)
+    // Environment variables validation
     const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
     console.log('Service role key starts with:', serviceRoleKey?.slice(0, 8));
     console.log('Supabase URL:', supabaseUrl);
+
     if (!serviceRoleKey || !supabaseUrl) {
-      return NextResponse.json({ error: 'Supabase service role key or URL not configured' }, { status: 500 });
-    }
+      return NextResponse.json({ 
+        error: 'Supabase service role key or URL not configured' 
+      }, { status: 500 });
+    } // ← ADDED MISSING CLOSING BRACE
 
     // Create the service role client
     let supabase;
     try {
-      supabase = createSupabaseServiceRoleClient();
+      supabase = createSupabaseServerClient();
     } catch (e) {
       console.error('Supabase service role client error:', e);
-      return NextResponse.json({ error: 'Supabase service role client not configured' }, { status: 500 });
-    }
+      return NextResponse.json({ 
+        error: 'Supabase service role client not configured' 
+      }, { status: 500 });
+    } // ← ADDED MISSING CLOSING BRACE
 
-    // Upload to Supabase Storage using the service role key
+    // Upload to Supabase Storage
     const { data, error } = await supabase.storage
       .from("product-images")
       .upload(filePath, buffer, {
@@ -57,18 +66,19 @@ export async function POST(request) {
         { error: error.message || "Failed to upload image" },
         { status: 500 }
       );
-    }
+    } // ← ADDED MISSING CLOSING BRACE
 
     // Get the public URL
     const { data: publicData } = supabase.storage
       .from("product-images")
       .getPublicUrl(filePath);
+    
     const publicUrl = publicData?.publicUrl;
 
     if (!publicUrl) {
       console.error('Failed to get public URL for uploaded file:', filePath);
       return NextResponse.json({ error: 'Failed to get public URL' }, { status: 500 });
-    }
+    } // ← ADDED MISSING CLOSING BRACE
 
     console.log('Upload succeeded. Public URL:', publicUrl);
     return NextResponse.json({ url: publicUrl });

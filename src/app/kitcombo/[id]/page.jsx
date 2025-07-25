@@ -12,28 +12,26 @@ import { ProductService } from "@/lib/service/productService";
 export default function KitComboDetailPage() {
   const pathname = usePathname();
   const kitComboId = pathname.split("/").pop();
+
   const [kitCombo, setKitCombo] = useState(null);
+  const [includedProducts, setIncludedProducts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [includedProducts, setIncludedProducts] = useState([]);
 
   useEffect(() => {
-    const fetchKitCombo = async () => {
+    async function fetchKitCombo() {
       setLoading(true);
-      setError(null);
-      let data = null;
       try {
-        // Try as kit
+        // 1) Try to load as Kit
         const kits = await KitService.getKits(kitComboId);
-        if (kits && kits.length > 0) {
-          data = kits[0];
-        } else {
-          // Try as combo
+        let data = kits?.[0];
+
+        // 2) Fallback to Combo
+        if (!data) {
           const combos = await ComboService.getCombos(kitComboId);
-          if (combos && combos.length > 0) {
-            data = combos[0];
-          }
+          data = combos?.[0];
         }
+
         if (!data) {
           setError("Kit or Combo not found");
           setKitCombo(null);
@@ -41,47 +39,52 @@ export default function KitComboDetailPage() {
         } else {
           setKitCombo(data);
 
-          // Fetch full product details for included products
-          let included = [];
-          if (data.kit_products && data.kit_products.length > 0) {
-            included = data.kit_products;
-          } else if (data.combo_products && data.combo_products.length > 0) {
-            included = data.combo_products;
-          }
-          // Fetch all products in parallel
-          const productPromises = included.map(item =>
+          // 3) Fetch full product objects for each included item
+          const list = data.kit_products || data.combo_products || [];
+          const proms = list.map((item) =>
             ProductService.getProduct(item.product_id)
           );
-          const fullProducts = await Promise.all(productPromises);
-          setIncludedProducts(fullProducts.filter(Boolean));
+          const full = (await Promise.all(proms)).filter(Boolean);
+          setIncludedProducts(full);
         }
-      } catch (err) {
+      } catch (e) {
+        console.error(e);
         setError("Error fetching kit/combo details");
-        setKitCombo(null);
-        setIncludedProducts([]);
+      } finally {
+        setLoading(false);
       }
-      setLoading(false);
-    };
+    }
+
     fetchKitCombo();
   }, [kitComboId]);
 
-  if (loading) return <div>Loading...</div>;
+  if (loading) return <div>Loading…</div>;
   if (error) return <div className="text-red-600">{error}</div>;
   if (!kitCombo) return null;
 
   return (
     <div className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8 space-y-12">
+      {/* KIT/COMBO HERO */}
       <div className="flex flex-col md:flex-row items-start gap-8">
         <div className="w-full">
           <KitComboCard product={kitCombo} />
         </div>
       </div>
+ {/* RELATED PRODUCTS */}
+      <div className="pt-12 border-t">
+        <h2 className="text-2xl font-bold mb-6">You might also like</h2>
+        <RelatedProducts
+          categoryName={kitCombo.category?.name || kitCombo.category_name}
+          currentProductId={kitCombo.product_code || kitCombo.id}
+          // omit includedProducts if you want genuine related picks
+          // includedProducts={includedProducts}
+          limit={4}
+        />
+      </div>
+      {/* TABS: Description / Reviews */}
       <ProductTabs product={kitCombo} reviews={kitCombo.reviews} />
-      <RelatedProducts
-        categoryName={kitCombo.category?.name || kitCombo.category_name}
-        currentProductId={kitCombo.product_code || kitCombo.id}
-        includedProducts={includedProducts}
-      />
+
+     
     </div>
   );
 }

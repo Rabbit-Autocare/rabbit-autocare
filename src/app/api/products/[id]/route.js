@@ -21,14 +21,22 @@ export async function GET(request, { params }) {
         *,
         product_variants (
           id,
-          gsm,
+          product_id,
+          variant_code,
           size,
-          color,
-          color_hex,
           quantity,
           unit,
+          weight_grams,
+          gsm,
+          dimensions,
+          color,
+          color_hex,
           base_price,
+          base_price_excluding_gst,
           stock,
+          is_active,
+          created_at,
+          updated_at,
           pack_size,
           compare_at_price
         )
@@ -44,43 +52,10 @@ export async function GET(request, { params }) {
     // Execute the query
     const { data: product, error } = await query.single();
 
-    // Debug: Log raw database response
-    console.log('🗄️ Raw database response:', {
-      id,
-      hasProduct: !!product,
-      productVariantsCount: product?.product_variants?.length || 0,
-      rawVariants: product?.product_variants?.map(v => ({
-        id: v.id,
-        size: v.size,
-        pack_size: v.pack_size,
-        stock: v.stock,
-        base_price: v.base_price,
-      })) || [],
-    });
-
-    console.log('Supabase product fetch result:', {
-      id,
-      product: product
-        ? {
-            ...product,
-            product_variants: product.product_variants?.map((v) => ({
-              id: v.id,
-              color: v.color,
-              size: v.size,
-              pack_size: v.pack_size,
-              stock: v.stock,
-              base_price: v.base_price,
-            })),
-          }
-        : null,
-      error,
-    });
-
     if (error) {
       console.error('Error fetching product:', error);
 
       if (error.code === 'PGRST116') {
-        // No rows returned
         return NextResponse.json(
           { error: 'Product not found' },
           { status: 404 }
@@ -101,32 +76,13 @@ export async function GET(request, { params }) {
     const transformedProduct = {
       ...product,
       variants: product.product_variants || [],
-      // Ensure backward compatibility
       category: product.category_name,
       subcategory: product.subcategory_name,
     };
 
-    // Remove the product_variants key to avoid duplication
     delete transformedProduct.product_variants;
 
-    // Apply the same transformation used by ProductService
-    const finalProduct =
-      ProductService.transformProductData(transformedProduct);
-
-    // Debug: Log transformation result for microfiber products
-    if (finalProduct?.product_type === 'microfiber') {
-      console.log('🧽 API Transformation Result:', {
-        name: finalProduct.name,
-        variants: finalProduct.variants?.map((v) => ({
-          id: v.id,
-          color: v.color,
-          size: v.size,
-          pack_size: v.pack_size,
-          stock: v.stock,
-          base_price: v.base_price,
-        })),
-      });
-    }
+    const finalProduct = ProductService.transformProductData(transformedProduct);
 
     return NextResponse.json(finalProduct);
   } catch (error) {
@@ -134,8 +90,7 @@ export async function GET(request, { params }) {
     return NextResponse.json(
       {
         error: 'Internal server error',
-        details:
-          process.env.NODE_ENV === 'development' ? error.message : undefined,
+        details: process.env.NODE_ENV === 'development' ? error.message : undefined,
       },
       { status: 500 }
     );
@@ -148,8 +103,10 @@ export async function PUT(request, { params }) {
     if (!id) {
       return NextResponse.json({ error: 'Product ID is required' }, { status: 400 });
     }
+
     const body = await request.json();
-    // Destructure all fields, including images and main_image_url
+    console.log('📝 PUT request body:', body);
+
     const {
       name,
       product_code,
@@ -165,12 +122,13 @@ export async function PUT(request, { params }) {
       images,
       taglines,
       variants,
-      // Add any other fields as needed
     } = body;
-    // Create Supabase server client
+
     const supabase = await createSupabaseServerClient();
-    // Update the product in the database, including images and main_image_url
-    const { error } = await supabase
+
+    // Start a transaction-like operation
+    // 1. Update the main product
+    const { data: updatedProduct, error: productError } = await supabase
       .from('products')
       .update({
         name,
@@ -183,19 +141,150 @@ export async function PUT(request, { params }) {
         features,
         usage_instructions,
         warnings,
-        main_image_url, // allow update/removal
-        images,         // allow update/removal
+        main_image_url,
+        images,
         taglines,
-        // Add any other fields as needed
+        updated_at: new Date().toISOString(),
       })
-      .eq('id', id);
-    if (error) {
-      return NextResponse.json({ error: 'Failed to update product', details: error.message }, { status: 500 });
+      .eq('id', id)
+      .select()
+      .single();
+
+    if (productError) {
+      console.error('Error updating product:', productError);
+      return NextResponse.json({ 
+        error: 'Failed to update product', 
+        details: productError.message 
+      }, { status: 500 });
     }
-    // Optionally update variants if needed (not shown here)
-    return NextResponse.json({ success: true });
+
+    // 2. Handle variants update if provided
+    if (variants && Array.isArray(variants)) {
+      console.log('📝 Updating variants:', variants);
+
+      // Get existing variants
+      const { data: existingVariants } = await supabase
+        .from('product_variants')
+        .select('id')
+        .eq('product_id', id);
+
+      const existingVariantIds = existingVariants?.map(v => v.id) || [];
+      const incomingVariantIds = variants.filter(v => v.id).map(v => v.id);
+
+      // Delete variants that are no longer in the update
+      const variantsToDelete = existingVariantIds.filter(id => !incomingVariantIds.includes(id));
+      if (variantsToDelete.length > 0) {
+        const { error: deleteError } = await supabase
+          .from('product_variants')
+          .delete()
+          .in('id', variantsToDelete);
+
+        if (deleteError) {
+          console.error('Error deleting variants:', deleteError);
+        }
+      }
+
+      // Update or insert variants
+      for (const variant of variants) {
+        const variantData = {
+          product_id: id,
+          variant_code: variant.variant_code,
+          size: variant.size,
+          quantity: variant.quantity,
+          unit: variant.unit,
+          weight_grams: variant.weight_grams,
+          gsm: variant.gsm,
+          dimensions: variant.dimensions,
+          color: variant.color,
+          color_hex: variant.color_hex,
+          base_price: variant.base_price,
+          base_price_excluding_gst: variant.base_price_excluding_gst,
+          stock: variant.stock,
+          is_active: variant.is_active,
+          pack_size: variant.pack_size,
+          updated_at: new Date().toISOString(),
+        };
+
+        if (variant.id) {
+          // Update existing variant
+          const { error: variantError } = await supabase
+            .from('product_variants')
+            .update(variantData)
+            .eq('id', variant.id);
+
+          if (variantError) {
+            console.error('Error updating variant:', variantError);
+          }
+        } else {
+          // Insert new variant
+          const { error: variantError } = await supabase
+            .from('product_variants')
+            .insert({ ...variantData, created_at: new Date().toISOString() });
+
+          if (variantError) {
+            console.error('Error inserting variant:', variantError);
+          }
+        }
+      }
+    }
+
+    // 3. Fetch the complete updated product with variants
+    const { data: completeProduct, error: fetchError } = await supabase
+      .from('products')
+      .select(`
+        *,
+        product_variants (
+          id,
+          product_id,
+          variant_code,
+          size,
+          quantity,
+          unit,
+          weight_grams,
+          gsm,
+          dimensions,
+          color,
+          color_hex,
+          base_price,
+          base_price_excluding_gst,
+          stock,
+          is_active,
+          created_at,
+          updated_at,
+          pack_size
+        )
+      `)
+      .eq('id', id)
+      .single();
+
+    if (fetchError) {
+      console.error('Error fetching updated product:', fetchError);
+      return NextResponse.json({ 
+        error: 'Product updated but failed to fetch updated data', 
+        details: fetchError.message 
+      }, { status: 500 });
+    }
+
+    // Transform the response data
+    const transformedProduct = {
+      ...completeProduct,
+      variants: completeProduct.product_variants || [],
+    };
+    delete transformedProduct.product_variants;
+
+    console.log('✅ Product updated successfully:', transformedProduct.name);
+
+    return NextResponse.json({ 
+      success: true, 
+      product: transformedProduct 
+    });
+
   } catch (error) {
-    return NextResponse.json({ error: 'Internal server error', details: error.message }, { status: 500 });
+    console.error('Error in PUT /api/products/[id]:', error);
+    return NextResponse.json({ 
+      error: 'Internal server error', 
+      details: error.message 
+    }, { status: 500 });
   }
 }
 
@@ -206,21 +295,42 @@ export async function DELETE(request, { params }) {
       return NextResponse.json({ error: 'Product ID is required' }, { status: 400 });
     }
 
-    // Create Supabase server client
     const supabase = await createSupabaseServerClient();
 
+    // Delete variants first (due to foreign key constraint)
+    const { error: variantsError } = await supabase
+      .from('product_variants')
+      .delete()
+      .eq('product_id', id);
+
+    if (variantsError) {
+      console.error('Error deleting product variants:', variantsError);
+      return NextResponse.json({ 
+        error: 'Failed to delete product variants', 
+        details: variantsError.message 
+      }, { status: 500 });
+    }
+
     // Delete the product
-    const { error } = await supabase
+    const { error: productError } = await supabase
       .from('products')
       .delete()
       .eq('id', id);
 
-    if (error) {
-      return NextResponse.json({ error: 'Failed to delete product', details: error.message }, { status: 500 });
+    if (productError) {
+      console.error('Error deleting product:', productError);
+      return NextResponse.json({ 
+        error: 'Failed to delete product', 
+        details: productError.message 
+      }, { status: 500 });
     }
 
     return NextResponse.json({ success: true });
   } catch (error) {
-    return NextResponse.json({ error: 'Internal server error', details: error.message }, { status: 500 });
+    console.error('Error in DELETE /api/products/[id]:', error);
+    return NextResponse.json({ 
+      error: 'Internal server error', 
+      details: error.message 
+    }, { status: 500 });
   }
 }

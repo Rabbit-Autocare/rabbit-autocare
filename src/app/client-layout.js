@@ -6,18 +6,18 @@ import { createSupabaseBrowserClient } from "@/lib/supabase/browser-client"
 import Footer from "@/components/navigation/Footer"
 import MainNavbar from "@/components/navigation/MainNavbar"
 import { CartProvider } from "@/contexts/CartContext"
-// import { ThemeProvider } from "@/contexts/ThemeContext"
 import ExtraNavbar from "@/components/navigation/extranavbar"
 import { createPortal } from "react-dom"
 import MobileNavbar from "@/components/navigation/MobileNavbar"
 import { ToastProvider } from '@/components/ui/CustomToast.jsx';
+import { useAuth } from '@/contexts/AuthContext'
 
 const supabase = createSupabaseBrowserClient();
 
 export default function ClientLayout({ children, initialCartItems = [] }) {
   const router = useRouter()
   const pathname = usePathname()
-  const [user, setUser] = useState(null)
+  const { user } = useAuth() // Now safely accessing useAuth
   const [loading, setLoading] = useState(false)
   const [showExtraNavbar, setShowExtraNavbar] = useState(true)
   const [showMainNavbar, setShowMainNavbar] = useState(false)
@@ -175,34 +175,6 @@ export default function ClientLayout({ children, initialCartItems = [] }) {
     }
   }, [pathname, lastScrollY, scrollDirection, showMainNavbar, isMobileMenuOpen, isInitialized])
 
-  useEffect(() => {
-    const checkSession = async () => {
-      const {
-        data: { session },
-      } = await supabase.auth.getSession()
-      console.log("Session on mount:", session);
-      const user = session?.user ?? null
-      setUser(user)
-    }
-
-    checkSession()
-
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange(async (event, session) => {
-      const currentUser = session?.user ?? null
-      setUser(currentUser)
-
-      if (event === "SIGNED_OUT") {
-        router.push("/login")
-      } else if (event === "SIGNED_IN" && !pathname.includes("/auth/callback")) {
-        router.refresh()
-      }
-    })
-
-    return () => subscription?.unsubscribe()
-  }, [router, pathname])
-
   // Create portal container for MainNavbar (desktop)
   useEffect(() => {
     if (typeof window !== "undefined") {
@@ -325,46 +297,44 @@ export default function ClientLayout({ children, initialCartItems = [] }) {
   }, [showMobileNavbar, mobilePortalContainer])
 
   return (
-    // <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
-      <CartProvider initialCartItems={initialCartItems}>
-        {/* MobileNavbar Portal - Mobile only */}
-        {mobilePortalContainer &&
-          createPortal(
-            <div className="md:hidden">
-              <MobileNavbar
-                isMobileMenuOpen={isMobileMenuOpen}
-                setIsMobileMenuOpen={handleMobileMenuToggle}
-              />
-            </div>,
-            mobilePortalContainer,
-          )}
+    <CartProvider initialCartItems={initialCartItems}>
+      {/* MobileNavbar Portal - Mobile only */}
+      {mobilePortalContainer &&
+        createPortal(
+          <div className="md:hidden">
+            <MobileNavbar
+              isMobileMenuOpen={isMobileMenuOpen}
+              setIsMobileMenuOpen={handleMobileMenuToggle}
+            />
+          </div>,
+          mobilePortalContainer,
+        )}
 
+      <div style={{ position: "relative" }} id="smooth-content">
+        {/* ExtraNavbar */}
+        <div
+          className={`transition-all duration-300 ease-in-out ${
+            showExtraNavbar ? "opacity-100 translate-y-0" : "opacity-0 -translate-y-full pointer-events-none"
+          }`}
+          style={{ position: "relative", zIndex: 50 }}
+        >
+          <ExtraNavbar />
+        </div>
+        <ToastProvider>
+          {/* Content */}
+          <div style={{ paddingTop: '80px' }}>{children}</div>
+          <Footer />
+        </ToastProvider>
+      </div>
 
-          <div style={{ position: "relative" }} id="smooth-content">
-            {/* ExtraNavbar */}
-            <div
-              className={`transition-all duration-300 ease-in-out ${
-                showExtraNavbar ? "opacity-100 translate-y-0" : "opacity-0 -translate-y-full pointer-events-none"
-              }`}
-              style={{ position: "relative", zIndex: 50 }}
-            >
-              <ExtraNavbar />
-            </div>
-            <ToastProvider>
-              {/* Content */}
-              <div style={{ paddingTop: '80px' }}>{children}</div>
-              <Footer />
-            </ToastProvider>
-          </div>
-        {/* MainNavbar Portal - Desktop only */}
-        {portalContainer &&
-          createPortal(
-            <div className="hidden md:block">
-              <MainNavbar />
-            </div>,
-            portalContainer,
-          )}
-      </CartProvider>
-    // </ThemeProvider>
+      {/* MainNavbar Portal - Desktop only */}
+      {portalContainer &&
+        createPortal(
+          <div className="hidden md:block">
+            <MainNavbar />
+          </div>,
+          portalContainer,
+        )}
+    </CartProvider>
   )
 }

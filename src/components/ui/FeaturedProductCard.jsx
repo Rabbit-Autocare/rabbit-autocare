@@ -199,6 +199,9 @@ export default function FeaturedProductCard({
     }
   }, [product, isMicrofiber]);
 
+
+
+
   // Get product images - prioritize thumbnails, fallback to images array, then main image
   const getProductImages = () => {
     if (product.thumbnails && product.thumbnails.length > 0) {
@@ -301,6 +304,15 @@ export default function FeaturedProductCard({
     }
   }, [isMicrofiber, selectedSize, availablePackSizesForSelectedSize, selectedPackSize]);
 
+useEffect(() => {
+  if (isMicrofiber && selectedSize && selectedPackSize) {
+    const variant = getVariantForCombination(selectedSize, selectedPackSize);
+    if (variant) {
+      setSelectedVariant(variant);
+    }
+  }
+}, [selectedSize, selectedPackSize, isMicrofiber, product?.variants]);
+
   // Find the variant for the selected size and pack size
   const getVariantForCombination = (size, packSize) => {
     if (!isMicrofiber || !size || !packSize) return null;
@@ -385,23 +397,33 @@ export default function FeaturedProductCard({
   };
 
 
-  const handleSizeSelect = (size, e) => {
-    if (e) e.stopPropagation(); // Prevent navigation
-    setSelectedSize(size);
-    if (selectedPackSize) {
-      const variant = getVariantForCombination(size, selectedPackSize);
-      if (variant) setSelectedVariant(variant);
+ const handleSizeSelect = (size, e) => {
+  if (e) e.stopPropagation(); // Prevent navigation
+  setSelectedSize(size);
+
+  // **FIX: Update variant immediately when size changes**
+  if (selectedPackSize) {
+    const variant = getVariantForCombination(size, selectedPackSize);
+    if (variant) {
+      setSelectedVariant(variant);
     }
-  };
+  }
+};
+
 
   const handlePackSizeSelect = (packSize, e) => {
-    if (e) e.stopPropagation(); // Prevent navigation
-    setSelectedPackSize(packSize);
-    if (selectedSize) {
-      const variant = getVariantForCombination(selectedSize, packSize);
-      if (variant) setSelectedVariant(variant);
+  if (e) e.stopPropagation(); // Prevent navigation
+  setSelectedPackSize(packSize);
+
+  // **Ensure variant is updated when pack size changes**
+  if (selectedSize) {
+    const variant = getVariantForCombination(selectedSize, packSize);
+    if (variant) {
+      setSelectedVariant(variant);
     }
-  };
+  }
+};
+
 
   const handleVariantSelect = (variant, e) => {
     if (e) e.stopPropagation(); // Prevent navigation

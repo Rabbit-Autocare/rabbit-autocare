@@ -13,6 +13,7 @@ const KitsCombosForm = ({
   selectedProducts,
   allProducts,
   previewImage,
+  setPreviewImage,
   loading,
   uploading,
   onCancel,

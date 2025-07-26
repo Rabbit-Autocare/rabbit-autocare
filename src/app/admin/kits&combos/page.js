@@ -1071,6 +1071,7 @@ const handleEdit = (item) => {
             selectedProducts={selectedProducts}
             allProducts={allProducts}
             previewImage={previewImage}
+            setPreviewImage={setPreviewImage}
             loading={loading}
             uploading={uploading}
             onCancel={handleCancel}

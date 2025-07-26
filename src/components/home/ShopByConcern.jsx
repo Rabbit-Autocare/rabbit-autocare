@@ -7,25 +7,25 @@ const concernLinks = [
   {
     title: 'Lost the Spark?',
     description: 'Bring back the deep, dark curves. Faded trims don’t stand a chance.',
-    image: '/assets/about/img/1.jpeg',
+    image: '/assets/about/img/shopBy1.jpeg',
     ids: '4,6,15',
   },
   {
     title: 'Feeling a Little Dirty?',
     description: 'A quick rinse or a deep cleanse — let’s get you spotless again.',
-    image: '/assets/about/img/2.jpeg',
+    image: '/assets/about/img/shopBy2.jpeg',
     ids: '8,10,16',
   },
   {
     title: 'Can’t See You Clearly',
     description: 'Wipe away the blur. Let those eyes meet, windshield to windshield.',
-    image: '/assets/about/img/3.jpg',
+    image: '/assets/about/img/shopBy3.jpg',
     ids: '9,18',
   },
   {
     title: 'Craving That Touch-Up?',
     description: 'Gloss up. Glide smooth. Make them look twice.',
-    image: '/assets/about/img/4.jpg',
+    image: '/assets/about/img/shopBy4.jpg',
     ids: '4,18,16',
   },
 ];

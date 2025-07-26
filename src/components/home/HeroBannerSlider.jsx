@@ -8,7 +8,7 @@ const Banner1 = () => (
     <div
       className="absolute inset-0 w-full h-full"
       style={{
-        backgroundImage: "url('/assets/images/16.jpeg')",
+        backgroundImage: "url('/assets/images/16.webp')",
         backgroundSize: "cover",
         backgroundPosition: "top",
         backgroundRepeat: "no-repeat",

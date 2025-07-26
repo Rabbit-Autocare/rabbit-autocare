@@ -6,7 +6,7 @@ import Image from "next/image"
 import { useCart } from "@/hooks/useCart"
 import { useAuth } from '@/contexts/AuthContext';
 import CouponCard from "@/components/ui/CouponCard"
-import { createSupabaseBrowserClient } from '@/lib/supabase/browser-client'
+// import { createSupabaseBrowserClient } from '@/lib/supabase/browser-client'
 import { ClientUserService } from "@/lib/service/client-userService"
 import { SEARCH_MAP } from "@/utils/searchKeywords";
 

@@ -70,7 +70,10 @@ export default function KitComboDetailPage() {
           <KitComboCard product={kitCombo} />
         </div>
       </div>
- {/* RELATED PRODUCTS */}
+ 
+      {/* TABS: Description / Reviews */}
+      <ProductTabs product={kitCombo} reviews={kitCombo.reviews} />
+{/* RELATED PRODUCTS */}
       <div className="pt-12 border-t">
         <h2 className="text-2xl font-bold mb-6">You might also like</h2>
         <RelatedProducts
@@ -81,9 +84,6 @@ export default function KitComboDetailPage() {
           limit={4}
         />
       </div>
-      {/* TABS: Description / Reviews */}
-      <ProductTabs product={kitCombo} reviews={kitCombo.reviews} />
-
      
     </div>
   );

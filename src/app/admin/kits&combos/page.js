@@ -386,39 +386,47 @@ export default function KitsAndCombosPage() {
     }
   };
 
-  const handleEdit = (item) => {
-    // Set itemData for the form
-    setItemData({
-      name: item.name || '',
-      description: item.description || '',
-      image_url: item.image_url || null,
-      original_price: item.original_price || 0,
-      price: item.price || 0,
-      discount_percentage: item.discount_percent || 0,
-      id: item.id, // Pass ID for updates
-    });
+const handleEdit = (item) => {
+  setItemData({
+    name: item.name || '',
+    description: item.description || '',
+    image_url: item.image_url || null,
+    original_price: item.original_price || 0,
+    price: item.price || 0,
+    discount_percentage: item.discount_percent || 0,
+    sku: item.sku || '',
+    hsn: item.hsn || '',
+    id: item.id,
+  });
 
-    // Transform included products to selectedProducts format for the form
-    const productsForForm =
-      (activeTab === 'kits' ? item.kit_products : item.combo_products)?.map(
-        (includedProduct) => ({
-          id: includedProduct.product.id,
-          ...includedProduct.product,
-          selected_variant: includedProduct.variant, // The selected_variant is the actual variant object
-          quantity: includedProduct.quantity,
-        })
-      ) || [];
-    setSelectedProducts(productsForForm);
+  const productsForForm = (
+    (activeTab === 'kits' ? item.kit_products : item.combo_products) || []
+  ).map((includedProduct) => {
+    // ✅ Use full product from already fetched list (with variants)
+    const fullProduct = allProducts.find((p) => p.id === includedProduct.product.id);
+    const fullVariant = fullProduct?.variants?.find(
+      (v) => v.id === includedProduct.variant?.id
+    );
 
-    // Set preview image if available
-    if (item.image_url) {
-      setPreviewImage(getImageUrl(item.image_url));
-    } else {
-      setPreviewImage(null);
-    }
+    return {
+      id: fullProduct?.id || includedProduct.product.id,
+      ...fullProduct,
+      selected_variant: fullVariant || includedProduct.variant,
+      quantity: includedProduct.quantity || 1,
+    };
+  });
 
-    setCurrentView('edit');
-  };
+  setSelectedProducts(productsForForm);
+
+  if (item.image_url) {
+    setPreviewImage(getImageUrl(item.image_url));
+  } else {
+    setPreviewImage(null);
+  }
+
+  setCurrentView('edit');
+};
+
 
   const handleCreate = () => {
     setItemData({

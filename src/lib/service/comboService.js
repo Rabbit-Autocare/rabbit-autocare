@@ -137,7 +137,7 @@ export class ComboService {
         discount_percent: comboData.discount_percentage,
         inventory,
         sku: comboData.sku,
-        sn: comboData.hsn,
+        hsn: comboData.hsn,
       };
 
       if (comboData.image_url) {

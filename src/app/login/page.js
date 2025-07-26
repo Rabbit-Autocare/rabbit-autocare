@@ -154,13 +154,22 @@ export default function LoginPage() {
       <div className='max-w-md w-full space-y-8'>
         <div className='bg-white p-8 rounded-lg shadow-md'>
           <div className='text-center mb-6'>
+
             <Image
               src="/assets/RabbitLogo.png"
               alt="Rabbit AutoCare"
-              width={48}
-              height={48}
-              className="mx-auto h-12 w-auto mb-4"
+              width={100}
+              height={48} className="mx-auto h-12 w-auto mb-4"
             />
+
+{/* <Image
+  src="/assets/RabbitLogo.png"
+  alt="Rabbit AutoCare"
+  width={48}
+  height={48}
+  className="mx-auto h-12 w-auto mb-4"
+/> */}
+
             {/* <img
               src=""
               alt="Rabbit AutoCare"

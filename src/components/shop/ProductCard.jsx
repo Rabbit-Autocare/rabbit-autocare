@@ -226,7 +226,7 @@ export default function ProductCard({ product, index }) {
               </span>
               {product.originalPrice && product.originalPrice > maxPrice && (
                 <span className='text-sm text-gray-400 line-through'>
-                  ₹{product.originalPrice}
+                   ₹{Math.round(product.originalPrice)}
                 </span>
               )}
             </div>

@@ -30,8 +30,6 @@ export class KitService {
 
   static async getKits(id = null) {
     try {
-      console.log('Fetching kits from Supabase...');
-
       let query = supabase
         .from('kits')
         .select(`
@@ -43,18 +41,10 @@ export class KitService {
           )
         `);
 
-      if (id) {
-        query = query.eq('id', id);
-      }
+      if (id) query = query.eq('id', id);
 
       const { data, error } = await query;
-
-      if (error) {
-        console.error('Supabase error fetching kits:', error);
-        throw error;
-      }
-
-      console.log(`Fetched ${data?.length || 0} kits from Supabase`);
+      if (error) throw error;
 
       return (data || []).map(kit => ({
         ...kit,
@@ -63,7 +53,6 @@ export class KitService {
       }));
     } catch (error) {
       console.error('Error fetching kits:', error);
-      // Return empty array instead of throwing to prevent app crashes
       return [];
     }
   }
@@ -90,10 +79,7 @@ export class KitService {
         .select()
         .single();
 
-      if (kitError) {
-        console.error("Kit insert error:", kitError);
-        throw kitError;
-      }
+      if (kitError) throw kitError;
 
       const kitProductsData = kitData.products.map(p => ({
         kit_id: newKit.id,
@@ -106,10 +92,7 @@ export class KitService {
         .from('kit_products')
         .insert(kitProductsData);
 
-      if (kitProductsError) {
-        console.error("Kit products insert error:", kitProductsError);
-        throw kitProductsError;
-      }
+      if (kitProductsError) throw kitProductsError;
 
       return {
         ...newKit,
@@ -142,6 +125,7 @@ export class KitService {
         updateData.image_url = kitData.image_url;
         updateData.main_image_url = kitData.image_url;
       }
+
       if (kitData.images) {
         updateData.images = kitData.images;
       }
@@ -154,7 +138,6 @@ export class KitService {
       if (fetchError) throw fetchError;
 
       const existingMap = new Map(existingProducts.map(p => [p.product_id, p]));
-
       const incomingMap = new Map(kitData.products.map(p => [p.id, p]));
 
       const productsToAdd = [];

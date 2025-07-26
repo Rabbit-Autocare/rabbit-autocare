@@ -19,7 +19,7 @@ const Banner1 = () => (
 
 // Mobile Video Banner
 const MobileVideoBanner = () => (
-  <div className="relative w-full h-screen md:hidden overflow-hidden">
+  <div className="relative top-[-80px] w-full h-screen md:hidden overflow-hidden">
     <video
       className="absolute inset-0 w-full h-full object-cover"
       src="https://ubnifppknfszvqkxqbfp.supabase.co/storage/v1/object/public/staticimages//website%20video.mp4"

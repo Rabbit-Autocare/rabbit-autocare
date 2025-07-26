@@ -3,13 +3,13 @@
 import React, { useState } from 'react';
 import OverviewDashboard from './OverviewDashboard';
 import SalesDashboard from './SalesDashboard';
-import StockDashboard from './StockDashboard';
+// import StockDashboard from './StockDashboard';
 import ReportsDashboard from './ReportsDashboard';
- 
+
 const tabs = [
   { name: 'Overview', component: OverviewDashboard },
   { name: 'Sales', component: SalesDashboard },
-  { name: 'Stock', component: StockDashboard },
+  // { name: 'Stock', component: StockDashboard },
   { name: 'Reports', component: ReportsDashboard },
 ];
 
